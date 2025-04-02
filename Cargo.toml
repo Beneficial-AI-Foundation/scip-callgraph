@@ -1,0 +1,34 @@
+[package]
+name = "rust-analyzer-test"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+rustdoc-json = "0.9.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+syn = { version = "2.0", features = ["full", "visit", "parsing"] }
+petgraph = "0.6"
+quote = "1.0"
+
+[[bin]]
+name = "rust_analyzer_ex3"
+path = "rust_analyzer_ex3.rs"
+
+[[bin]]
+name = "build_rustdoc_json"
+path = "build_rustdoc_json.rs"
+
+[[bin]]
+name = "parse_rustdoc_deps"
+path = "parse_rustdoc_deps.rs"
+
+[[bin]]
+name = "call_graph_with_syn_v0"
+path = "call_graph_with_syn_v0.rs"
+[[bin]]
+name = "call_graph_with_syn_v1"
+path = "call_graph_with_syn_v1.rs"
