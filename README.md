@@ -6,6 +6,7 @@ This repository contains several tools and examples for analyzing Rust source co
 - Parse Rust code using the syn crate.
 - Generate call graphs that show function dependencies.
 - Filter out standard library dependencies by leveraging rustdoc JSON.
+- Generate SVG visualizations of dependency graphs.
 
 ## Key Components
 
@@ -33,7 +34,7 @@ This binary parses a Rust source file and produces a JSON call graph. Its key fe
 
 2. **Generate a Call Graph:**
    ```bash
-   cargo run --bin call_graph_with_syn_v1 path/to/file.rs
+   cargo run --bin call_graph_with_syn_v1 path/to/rust_folder
    ```
    The tool prints the JSON call graph to stdout.
 
