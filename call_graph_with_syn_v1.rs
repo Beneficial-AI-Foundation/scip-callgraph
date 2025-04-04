@@ -6,8 +6,9 @@ use std::process;
 use serde::{Serialize, Deserialize};
 use syn::{
     visit::{self, Visit},
-    ExprCall, ExprMethodCall, ItemFn, ItemStruct, ItemImpl, Path as SynPath, 
+    ExprCall, ExprMethodCall, ItemFn, ItemStruct, ItemImpl,  
 };
+
 use quote::ToTokens;
 use serde_json::Value;
 use std::sync::OnceLock; // Rust 1.70+ (or use lazy_static)
@@ -69,6 +70,9 @@ struct FunctionCallVisitor {
     
     // List of elements (functions, structs, etc.)
     elements: Vec<Element>,
+
+    // NEW: to store user defined function/struct names
+    user_defined: HashSet<String>,
 }
 
 impl FunctionCallVisitor {
@@ -79,17 +83,19 @@ impl FunctionCallVisitor {
             dependencies: HashMap::new(),
             bodies: HashMap::new(),
             elements: Vec::new(),
+            user_defined: HashSet::new(),
         }
     }
     
     // Process collected dependencies when we exit an element
     fn process_current_element(&mut self, element_type: &str) {
         if let Some(current_element) = &self.current_element {
-            let mut dependencies: HashSet<String> = self.dependencies.remove(current_element).unwrap_or_default();
-            // Remove self dependency
-            dependencies.remove(current_element);
-            let body = self.bodies.remove(current_element).unwrap_or_default();
+            // Retrieve dependencies
+            let dependencies: HashSet<String> = self.dependencies.remove(current_element).unwrap_or_default();
+            // Retrieve the body without removing it
+            let body = self.bodies.get(current_element).cloned().unwrap_or_default();
             
+            // Push the element into the elements list
             self.elements.push(Element {
                 name: current_element.clone(),
                 element_type: element_type.to_string(),
@@ -99,19 +105,39 @@ impl FunctionCallVisitor {
         }
     }
     
-    // Store the body of the current element
+    // Updated helper to remove extra spaces around '.' and preceding '(' while preserving newlines.
+    fn clean_body(body: &str) -> String {
+        body.replace(" . ", ".")
+            .replace(" .", ".")
+            .replace(". ", ".")
+            .replace(" (", "(")
+    }
+
+    // Update store_body to use clean_body.
     fn store_body(&mut self, name: &str, body: &str) {
-        self.bodies.insert(name.to_string(), body.to_string());
+        self.bodies.insert(name.to_string(), Self::clean_body(body));
     }
     
-    // Add a dependency to the current element
+    // Update add_dependency_with_rustdoc to skip self dependency.
     fn add_dependency_with_rustdoc(&mut self, full_path: &str) {
+        println!("Adding dependency: {}", full_path);
+        println!("user_defined: {:?}", self.user_defined);
+        // Skip if dependency is same as current element
+        if let Some(current) = &self.current_element {
+            if current.trim() == full_path.trim() {
+                return;
+            }
+        }
         if !is_standard_dependency(full_path) {
-            if let Some(current_element) = &self.current_element {
-                self.dependencies
-                    .entry(current_element.clone())
-                    .or_default()
-                    .insert(full_path.to_string());
+            // Check if any user-defined name either equals or ends with " :: <dependency>"
+            let is_user_defined = self.user_defined.contains(full_path);
+            if is_user_defined {
+                if let Some(current_element) = &self.current_element {
+                    self.dependencies
+                        .entry(current_element.clone())
+                        .or_default()
+                        .insert(full_path.to_string());
+                }
             }
         }
     }
@@ -125,39 +151,35 @@ impl FunctionCallVisitor {
 }
 
 impl<'ast> Visit<'ast> for FunctionCallVisitor {
-    // Visit function definitions
+    // Visit function definitions: record name as user defined.
     fn visit_item_fn(&mut self, node: &'ast ItemFn) {
-        // Process any pending element
-        self.process_current_element("function");
-        
-        // Set the current function
         let function_name = node.sig.ident.to_string();
-        self.current_element = Some(function_name.clone());
-        
-        // Store the function body
-        self.store_body(&function_name, &node.block.to_token_stream().to_string());
-        
-        // Visit the function body to find dependencies
-        visit::visit_item_fn(self, node);
-        
-        // Process the current function
+        self.user_defined.insert(function_name.clone());
         self.process_current_element("function");
-        
-        // Clear the current element
+        self.current_element = Some(function_name.clone());
+        // Join tokens from function block with a newline after each token.
+        let block = node.block.clone();
+        let block_str = prettyplease::unparse(&syn::parse_file(&format!("fn dummy() {}", block.to_token_stream())).unwrap());
+        let block_str = block_str.trim_start_matches("fn dummy()").trim();
+        self.store_body(&function_name, block_str);
+        visit::visit_item_fn(self, node);
+        self.process_current_element("function");
         self.current_element = None;
     }
     
-    // Visit struct definitions
+    // Visit struct definitions: record struct name as user defined.
     fn visit_item_struct(&mut self, node: &'ast ItemStruct) {
+        let struct_name = node.ident.to_string();
+        self.user_defined.insert(struct_name.clone());
         // Process any pending element
         self.process_current_element("struct");
         
         // Set the current struct
-        let struct_name = node.ident.to_string();
         self.current_element = Some(struct_name.clone());
         
         // Store the struct body
-        self.store_body(&struct_name, &node.fields.to_token_stream().to_string());
+        let body: String = node.fields.to_token_stream().to_string();
+        self.store_body(&struct_name, &body);
         
         // Process the current struct
         self.process_current_element("struct");
@@ -166,20 +188,39 @@ impl<'ast> Visit<'ast> for FunctionCallVisitor {
         self.current_element = None;
     }
 
-    // Visit impl blocks
+    // Visit impl blocks: record method using qualified name "ImplType :: method"
     fn visit_item_impl(&mut self, node: &'ast ItemImpl) {
-        // Visit each function within the impl block
+        // Attempt to extract type name of the impl (if present)
+        let impl_type = if let syn::Type::Path(type_path) = &*node.self_ty {
+            type_path.path.segments.last().map(|seg| seg.ident.to_string())
+        } else {
+            None
+        };
+
         for item in &node.items {
             if let syn::ImplItem::Fn(method) = item {
+                let method_name = method.sig.ident.to_string();
+                let qualified_name = if let Some(ref tname) = impl_type {
+                    format!("{} :: {}", tname, method_name)
+                } else {
+                    method_name.clone()
+                };
+                // Insert the qualified name into user_defined.
+                self.user_defined.insert(qualified_name.clone());
                 // Process any pending element
                 self.process_current_element("function");
 
-                // Set the current function
-                let function_name = method.sig.ident.to_string();
-                self.current_element = Some(function_name.clone());
+                // Set current function to the qualified name.
+                self.current_element = Some(qualified_name.clone());
 
-                // Store the function body
-                self.store_body(&function_name, &method.block.to_token_stream().to_string());
+                // Store function body, using the qualified name.
+            
+                let block = method.block.clone();
+                let block_str = prettyplease::unparse(&syn::parse_file(&format!("fn dummy() {}", block.to_token_stream())).unwrap());
+                println!("block_str0: {}", block_str);
+                let block_str = block_str.trim_start_matches("fn dummy()").trim();
+                println!("block_str1: {}", block_str);
+                self.store_body(&qualified_name, block_str);
 
                 // Visit the function body to find dependencies using visit_impl_item_fn
                 self.visit_impl_item_fn(method);
@@ -187,7 +228,7 @@ impl<'ast> Visit<'ast> for FunctionCallVisitor {
                 // Process the current function
                 self.process_current_element("function");
 
-                // Clear the current element
+                // Clear current element
                 self.current_element = None;
             }
         }
@@ -247,7 +288,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Output as JSON
     let json = serde_json::to_string_pretty(&call_graph)?;
-    println!("{}", json);
+    // NEW: write the JSON to a file
+    fs::write("call_graph.json", &json)?;
+    println!("Call graph written to call_graph.json");
     
     Ok(())
 }
