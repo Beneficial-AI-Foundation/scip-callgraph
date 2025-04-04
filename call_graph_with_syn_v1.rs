@@ -12,6 +12,8 @@ use syn::{
 use quote::ToTokens;
 use serde_json::Value;
 use std::sync::OnceLock; // Rust 1.70+ (or use lazy_static)
+use petgraph::dot::{Dot, Config};
+use petgraph::graph::DiGraph;
 
 static STANDARD_CRATES: OnceLock<HashSet<String>> = OnceLock::new();
 
@@ -56,6 +58,76 @@ struct Element {
 #[derive(Serialize, Deserialize, Debug)]
 struct CallGraph {
     elements: Vec<Element>,
+}
+
+impl CallGraph {
+    // Generate an SVG visualization of the call graph with tooltips for node bodies
+    fn to_svg(&self, output_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        // Create a directed graph
+        let mut graph = DiGraph::<(String, String), String>::new(); // Use `(String, String)` for node attributes
+
+        // Map to store node indices
+        let mut node_indices = HashMap::new();
+
+        // Add nodes to the graph
+        for element in &self.elements {
+            let node = graph.add_node((
+                element.name.clone(),
+                element.body.clone(), // Store the body as part of the node attributes
+            ));
+            node_indices.insert(&element.name, node);
+        }
+
+        // Add edges to the graph
+        for element in &self.elements {
+            if let Some(&source) = node_indices.get(&element.name) {
+                for dependency in &element.dependencies {
+                    if let Some(&target) = node_indices.get(dependency) {
+                        graph.add_edge(source, target, "".to_string()); // Use an empty string as the edge label
+                    }
+                }
+            }
+        }
+
+        // Generate the DOT representation with tooltips
+        let _dot = Dot::with_config(&graph, &[Config::EdgeNoLabel]);
+
+        // Write the DOT representation to a temporary file
+        let dot_path = "call_graph.dot";
+        let mut dot_content = String::new();
+        dot_content.push_str("digraph G {\n");
+        for node in graph.node_indices() {
+            let (name, body) = &graph[node];
+            dot_content.push_str(&format!(
+                "    \"{}\" [label=\"{}\", tooltip=\"{}\"];\n",
+                name,
+                name,
+                body.replace("\"", "\\\"").replace("\n", "\\n") // Escape quotes and newlines
+            ));
+        }
+        for edge in graph.edge_indices() {
+            let (source, target) = graph.edge_endpoints(edge).unwrap();
+            dot_content.push_str(&format!(
+                "    \"{}\" -> \"{}\";\n",
+                graph[source].0, graph[target].0
+            ));
+        }
+        dot_content.push_str("}\n");
+        std::fs::write(dot_path, dot_content)?;
+
+        // Use `dot` command to generate the SVG
+        let output = std::process::Command::new("dot")
+            .args(["-Tsvg", dot_path, "-o", output_path])
+            .output()?;
+
+        if !output.status.success() {
+            eprintln!("Error generating SVG: {}", String::from_utf8_lossy(&output.stderr));
+            return Err("Failed to generate SVG".into());
+        }
+
+        println!("SVG visualization written to {}", output_path);
+        Ok(())
+    }
 }
 
 struct FunctionCallVisitor {
@@ -120,8 +192,8 @@ impl FunctionCallVisitor {
     
     // Update add_dependency_with_rustdoc to skip self dependency.
     fn add_dependency_with_rustdoc(&mut self, full_path: &str) {
-        println!("Adding dependency: {}", full_path);
-        println!("user_defined: {:?}", self.user_defined);
+        //println!("Adding dependency: {}", full_path);
+        //println!("user_defined: {:?}", self.user_defined);
         // Skip if dependency is same as current element
         if let Some(current) = &self.current_element {
             if current.trim() == full_path.trim() {
@@ -217,9 +289,7 @@ impl<'ast> Visit<'ast> for FunctionCallVisitor {
             
                 let block = method.block.clone();
                 let block_str = prettyplease::unparse(&syn::parse_file(&format!("fn dummy() {}", block.to_token_stream())).unwrap());
-                println!("block_str0: {}", block_str);
                 let block_str = block_str.trim_start_matches("fn dummy()").trim();
-                println!("block_str1: {}", block_str);
                 self.store_body(&qualified_name, block_str);
 
                 // Visit the function body to find dependencies using visit_impl_item_fn
@@ -291,6 +361,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // NEW: write the JSON to a file
     fs::write("call_graph.json", &json)?;
     println!("Call graph written to call_graph.json");
+
+    // Generate the SVG visualization
+    call_graph.to_svg("call_graph.svg")?;
     
     Ok(())
 }
