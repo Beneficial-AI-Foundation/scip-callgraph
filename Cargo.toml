@@ -14,10 +14,10 @@ syn = { version = "2.0", features = ["full", "visit", "parsing"] }
 petgraph = "0.6"
 quote = "1.0"
 prettyplease = "0.2.31"
+scip = "0.5.2" 
+prost = "0.13.5"
+protobuf = "4.31.0-beta1"
 
-[[bin]]
-name = "rust_analyzer_ex3"
-path = "rust_analyzer_ex3.rs"
 
 [[bin]]
 name = "build_rustdoc_json"
@@ -28,8 +28,17 @@ name = "parse_rustdoc_deps"
 path = "parse_rustdoc_deps.rs"
 
 [[bin]]
-name = "call_graph_with_syn_v0"
-path = "call_graph_with_syn_v0.rs"
-[[bin]]
 name = "call_graph_with_syn_v1"
 path = "call_graph_with_syn_v1.rs"
+
+[[bin]]
+name = "call_graph_with_syn_v2"
+path = "call_graph_with_syn_v2.rs"
+
+[[bin]]
+name = "stats_unit_graph"
+path = "stats_unit_graph.rs"
+
+[[bin]]
+name = "generate_dot_from_unit_graph"
+path = "generate_dot_from_unit_graph.rs"

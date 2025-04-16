@@ -2,6 +2,10 @@
 
 // Add modules
 pub mod helper;
+// Re-export the scip_call_graph module
+pub mod scip_call_graph;
+
+pub mod scip_reader;
 
 /// Performs a simple calculation
 /// 
