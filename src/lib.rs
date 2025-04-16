@@ -7,6 +7,7 @@ pub mod scip_call_graph;
 
 pub mod scip_reader;
 
+pub mod scip_to_call_graph_json;
 /// Performs a simple calculation
 /// 
 /// # Examples

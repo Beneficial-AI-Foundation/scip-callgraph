@@ -17,7 +17,8 @@ prettyplease = "0.2.31"
 scip = "0.5.2" 
 prost = "0.13.5"
 protobuf = "4.31.0-beta1"
-
+html-escape = "0.2.13"
+quick-xml = "0.31"
 
 [[bin]]
 name = "build_rustdoc_json"
@@ -42,3 +43,7 @@ path = "stats_unit_graph.rs"
 [[bin]]
 name = "generate_dot_from_unit_graph"
 path = "generate_dot_from_unit_graph.rs"
+
+[[bin]]
+name = "generate_call_graph_dot"
+path = "src/bin/generate_call_graph_dot.rs"

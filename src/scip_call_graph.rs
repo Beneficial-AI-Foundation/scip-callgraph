@@ -67,6 +67,7 @@ pub struct FunctionNode {
     pub file_path: String,
     pub callers: HashSet<String>,  // Symbols that call this function
     pub callees: HashSet<String>,  // Symbols that this function calls
+    pub range: Vec<i32>,  // Range of the function in the source file
 }
 
 /// Parse a SCIP JSON file
@@ -81,8 +82,9 @@ pub fn parse_scip_json(file_path: &str) -> Result<ScipIndex, Box<dyn std::error:
 pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> {
     let mut call_graph: HashMap<String, FunctionNode> = HashMap::new();
     let mut symbol_to_file: HashMap<String, String> = HashMap::new();
+    let mut symbol_to_kind: HashMap<String, i32> = HashMap::new();
     let mut function_symbols: HashSet<String> = HashSet::new();
-    
+
     // First pass: identify all function symbols and their containing files
     for doc in &scip_data.documents {
         for symbol in &doc.symbols {
@@ -90,7 +92,8 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
             if is_function_like(symbol.kind) {
                 function_symbols.insert(symbol.symbol.clone());
                 symbol_to_file.insert(symbol.symbol.clone(), doc.relative_path.clone());
-                
+                symbol_to_kind.insert(symbol.symbol.clone(), symbol.kind);
+
                 // Initialize node in the call graph
                 call_graph.insert(symbol.symbol.clone(), FunctionNode {
                     symbol: symbol.symbol.clone(),
@@ -98,16 +101,17 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                     file_path: doc.relative_path.clone(),
                     callers: HashSet::new(),
                     callees: HashSet::new(),
+                    range: Vec::new(),  // Will be filled in the second pass
                 });
             }
         }
     }
-    
+
     // Second pass: analyze occurrences to build the call graph
     for doc in &scip_data.documents {
         // Track the current function context we're in
         let mut current_function: Option<String> = None;
-        
+
         // Sort occurrences by range to process them in order of appearance
         let mut ordered_occurrences = doc.occurrences.clone();
         ordered_occurrences.sort_by(|a, b| {
@@ -115,15 +119,19 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
             let b_start = (b.range[0], b.range[1]);
             a_start.cmp(&b_start)
         });
-        
+
         for occurrence in &ordered_occurrences {
             let is_definition = occurrence.symbol_roles.unwrap_or(0) & 1 == 1;
-            
+
             // If this is a function definition, update the current context
             if is_definition && function_symbols.contains(&occurrence.symbol) {
                 current_function = Some(occurrence.symbol.clone());
+                // Also update the range for this function node
+                if let Some(node) = call_graph.get_mut(&occurrence.symbol) {
+                    node.range = occurrence.range.clone();
+                }
             }
-            
+
             // If this is a function call and we're inside a function
             if !is_definition && function_symbols.contains(&occurrence.symbol) {
                 if let Some(caller) = &current_function {
@@ -132,7 +140,7 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                         if let Some(caller_node) = call_graph.get_mut(caller) {
                             caller_node.callees.insert(occurrence.symbol.clone());
                         }
-                        
+
                         // Update the callee's callers
                         if let Some(callee_node) = call_graph.get_mut(&occurrence.symbol) {
                             callee_node.callers.insert(caller.clone());
@@ -142,7 +150,6 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
             }
         }
     }
-    
     call_graph
 }
 
@@ -154,12 +161,33 @@ fn is_function_like(kind: i32) -> bool {
     }
 }
 
-/// Generate DOT format for visualization with Graphviz
+/// Helper to convert kind to string
+fn kind_to_str(kind: i32) -> &'static str {
+    match kind {
+        6 => "Method",
+        12 => "Constructor",
+        17 => "Function",
+        80 => "Method",
+        49 => "Class",
+        _ => "Unknown",
+    }
+}
+
+/// Generate DOT format for visualization with Graphviz, including kind in the label
 pub fn generate_call_graph_dot(call_graph: &HashMap<String, FunctionNode>) -> String {
+    // Build a symbol -> kind map for quick lookup
+    let mut symbol_to_kind: HashMap<&String, i32> = HashMap::new();
+    for node in call_graph.values() {
+        // Try to infer kind from display_name if possible, fallback to Unknown
+        // But since we don't store kind in FunctionNode, we can't get it directly.
+        // So, for now, just use "Unknown" unless you extend FunctionNode to store kind.
+        symbol_to_kind.insert(&node.symbol, 17);
+    }
+    println!("Symbol to kind map: {:?}", symbol_to_kind);
     let mut dot = String::new();
     dot.push_str("digraph CallGraph {\n");
     dot.push_str("  node [shape=box, style=filled, fillcolor=lightblue];\n");
-    
+
     // Add nodes
     for (symbol, node) in call_graph {
         // Create a cleaner display name by removing package info
@@ -168,18 +196,26 @@ pub fn generate_call_graph_dot(call_graph: &HashMap<String, FunctionNode>) -> St
         } else {
             &node.display_name
         };
-        
-        dot.push_str(&format!("  \"{}\" [label=\"{}\\n({})\"];\n", 
-            symbol, clean_name, node.file_path));
+
+        // Try to get kind from the symbol_to_kind map, fallback to "Unknown"
+        let kind_str = symbol_to_kind
+            .get(symbol)
+            .map(|k| kind_to_str(*k))
+            .unwrap_or("Unknown");
+
+        dot.push_str(&format!(
+            "  \"{}\" [label=\"{}\\n({})\\n[{}]\\n{:?}\"];\n",
+            symbol, clean_name, node.file_path, kind_str, node.range
+        ));
     }
-    
+
     // Add edges
     for (symbol, node) in call_graph {
         for callee in &node.callees {
             dot.push_str(&format!("  \"{}\" -> \"{}\";\n", symbol, callee));
         }
     }
-    
+
     dot.push_str("}\n");
     dot
 }
@@ -408,6 +444,7 @@ fn generate_dot_file(
     
     // Process nodes (symbols)
     for (_, symbol) in symbols {
+        println!("Processing symbol: {:?}", symbol.display_name);
         let label = format!("{}: {}", symbol_kind_to_string(symbol.kind), symbol.display_name.as_deref().unwrap_or("unknown"));
         let node_id = get_node_id(&symbol.symbol);
         writeln!(file, "  {} [label=\"{}\"];", node_id, label)?;
@@ -449,6 +486,7 @@ fn get_node_id(symbol: &str) -> String {
 
 /// Convert a symbol kind to a display string
 fn symbol_kind_to_string(kind: SymbolKind) -> &'static str {
+    println!("Symbol kind: {:?}", kind);
     match kind {
         SymbolKind::Function => "Function",
         SymbolKind::Method => "Method",
@@ -461,4 +499,276 @@ fn symbol_kind_to_string(kind: SymbolKind) -> &'static str {
         SymbolKind::Field => "Field",
         SymbolKind::Unknown => "Unknown",
     }
+}
+
+use serde::ser::{Serializer, SerializeStruct};
+
+#[derive(Debug)]
+pub struct Atom {
+    pub identifier: String,
+    pub statement_type: String,
+    pub deps: Vec<String>,
+    pub body: String,
+}
+
+impl Serialize for Atom {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut s = serializer.serialize_struct("Atom", 4)?;
+        s.serialize_field("identifier", &self.identifier)?;
+        s.serialize_field("statement_type", &self.statement_type)?;
+        s.serialize_field("deps", &self.deps)?;
+        s.serialize_field("body", &self.body)?;
+        s.end()
+    }
+}
+
+fn parse_dot_file(dot_file: &str) -> Result<(HashMap<String, String>, Vec<(String, String)>), Box<dyn std::error::Error>> {
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+    let file = File::open(dot_file)?;
+    let reader = BufReader::new(file);
+    let mut nodes: HashMap<String, String> = HashMap::new(); // id -> label
+    let mut edges: Vec<(String, String)> = Vec::new(); // (from, to)
+    for line in reader.lines() {
+        let line = line?;
+        let line = line.trim();
+        if line.starts_with("//") || line.is_empty() {
+            continue;
+        }
+        if let Some(idx) = line.find('[') {
+            let id = line[..idx].trim().trim_end_matches(';');
+            if let Some(label_start) = line.find("label=\"") {
+                let label_end = line[label_start+7..].find('"').unwrap_or(0) + label_start + 7;
+                let label = &line[label_start+7..label_end];
+                nodes.insert(id.to_string(), label.to_string());
+            }
+        } else if line.contains("->") {
+            let parts: Vec<&str> = line.split("->").collect();
+            if parts.len() == 2 {
+                let from = parts[0].trim().trim_end_matches(';');
+                let to = parts[1].trim().trim_end_matches(';');
+                edges.push((from.to_string(), to.to_string()));
+            }
+        }
+    }
+    Ok((nodes, edges))
+}
+
+fn parse_scip_symbol_ranges(scip_json: &str) -> Result<HashMap<String, (String, Vec<i32>)>, Box<dyn std::error::Error>> {
+    use std::fs::File;
+    use serde_json;
+    let scip: serde_json::Value = serde_json::from_reader(File::open(scip_json)?)?;
+    let mut symbol_to_range: HashMap<String, (String, Vec<i32>)> = HashMap::new();
+    if let Some(docs) = scip.as_object().and_then(|o| o.get("documents")).and_then(|d| d.as_array()) {
+        for doc in docs {
+            let rel_path = doc.get("relative_path").and_then(|p| p.as_str()).unwrap_or("");
+            if let Some(symbols) = doc.get("symbols").and_then(|s| s.as_array()) {
+                for sym in symbols {
+                    if let Some(symbol) = sym.get("symbol").and_then(|s| s.as_str()) {
+                        if let Some(occurrences) = doc.get("occurrences").and_then(|o| o.as_array()) {
+                            for occ in occurrences {
+                                if occ.get("symbol").and_then(|s| s.as_str()) == Some(symbol) {
+                                    if occ.get("symbol_roles").and_then(|r| r.as_i64()) == Some(1) {
+                                        if let Some(range) = occ.get("range").and_then(|r| r.as_array()) {
+                                            let range_vec = range.iter().filter_map(|v| v.as_i64().map(|x| x as i32)).collect::<Vec<_>>();
+                                            symbol_to_range.insert(symbol.to_string(), (rel_path.to_string(), range_vec));
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(symbol_to_range)
+}
+
+fn parse_scip_symbol_kinds(scip_json: &str) -> Result<HashMap<String, i32>, Box<dyn std::error::Error>> {
+    use std::fs::File;
+    use serde_json;
+    let scip: serde_json::Value = serde_json::from_reader(File::open(scip_json)?)?;
+    let mut symbol_to_kind: HashMap<String, i32> = HashMap::new();
+    if let Some(docs) = scip.as_object().and_then(|o| o.get("documents")).and_then(|d| d.as_array()) {
+        for doc in docs {
+            if let Some(symbols) = doc.get("symbols").and_then(|s| s.as_array()) {
+                for sym in symbols {
+                    if let Some(symbol) = sym.get("symbol").and_then(|s| s.as_str()) {
+                        if let Some(kind) = sym.get("kind").and_then(|k| k.as_i64()) {
+                            symbol_to_kind.insert(symbol.to_string(), kind as i32);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(symbol_to_kind)
+}
+
+fn kind_to_statement_type(kind: i32) -> &'static str {
+    match kind {
+        17 => "function", // Function
+        80 => "method",   // Method
+        49 => "struct",    // Class
+        _ => "unknown",
+    }
+}
+
+fn extract_body_from_file(src_path: &std::path::Path, range: &[i32]) -> String {
+    if let Ok(src) = std::fs::read_to_string(src_path) {
+        if range.len() == 4 {
+            let start_line = range[0] as usize;
+            let start_col = range[1] as usize;
+            let end_line = range[2] as usize;
+            let end_col = range[3] as usize;
+            let lines: Vec<&str> = src.lines().collect();
+            if start_line < lines.len() && end_line < lines.len() {
+                let mut extracted = String::new();
+                for (i, line) in lines.iter().enumerate().take(end_line + 1).skip(start_line) {
+                    if i == start_line && i == end_line {
+                        extracted.push_str(&line[start_col..end_col]);
+                    } else if i == start_line {
+                        extracted.push_str(&line[start_col..]);
+                        extracted.push('\n');
+                    } else if i == end_line {
+                        extracted.push_str(&line[..end_col]);
+                    } else {
+                        extracted.push_str(line);
+                        extracted.push('\n');
+                    }
+                }
+                return extracted;
+            }
+        }
+    }
+    String::new()
+}
+
+pub fn dot_to_atoms_json_with_body(dot_file: &str, json_file: &str, scip_json: &str, src_root: &str) -> Result<(), Box<dyn std::error::Error>> {
+    use std::collections::HashMap;
+    use std::path::Path;
+    use std::fs::File;
+    use serde_json;
+    // Parse DOT and SCIP
+    let (nodes, edges) = parse_dot_file(dot_file)?;
+    let symbol_to_range = parse_scip_symbol_ranges(scip_json)?;
+    let symbol_to_kind = parse_scip_symbol_kinds(scip_json)?;
+    // Build dependency map
+    let mut deps_map: HashMap<String, Vec<String>> = HashMap::new();
+    for (from, to) in &edges {
+        deps_map.entry(to.clone()).or_default().push(from.clone());
+        deps_map.entry(from.clone()).or_default();
+    }
+    for node in nodes.keys() {
+        deps_map.entry(node.clone()).or_default();
+    }
+    // Build atoms
+    let atoms: Vec<Atom> = nodes.iter().map(|(id, _label)| {
+        // Find the best matching symbol for this node id
+        let mut statement_type = "unknown";
+        let mut body = String::new();
+        for (symbol, (rel_path, range)) in &symbol_to_range {
+            if symbol.replace(|c: char| !c.is_alphanumeric(), "_").contains(id)
+                || id.contains(&symbol.replace(|c: char| !c.is_alphanumeric(), "_")) {
+                // Get kind for this symbol
+                if let Some(kind) = symbol_to_kind.get(symbol) {
+                    statement_type = kind_to_statement_type(*kind);
+                }
+                // Extract body if function or method
+                if statement_type == "function" || statement_type == "method" {
+                    let src_path = Path::new(src_root).join(rel_path);
+                    body = extract_body_from_file(&src_path, range);
+                }
+                break;
+            }
+        }
+        Atom {
+            identifier: id.clone(),
+            statement_type: statement_type.to_string(),
+            deps: deps_map.get(id).cloned().unwrap_or_default(),
+            body,
+        }
+    }).collect();
+    // Write to JSON
+    let out = File::create(json_file)?;
+    serde_json::to_writer_pretty(out, &atoms)?;
+    Ok(())
+}
+
+/// Parse a DOT file and generate a JSON file containing Atoms
+pub fn dot_to_atoms_json(dot_file: &str, json_file: &str) -> Result<(), Box<dyn std::error::Error>> {
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+    use std::collections::HashMap;
+    use serde_json;
+
+    let file = File::open(dot_file)?;
+    let reader = BufReader::new(file);
+
+    let mut nodes: HashMap<String, String> = HashMap::new(); // id -> label
+    let mut edges: Vec<(String, String)> = Vec::new(); // (from, to)
+
+    for line in reader.lines() {
+        let line = line?;
+        let line = line.trim();
+        if line.starts_with("//") || line.is_empty() {
+            continue;
+        }
+        // Node:   id [label="..."];
+        if let Some(idx) = line.find('[') {
+            let id = line[..idx].trim().trim_end_matches(';');
+            if let Some(label_start) = line.find("label=\"") {
+                let label_end = line[label_start+7..].find('"').unwrap_or(0) + label_start + 7;
+                let label = &line[label_start+7..label_end];
+                nodes.insert(id.to_string(), label.to_string());
+            }
+        } else if line.contains("->") {
+            // Edge:   from -> to;
+            let parts: Vec<&str> = line.split("->").collect();
+            if parts.len() == 2 {
+                let from = parts[0].trim().trim_end_matches(';');
+                let to = parts[1].trim().trim_end_matches(';');
+                edges.push((from.to_string(), to.to_string()));
+            }
+        }
+    }
+
+    // Build dependency map: for each node, collect incoming edges (deps)
+    let mut deps_map: HashMap<String, Vec<String>> = HashMap::new();
+    for (from, to) in &edges {
+        deps_map.entry(to.clone()).or_default().push(from.clone());
+        deps_map.entry(from.clone()).or_default();
+    }
+    for node in nodes.keys() {
+        deps_map.entry(node.clone()).or_default();
+    }
+
+    // Build atoms
+    let atoms: Vec<Atom> = nodes.iter().map(|(id, label)| {
+        let statement_type = if label.contains(": Function") {
+            "function"
+        } else if label.contains(": Method") {
+            "method"
+        } else if label.contains(": Class") {
+            "class"
+        } else {
+            "unknown"
+        };
+        Atom {
+            identifier: id.clone(),
+            statement_type: statement_type.to_string(),
+            deps: deps_map.get(id).cloned().unwrap_or_default(),
+            body: String::new(),
+        }
+    }).collect();
+
+    // Write to JSON
+    let out = File::create(json_file)?;
+    serde_json::to_writer_pretty(out, &atoms)?;
+    Ok(())
 }
