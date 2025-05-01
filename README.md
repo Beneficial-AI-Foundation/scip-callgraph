@@ -8,4 +8,4 @@ Install:
 
 ## How to run
 
-- `cargo run --bin generate_call_graph_dot <path_to_rust_repo> <output_file>.dot`
+- `cargo run --bin generate_call_graph_dot <path_to_rust_repo>` to generate a dot and a json file
