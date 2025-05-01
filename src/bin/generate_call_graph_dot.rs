@@ -1,4 +1,4 @@
-use rust_analyzer_test::scip_to_call_graph_json::{parse_scip_json, build_call_graph, generate_call_graph_dot};
+use rust_analyzer_test::scip_to_call_graph_json::{parse_scip_json, build_call_graph, generate_call_graph_dot,  write_call_graph_as_atoms_json};
 use std::env;
 use std::process::Command;
 use std::path::Path;
@@ -6,13 +6,18 @@ use std::path::Path;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
-        eprintln!("Usage: {} <path-to-folder> <output-dot-file>", args[0]);
+    if args.len() < 2 {
+        eprintln!("Usage: {} <path-to-folder>", args[0]);
         std::process::exit(1);
     }
 
     let folder_path = &args[1];
-    let output_path = &args[2];
+    let folder = Path::new(folder_path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("output");
+    let dot_output_path = format!("{}.dot", folder);
+    let json_output_path = format!("{}.json", folder);
     let scip_file = format!("{}/index.scip", folder_path);
     let scip_json_file = format!("{}_scip.json", folder_path);
 
@@ -47,10 +52,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let call_graph = build_call_graph(&scip_data);
     println!("Call graph contains {} functions", call_graph.len());
     
-    println!("Generating DOT file at {}...", output_path);
-    generate_call_graph_dot(&call_graph, output_path)?;
+    println!("Generating DOT file at {}...", dot_output_path);
+    generate_call_graph_dot(&call_graph, &dot_output_path)?;
     println!("DOT file generated successfully!");
-    println!("To generate SVG, run: dot -Tsvg {} -o graph.svg", output_path);
+    println!("To generate SVG, run: dot -Tsvg {} -o graph.svg", dot_output_path);
+    
+
+    if let Err(e) = write_call_graph_as_atoms_json(&call_graph, &json_output_path) {
+        eprintln!("Failed to write atoms JSON: {}", e);
+        std::process::exit(1);
+    }
+    println!("Atoms JSON written to {}", json_output_path);
 
     Ok(())
 }
