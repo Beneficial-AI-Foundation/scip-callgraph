@@ -1,0 +1,35 @@
+digraph call_graph {
+  rankdir=LR;
+  node [shape=box, style=filled, fillcolor=lightblue, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "file:///home/lacra/git_repos/quicksort_rust/srcq";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_empty()." [label="test_quick_empty", tooltip="    fn test_quick_empty() {         let mut vector_in:Vec<i32> = vec![];         quick_sort(&mut vector_in);         debug_assert_eq!(vector_in, &[]);     }"]
+    "rust-analyzer cargo quicksort_rust 0.1.0 lomuto_partition()." [label="lomuto_partition", tooltip="fn lomuto_partition<T: PartialOrd>(input: &mut [T]) -> usize {     let pivot = input.len() - 1;     let mut swap = 0;     for i in 0..pivot {         if input[i] < input[pivot] {             if swap !..."]
+    "rust-analyzer cargo quicksort_rust 0.1.0 quick_dual_sort()." [label="quick_dual_sort", tooltip="pub fn quick_dual_sort<T: PartialOrd + Copy>(input: &mut [T]) {     if input.len() < 2 {return;}     dual_pivot(input, 0, input.len() - 1); }"]
+    "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_dual()." [label="test_quick_dual", tooltip="    fn test_quick_dual() {         let mut vector_in = vec![10, 20, 11, 24];         quick_dual_sort(&mut vector_in);         debug_assert_eq!(vector_in, vec![10, 11, 20, 24]);     }"]
+    "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick()." [label="test_quick", tooltip="    fn test_quick() {         let mut vector_in = vec![10, 20, 11, 24];         quick_sort(&mut vector_in);         debug_assert_eq!(vector_in, vec![10, 11, 20, 24]);     }"]
+    "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_dual_empty()." [label="test_quick_dual_empty", tooltip="    fn test_quick_dual_empty() {         let mut vector_in:Vec<i32> = vec![];         quick_dual_sort(&mut vector_in);         debug_assert_eq!(vector_in, &[]);     }"]
+    "rust-analyzer cargo quicksort_rust 0.1.0 quick_sort()." [label="quick_sort", tooltip="pub fn quick_sort<T: PartialOrd>(input: &mut [T]) {     if input.len() > 1 {         let pivot = lomuto_partition(input);         quick_sort(&mut input[..pivot]);         quick_sort(&mut input[pivot +..."]
+    "rust-analyzer cargo quicksort_rust 0.1.0 dual_pivot()." [label="dual_pivot", tooltip="fn dual_pivot<T: PartialOrd + Copy>(input: &mut [T], start: usize, end: usize) {     if start >= end {return;}     if input[start] > input[end] {         input.swap(start, end);     }     let lpivot =..."]
+    "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_len1()." [label="test_quick_len1", tooltip="    fn test_quick_len1() {         let mut vector_in = vec![1];         quick_sort(&mut vector_in);         debug_assert_eq!(vector_in, vec![1]);     }"]
+    "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_two_elem()." [label="test_quick_two_elem", tooltip="    fn test_quick_two_elem() {         let mut vector_in = [20, 10];         quick_dual_sort(&mut vector_in);         debug_assert_eq!(vector_in, [10, 20]);     }"]
+    "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_dual_longer()." [label="test_quick_dual_longer", tooltip="    fn test_quick_dual_longer() {         let mut vector_in = [10, 20, 11, 24, 22, 21, 19];         quick_dual_sort(&mut vector_in);         debug_assert_eq!(vector_in, [10, 11, 19, 20, 21, 22, 24]); ..."]
+    "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_dual_len1()." [label="test_quick_dual_len1", tooltip="    fn test_quick_dual_len1() {         let mut vector_in = vec![1];         quick_dual_sort(&mut vector_in);         debug_assert_eq!(vector_in, vec![1]);     }"]
+  }
+
+  "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_empty()." -> "rust-analyzer cargo quicksort_rust 0.1.0 quick_sort()."
+  "rust-analyzer cargo quicksort_rust 0.1.0 quick_dual_sort()." -> "rust-analyzer cargo quicksort_rust 0.1.0 dual_pivot()."
+  "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_dual()." -> "rust-analyzer cargo quicksort_rust 0.1.0 quick_dual_sort()."
+  "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick()." -> "rust-analyzer cargo quicksort_rust 0.1.0 quick_sort()."
+  "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_dual_empty()." -> "rust-analyzer cargo quicksort_rust 0.1.0 quick_dual_sort()."
+  "rust-analyzer cargo quicksort_rust 0.1.0 quick_sort()." -> "rust-analyzer cargo quicksort_rust 0.1.0 lomuto_partition()."
+  "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_len1()." -> "rust-analyzer cargo quicksort_rust 0.1.0 quick_sort()."
+  "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_two_elem()." -> "rust-analyzer cargo quicksort_rust 0.1.0 quick_dual_sort()."
+  "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_dual_longer()." -> "rust-analyzer cargo quicksort_rust 0.1.0 quick_dual_sort()."
+  "rust-analyzer cargo quicksort_rust 0.1.0 tests/test_quick_dual_len1()." -> "rust-analyzer cargo quicksort_rust 0.1.0 quick_dual_sort()."
+}
