@@ -1,0 +1,177 @@
+digraph function_subgraph {
+  rankdir=LR;
+  node [shape=box, style=filled, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "curve.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[KeyType][`TryFrom<u8>`]try_from()." [label="try_from", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey][`TryFrom<&[u8]>`]try_from()." [label="try_from", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/PublicKeyData#DjbPublicKey#" [label="DjbPublicKey", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]deserialize()." [label="deserialize", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]verify_signature()." [label="verify_signature", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/KeyType#Djb#" [label="Djb", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/CurveError#NoKeyTypeIdentifier#" [label="NoKeyTypeIdentifier", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/CurveError#BadKeyType#" [label="BadKeyType", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]verify_signature_for_multipart_message()." [label="verify_signature_for_multipart_message", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/CurveError#BadKeyLength#" [label="BadKeyLength", tooltip="", fillcolor=white]
+  }
+  subgraph cluster_1 {
+    label = "curve25519.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/curve25519/impl#[PrivateKey]verify_signature()." [label="verify_signature", tooltip="", fillcolor=white]
+  }
+  subgraph cluster_2 {
+    label = "aes_cbc.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/aes_256_cbc_decrypt()." [label="aes_256_cbc_decrypt", tooltip="", fillcolor=white]
+    "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/DecryptionError#BadCiphertext#" [label="BadCiphertext", tooltip="", fillcolor=white]
+    "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/DecryptionError#BadKeyOrIv#" [label="BadKeyOrIv", tooltip="", fillcolor=white]
+  }
+  subgraph cluster_3 {
+    label = "crypto.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-protocol 0.1.0 crypto/hmac_sha256()." [label="hmac_sha256", tooltip="", fillcolor=white]
+  }
+  subgraph cluster_4 {
+    label = "error.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidSenderKeySession#" [label="InvalidSenderKeySession", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidProtobufEncoding#" [label="InvalidProtobufEncoding", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#LegacyCiphertextVersion#" [label="LegacyCiphertextVersion", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#UnrecognizedCiphertextVersion#" [label="UnrecognizedCiphertextVersion", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#CiphertextMessageTooShort#" [label="CiphertextMessageTooShort", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#SignatureValidationFailed#" [label="SignatureValidationFailed", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#NoSenderKeyState#" [label="NoSenderKeyState", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#DuplicatedMessage#" [label="DuplicatedMessage", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidState#" [label="InvalidState", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidMessage#" [label="InvalidMessage", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#UnrecognizedMessageVersion#" [label="UnrecognizedMessageVersion", tooltip="", fillcolor=white]
+  }
+  subgraph cluster_5 {
+    label = "group_cipher.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." [label="get_sender_key", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." [label="group_decrypt", tooltip="", fillcolor=lightblue]
+  }
+  subgraph cluster_6 {
+    label = "protocol.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/CiphertextMessageType#SenderKey#" [label="SenderKey", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]message_version()." [label="message_version", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]distribution_id()." [label="distribution_id", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]chain_id()." [label="chain_id", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage][`TryFrom<&[u8]>`]try_from()." [label="try_from", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]iteration()." [label="iteration", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]ciphertext()." [label="ciphertext", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]verify_signature()." [label="verify_signature", tooltip="", fillcolor=white]
+  }
+  subgraph cluster_7 {
+    label = "sender_keys.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]sender_chain_key()." [label="sender_chain_key", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]iteration()." [label="iteration", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]set_sender_chain_key()." [label="set_sender_chain_key", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]new()." [label="new", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]get_derivative()." [label="get_derivative", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]as_protobuf()." [label="as_protobuf", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]new()." [label="new", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]sender_message_key()." [label="sender_message_key", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]message_version()." [label="message_version", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]cipher_key()." [label="cipher_key", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]next()." [label="next", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]signing_key_public()." [label="signing_key_public", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyRecord]sender_key_state_for_chain_id()." [label="sender_key_state_for_chain_id", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]add_sender_message_key()." [label="add_sender_message_key", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyRecord]chain_ids_for_logging()." [label="chain_ids_for_logging", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]as_protobuf()." [label="as_protobuf", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]remove_sender_message_key()." [label="remove_sender_message_key", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]from_protobuf()." [label="from_protobuf", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]chain_id()." [label="chain_id", tooltip="", fillcolor=white]
+    "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]iv()." [label="iv", tooltip="", fillcolor=white]
+  }
+
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[KeyType][`TryFrom<u8>`]try_from()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/CurveError#BadKeyType#"
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[KeyType][`TryFrom<u8>`]try_from()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/KeyType#Djb#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]sender_chain_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]new()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]sender_chain_key()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]iteration()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidSenderKeySession#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]remove_sender_message_key()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]sender_message_key()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidMessage#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/CiphertextMessageType#SenderKey#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#DuplicatedMessage#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]add_sender_message_key()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]next()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]set_sender_chain_key()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]set_sender_chain_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]as_protobuf()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]get_derivative()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 crypto/hmac_sha256()."
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey][`TryFrom<&[u8]>`]try_from()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]deserialize()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]sender_message_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]new()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]sender_message_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]get_derivative()."
+  "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/aes_256_cbc_decrypt()." -> "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/DecryptionError#BadCiphertext#"
+  "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/aes_256_cbc_decrypt()." -> "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/DecryptionError#BadKeyOrIv#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]next()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]new()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]next()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidState#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]next()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderChainKey]get_derivative()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyRecord]chain_ids_for_logging()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/aes_256_cbc_decrypt()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]iv()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidMessage#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/CiphertextMessageType#SenderKey#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]message_version()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]distribution_id()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyRecord]sender_key_state_for_chain_id()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#UnrecognizedMessageVersion#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#NoSenderKeyState#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]iteration()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]chain_id()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]verify_signature()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]ciphertext()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]cipher_key()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidSenderKeySession#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/DecryptionError#BadCiphertext#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/get_sender_key()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo signal-crypto 0.1.0 aes_cbc/DecryptionError#BadKeyOrIv#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]signing_key_public()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage][`TryFrom<&[u8]>`]try_from()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]message_version()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 group_cipher/group_decrypt()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#SignatureValidationFailed#"
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]deserialize()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/CurveError#BadKeyLength#"
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]deserialize()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[KeyType][`TryFrom<u8>`]try_from()."
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]deserialize()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/KeyType#Djb#"
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]deserialize()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/CurveError#NoKeyTypeIdentifier#"
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]deserialize()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/PublicKeyData#DjbPublicKey#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]signing_key_public()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey][`TryFrom<&[u8]>`]try_from()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage][`TryFrom<&[u8]>`]try_from()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#InvalidProtobufEncoding#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage][`TryFrom<&[u8]>`]try_from()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#UnrecognizedCiphertextVersion#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage][`TryFrom<&[u8]>`]try_from()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#CiphertextMessageTooShort#"
+  "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage][`TryFrom<&[u8]>`]try_from()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 error/SignalProtocolError#LegacyCiphertextVersion#"
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]verify_signature()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]verify_signature_for_multipart_message()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyRecord]sender_key_state_for_chain_id()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]chain_id()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]add_sender_message_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]as_protobuf()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyRecord]chain_ids_for_logging()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]chain_id()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderKeyState]remove_sender_message_key()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]from_protobuf()."
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]verify_signature_for_multipart_message()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/PublicKeyData#DjbPublicKey#"
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]verify_signature_for_multipart_message()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/curve25519/impl#[PrivateKey]verify_signature()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]from_protobuf()." -> "rust-analyzer cargo libsignal-protocol 0.1.0 sender_keys/impl#[SenderMessageKey]new()."
+  "rust-analyzer cargo libsignal-protocol 0.1.0 protocol/impl#[SenderKeyMessage]verify_signature()." -> "rust-analyzer cargo libsignal-core 0.1.0 curve/impl#[PublicKey]verify_signature()."
+}

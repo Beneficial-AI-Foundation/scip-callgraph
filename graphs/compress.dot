@@ -1,0 +1,527 @@
+digraph function_subgraph {
+  rankdir=LR;
+  node [shape=box, style=filled, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "error.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]errors()." [label="errors", tooltip="    pub fn errors(&self) -> &[Error] {         &self.0     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 error/impl#[Error]get()." [label="get", tooltip="    pub fn get() -> Option<Error> {         unsafe {             ffi::init();              let mut file = ptr::null();             let mut line = 0;             let mut data = ptr::null();            ...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]get()." [label="get", tooltip="    pub fn get() -> ErrorStack {         let mut vec = vec![];         while let Some(err) = Error::get() {             vec.push(err);         }         ErrorStack(vec)     }", fillcolor=white]
+  }
+  subgraph cluster_1 {
+    label = "ex_data.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]from_raw()." [label="from_raw", tooltip="    pub unsafe fn from_raw(idx: c_int) -> Index<T, U> {         Index(idx, PhantomData)     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]as_raw()." [label="as_raw", tooltip="    pub fn as_raw(&self) -> c_int {         self.0     }", fillcolor=white]
+  }
+  subgraph cluster_2 {
+    label = "lib.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 cvt()." [label="cvt", tooltip="fn cvt(r: c_int) -> Result<c_int, ErrorStack> {     if r <= 0 {         Err(ErrorStack::get())     } else {         Ok(r)     } }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 cvt_n()." [label="cvt_n", tooltip="fn cvt_n(r: c_int) -> Result<c_int, ErrorStack> {     if r < 0 {         Err(ErrorStack::get())     } else {         Ok(r)     } }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 cvt_p()." [label="cvt_p", tooltip="fn cvt_p<T>(r: *mut T) -> Result<*mut T, ErrorStack> {     if r.is_null() {         Err(ErrorStack::get())     } else {         Ok(r)     } }", fillcolor=white]
+  }
+  subgraph cluster_3 {
+    label = "bio.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/destroy()." [label="destroy", tooltip="unsafe extern ' C'  fn destroy<S>(bio: *mut BIO) -> c_int {     if bio.is_null() {         return 0;     }      let data = BIO_get_data(bio);      if !data.is_null() {         drop(Box::<StreamState<S...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/new()." [label="new", tooltip="pub fn new<S: Read + Write>(stream: S) -> Result<(*mut BIO, BioMethod), ErrorStack> {     let method = BioMethod::new::<S>();      let state = Box::new(StreamState {         stream,         error: Non...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/state()." [label="state", tooltip="unsafe fn state<'a, S: 'a>(bio: *mut BIO) -> &'a mut StreamState<S> {     let data = BIO_get_data(bio) as *mut StreamState<S>;      assert!(!data.is_null());      &mut *data }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/retriable_error()." [label="retriable_error", tooltip="fn retriable_error(err: &io::Error) -> bool {     match err.kind() {         io::ErrorKind::WouldBlock | io::ErrorKind::NotConnected => true,         _ => false,     } }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]get()." [label="get", tooltip="    fn get(&self) -> *mut ffi::BIO_METHOD {         self.0     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/take_error()." [label="take_error", tooltip="pub unsafe fn take_error<S>(bio: *mut BIO) -> Option<io::Error> {     let state = state::<S>(bio);     state.error.take() }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/bputs()." [label="bputs", tooltip="unsafe extern ' C'  fn bputs<S: Write>(bio: *mut BIO, s: *const c_char) -> c_int {     bwrite::<S>(bio, s, strlen(s) as c_int) }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/create()." [label="create", tooltip="unsafe extern ' C'  fn create(bio: *mut BIO) -> c_int {     BIO_set_init(bio, 0);     BIO_set_num(bio, 0);     BIO_set_data(bio, ptr::null_mut());     BIO_set_flags(bio, 0);     1 }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/bwrite()." [label="bwrite", tooltip="unsafe extern ' C'  fn bwrite<S: Write>(bio: *mut BIO, buf: *const c_char, len: c_int) -> c_int {     BIO_clear_retry_flags(bio);      let state = state::<S>(bio);     let buf = slice::from_raw_parts(...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/take_panic()." [label="take_panic", tooltip="pub unsafe fn take_panic<S>(bio: *mut BIO) -> Option<Box<dyn Any + Send>> {     let state = state::<S>(bio);     state.panic.take() }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/bread()." [label="bread", tooltip="unsafe extern ' C'  fn bread<S: Read>(bio: *mut BIO, buf: *mut c_char, len: c_int) -> c_int {     BIO_clear_retry_flags(bio);      let state = state::<S>(bio);     let buf = slice::from_raw_parts_mut(...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/ctrl()." [label="ctrl", tooltip="unsafe extern ' C'  fn ctrl<S: Write>(     bio: *mut BIO,     cmd: c_int,     _num: c_long,     _ptr: *mut c_void, ) -> c_long {     let state = state::<S>(bio);      if cmd == BIO_CTRL_FLUSH {       ...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]new()." [label="new", tooltip="    fn new<S: Read + Write>() -> BIO_METHOD {         unsafe {             let ptr = ffi::BIO_meth_new(ffi::BIO_TYPE_NONE, c' rust' .as_ptr().cast());             assert!(!ptr.is_null());             ...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BioMethod]new()." [label="new", tooltip="    fn new<S: Read + Write>() -> BioMethod {         BioMethod(BIO_METHOD::new::<S>())     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/bio/BIO_set_num()." [label="BIO_set_num", tooltip="unsafe fn BIO_set_num(_bio: *mut ffi::BIO, _num: c_int) {} ", fillcolor=white]
+  }
+  subgraph cluster_4 {
+    label = "callbacks.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_compress()." [label="raw_ssl_cert_compress", tooltip="pub(super) unsafe extern ' C'  fn raw_ssl_cert_compress<C>(     ssl: *mut ffi::SSL,     out: *mut ffi::CBB,     input: *const u8,     input_len: usize, ) -> ::std::os::raw::c_int where     C: Certific...", fillcolor=lightblue]
+    "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoBufferBuilder<'a>`]build()." [label="build", tooltip="    fn build(mut self) -> Result<*mut ffi::CRYPTO_BUFFER, ErrorStack> {         let buffer_capacity = unsafe { ffi::CRYPTO_BUFFER_len(self.buffer) };         if self.cursor.position() != buffer_capaci...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoBufferBuilder<'a>`]as_writer()." [label="as_writer", tooltip="    fn as_writer(&mut self) -> &mut (impl std::io::Write + 'a) {         &mut self.cursor     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoByteBuilder<'_>`]from_ptr()." [label="from_ptr", tooltip="    fn from_ptr(ptr: *mut ffi::CBB) -> Self {         Self(ptr, Default::default())     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoBufferBuilder<'a>`]with_capacity()." [label="with_capacity", tooltip="    fn with_capacity(capacity: usize) -> Result<CryptoBufferBuilder<'a>, ErrorStack> {         let mut data: *mut u8 = std::ptr::null_mut();         let buffer = unsafe { crate::cvt_p(ffi::CRYPTO_BUFF...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_decompress()." [label="raw_ssl_cert_decompress", tooltip="pub(super) unsafe extern ' C'  fn raw_ssl_cert_decompress<C>(     ssl: *mut ffi::SSL,     out: *mut *mut ffi::CRYPTO_BUFFER,     uncompressed_len: usize,     input: *const u8,     input_len: usize, ) ...", fillcolor=lightblue]
+  }
+  subgraph cluster_5 {
+    label = "error.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 ssl/error/impl#[Error]would_block()." [label="would_block", tooltip="    pub fn would_block(&self) -> bool {         matches!(             self.code,             ErrorCode::WANT_READ                 | ErrorCode::WANT_WRITE                 | ErrorCode::WANT_X509_LOOKUP ...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/error/impl#[ErrorCode]from_raw()." [label="from_raw", tooltip="    pub fn from_raw(raw: c_int) -> ErrorCode {         ErrorCode(raw)     }", fillcolor=white]
+  }
+  subgraph cluster_6 {
+    label = "mod.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 ssl/get_new_idx()." [label="get_new_idx", tooltip="unsafe fn get_new_idx(f: ffi::CRYPTO_EX_free) -> c_int {     // hack around https://rt.openssl.org/Ticket/Display.html?id=3710&user=guest&pass=guest     static ONCE: Once = Once::new();     ONCE.call_...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]new_ex_index()." [label="new_ex_index", tooltip="    pub fn new_ex_index<T>() -> Result<Index<SslContext, T>, ErrorStack>     where         T: 'static + Sync + Send,     {         unsafe {             ffi::init();             let idx = cvt_n(get_new...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/CertificateCompressor#decompress()." [label="decompress", tooltip="    fn decompress<W>(&self, input: &[u8], output: &mut W) -> std::io::Result<()>     where         W: std::io::Write,     {         Err(std::io::Error::other(' not implemented' ))     }", fillcolor=lightblue]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]as_ptr()." [label="as_ptr", tooltip="    pub fn as_ptr(&self) -> *mut ffi::SSL_CTX {         self.ctx.as_ptr()     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]set_ex_data()." [label="set_ex_data", tooltip="    unsafe fn set_ex_data<T>(&mut self, index: Index<SslContext, T>, data: T) {         unsafe {             let data = Box::into_raw(Box::new(data)) as *mut c_void;             ffi::SSL_CTX_set_ex_da...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]setup_accept()." [label="setup_accept", tooltip="    pub fn setup_accept(mut self) -> MidHandshakeSslStream<S> {         self.set_accept_state();          #[cfg(feature = ' kx-safe-default' )]         self.inner.ssl.server_set_default_curves_list();...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl][ForeignType]as_ptr()." [label="as_ptr", tooltip="", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]new_base()." [label="new_base", tooltip="    fn new_base(ssl: Ssl, stream: S) -> Self {         unsafe {             let (bio, method) = bio::new(stream).unwrap();             ffi::SSL_set_bio(ssl.as_ptr(), bio, bio);              SslStream ...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]set_ex_data()." [label="set_ex_data", tooltip="    pub fn set_ex_data<T>(&mut self, index: Index<Ssl, T>, data: T) {         if let Some(old) = self.ex_data_mut(index) {             *old = data;              return;         }          unsafe {    ...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]error_code()." [label="error_code", tooltip="    pub fn error_code(&self, ret: c_int) -> ErrorCode {         unsafe { ErrorCode::from_raw(ffi::SSL_get_error(self.as_ptr(), ret)) }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]builder()." [label="builder", tooltip="    pub fn builder(method: SslMethod) -> Result<SslContextBuilder, ErrorStack> {         SslContextBuilder::new(method)     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]connect()." [label="connect", tooltip="    pub fn connect<S>(self, stream: S) -> Result<SslStream<S>, HandshakeError<S>>     where         S: Read + Write,     {         self.setup_connect(stream).handshake()     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]setup_connect()." [label="setup_connect", tooltip="    pub fn setup_connect<S>(self, stream: S) -> MidHandshakeSslStream<S>     where         S: Read + Write,     {         SslStreamBuilder::new(self, stream).setup_connect()     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]replace_ex_data()." [label="replace_ex_data", tooltip="    pub fn replace_ex_data<T>(&mut self, index: Index<SslContext, T>, data: T) -> Option<T> {         unsafe { self.ctx.replace_ex_data(index, data) }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]new()." [label="new", tooltip="    pub fn new(ctx: &SslContext) -> Result<Ssl, ErrorStack> {         unsafe {             let ptr = cvt_p(ffi::SSL_new(ctx.as_ptr()))?;             let mut ssl = Ssl::from_ptr(ptr);             ssl.s...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext][ForeignType]from_ptr()." [label="from_ptr", tooltip="", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]ex_data()." [label="ex_data", tooltip="    pub fn ex_data<T>(&self, index: Index<SslContext, T>) -> Option<&T> {         unsafe {             let data = ffi::SSL_CTX_get_ex_data(self.as_ptr(), index.as_raw());             if data.is_null()...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()." [label="add_certificate_compression_algorithm", tooltip="    pub fn add_certificate_compression_algorithm<C>(         &mut self,         compressor: C,     ) -> Result<(), ErrorStack>     where         C: CertificateCompressor,     {         const {        ...", fillcolor=lightblue]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]build()." [label="build", tooltip="    pub fn build(self) -> SslContext {         self.ctx     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl][ForeignType]from_ptr()." [label="from_ptr", tooltip="", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]check_panic()." [label="check_panic", tooltip="    fn check_panic(&mut self) {         if let Some(err) = unsafe { bio::take_panic::<S>(self.ssl.get_raw_rbio()) } {             resume_unwind(err)         }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]get_raw_rbio()." [label="get_raw_rbio", tooltip="    fn get_raw_rbio(&self) -> *mut ffi::BIO {         unsafe { ffi::SSL_get_rbio(self.as_ptr()) }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]cached_ex_index()." [label="cached_ex_index", tooltip="    fn cached_ex_index<T>() -> Index<SslContext, T>     where         T: 'static + Sync + Send,     {         unsafe {             let idx = *INDEXES                 .lock()                 .unwrap_or...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`MidHandshakeSslStream<S>`]handshake()." [label="handshake", tooltip="    pub fn handshake(mut self) -> Result<SslStream<S>, HandshakeError<S>> {         let ret = unsafe { ffi::SSL_do_handshake(self.stream.ssl.as_ptr()) };         if ret > 0 {             Ok(self.strea...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]ex_data_mut()." [label="ex_data_mut", tooltip="    pub fn ex_data_mut<T>(&mut self, index: Index<Ssl, T>) -> Option<&mut T> {         unsafe {             let data = ffi::SSL_get_ex_data(self.as_ptr(), index.as_raw());             if data.is_null(...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef][ToOwned]to_owned()." [label="to_owned", tooltip="    fn to_owned(&self) -> Self::Owned {         unsafe {             SSL_CTX_up_ref(self.as_ptr());             SslContext::from_ptr(self.as_ptr())         }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]set_accept_state()." [label="set_accept_state", tooltip="    pub fn set_accept_state(&mut self) {         unsafe { ffi::SSL_set_accept_state(self.inner.ssl.as_ptr()) }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]set_certificate_chain_file()." [label="set_certificate_chain_file", tooltip="    pub fn set_certificate_chain_file<P: AsRef<Path>>(         &mut self,         file: P,     ) -> Result<(), ErrorStack> {         let file = CString::new(file.as_ref().as_os_str().to_str().unwrap()...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]from_ptr()." [label="from_ptr", tooltip="    pub unsafe fn from_ptr(ctx: *mut ffi::SSL_CTX) -> SslContextBuilder {         SslContextBuilder {             ctx: SslContext::from_ptr(ctx),         }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]make_error()." [label="make_error", tooltip="    fn make_error(&mut self, ret: c_int) -> Error {         self.check_panic();          let code = self.ssl.error_code(ret);          let cause = match code {             ErrorCode::SSL => Some(Inner...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]accept()." [label="accept", tooltip="    pub fn accept<S>(self, stream: S) -> Result<SslStream<S>, HandshakeError<S>>     where         S: Read + Write,     {         self.setup_accept(stream).handshake()     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslFiletype]as_raw()." [label="as_raw", tooltip="    pub fn as_raw(&self) -> c_int {         self.0     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext][ForeignType]as_ptr()." [label="as_ptr", tooltip="", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext][Clone]clone()." [label="clone", tooltip="    fn clone(&self) -> Self {         (**self).to_owned()     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]setup_accept()." [label="setup_accept", tooltip="    pub fn setup_accept<S>(self, stream: S) -> MidHandshakeSslStream<S>     where         S: Read + Write,     {         #[cfg(feature = ' rpk' )]         {             let ctx = self.ssl_context();  ...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/CertificateCompressor#compress()." [label="compress", tooltip="    fn compress<W>(&self, input: &[u8], output: &mut W) -> std::io::Result<()>     where         W: std::io::Write,     {         Err(std::io::Error::other(' not implemented' ))     }", fillcolor=lightblue]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]replace_ex_data()." [label="replace_ex_data", tooltip="    unsafe fn replace_ex_data<T>(&mut self, index: Index<SslContext, T>, data: T) -> Option<T> {         if let Some(old) = self.ex_data_mut(index) {             return Some(mem::replace(old, data)); ...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]new()." [label="new", tooltip="    pub fn new(method: SslMethod) -> Result<SslContextBuilder, ErrorStack> {         unsafe {             init();             let ctx = cvt_p(ffi::SSL_CTX_new(method.as_ptr()))?;              #[cfg(fe...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]setup_connect()." [label="setup_connect", tooltip="    pub fn setup_connect(mut self) -> MidHandshakeSslStream<S> {         self.set_connect_state();          #[cfg(feature = ' kx-safe-default' )]         self.inner.ssl.client_set_default_curves_list(...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]get_bio_error()." [label="get_bio_error", tooltip="    fn get_bio_error(&mut self) -> Option<io::Error> {         unsafe { bio::take_error::<S>(self.ssl.get_raw_rbio()) }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/free_data_box()." [label="free_data_box", tooltip="unsafe extern ' C'  fn free_data_box<T>(     _parent: *mut c_void,     ptr: *mut c_void,     _ad: *mut ffi::CRYPTO_EX_DATA,     _idx: c_int,     _argl: c_long,     _argp: *mut c_void, ) {     if !ptr....", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]new()." [label="new", tooltip="    pub fn new(ssl: Ssl, stream: S) -> Self {         Self {             inner: SslStream::new_base(ssl, stream),         }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslMethod]tls()." [label="tls", tooltip="    pub fn tls() -> SslMethod {         unsafe { SslMethod(TLS_method()) }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]ex_data_mut()." [label="ex_data_mut", tooltip="    unsafe fn ex_data_mut<T>(&mut self, index: Index<SslContext, T>) -> Option<&mut T> {         let data = ffi::SSL_CTX_get_ex_data(self.as_ptr(), index.as_raw());         if data.is_null() {        ...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]set_connect_state()." [label="set_connect_state", tooltip="    pub fn set_connect_state(&mut self) {         unsafe { ffi::SSL_set_connect_state(self.inner.ssl.as_ptr()) }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]ssl_context()." [label="ssl_context", tooltip="    pub fn ssl_context(&self) -> &SslContextRef {         unsafe {             let ssl_ctx = ffi::SSL_get_SSL_CTX(self.as_ptr());             SslContextRef::from_ptr(ssl_ctx)         }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslMethod]as_ptr()." [label="as_ptr", tooltip="    pub fn as_ptr(&self) -> *const ffi::SSL_METHOD {         self.0     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]set_private_key_file()." [label="set_private_key_file", tooltip="    pub fn set_private_key_file<P: AsRef<Path>>(         &mut self,         file: P,         file_type: SslFiletype,     ) -> Result<(), ErrorStack> {         let file = CString::new(file.as_ref().as_...", fillcolor=white]
+  }
+  subgraph cluster_7 {
+    label = "cert_compressor.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/impl#[BrotliCompressor][Default]default()." [label="default", tooltip="    fn default() -> Self {         Self { q: 11, lgwin: 32 }     }", fillcolor=lightblue]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." [label="client_only_cert_compression", tooltip="fn client_only_cert_compression() {     let server_builder = Server::builder().build();      let mut store = X509StoreBuilder::new().unwrap();     let x509 = X509::from_pem(super::ROOT_CERT).unwrap();...", fillcolor=lightblue]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." [label="client_and_server_cert_compression", tooltip="fn client_and_server_cert_compression() {     let mut server = Server::builder();     server         .ctx()         .add_certificate_compression_algorithm(BrotliCompressor::default())         .unwrap(...", fillcolor=lightblue]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/impl#[BrotliCompressor][CertificateCompressor]decompress()." [label="decompress", tooltip="    fn decompress<W>(&self, input: &[u8], output: &mut W) -> std::io::Result<()>     where         W: std::io::Write,     {         brotli::BrotliDecompress(&mut std::io::Cursor::new(input), output)?;...", fillcolor=lightblue]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." [label="server_only_cert_compression", tooltip="fn server_only_cert_compression() {     let mut server_builder = Server::builder();     server_builder         .ctx()         .add_certificate_compression_algorithm(BrotliCompressor::default())       ...", fillcolor=lightblue]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/impl#[BrotliCompressor][CertificateCompressor]compress()." [label="compress", tooltip="    fn compress<W>(&self, input: &[u8], output: &mut W) -> std::io::Result<()>     where         W: std::io::Write,     {         let mut writer = brotli::CompressorWriter::new(output, 1024, self.q, s...", fillcolor=lightblue]
+  }
+  subgraph cluster_8 {
+    label = "server.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]ctx()." [label="ctx", tooltip="    pub fn ctx(&mut self) -> &mut SslContextBuilder {         &mut self.ctx     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]ctx()." [label="ctx", tooltip="    pub fn ctx(&mut self) -> &mut SslContextBuilder {         &mut self.ctx     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]builder()." [label="builder", tooltip="    pub fn builder() -> Builder {         let mut ctx = SslContext::builder(SslMethod::tls()).unwrap();         ctx.set_certificate_chain_file(' test/cert.pem' ).unwrap();         ctx.set_private_key_...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]build()." [label="build", tooltip="    pub fn build(self) -> Client {         Client {             ctx: self.ctx.build(),             addr: self.addr,         }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientSslBuilder]connect()." [label="connect", tooltip="    pub fn connect(self) -> SslStream<TcpStream> {         let socket = TcpStream::connect(self.addr).unwrap();         let mut s = self.ssl.connect(socket).unwrap();         s.read_exact(&mut [0]).un...", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Client]builder()." [label="builder", tooltip="    pub fn builder(&self) -> ClientSslBuilder {         ClientSslBuilder {             ssl: Ssl::new(&self.ctx).unwrap(),             addr: self.addr,         }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]client()." [label="client", tooltip="    pub fn client(&self) -> ClientBuilder {         ClientBuilder {             ctx: SslContext::builder(SslMethod::tls()).unwrap(),             addr: self.addr,         }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]connect()." [label="connect", tooltip="    pub fn connect(self) -> SslStream<TcpStream> {         self.build().builder().connect()     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]build()." [label="build", tooltip="    pub fn build(self) -> Server {         let ctx = self.ctx.build();         let socket = TcpListener::bind(' 127.0.0.1:0' ).unwrap();         let addr = socket.local_addr().unwrap();         let mu...", fillcolor=white]
+  }
+  subgraph cluster_9 {
+    label = "mod.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 x509/impl#[X509][ForeignType]as_ptr()." [label="as_ptr", tooltip="", fillcolor=white]
+  }
+  subgraph cluster_10 {
+    label = "store.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilder]new()." [label="new", tooltip="    pub fn new() -> Result<X509StoreBuilder, ErrorStack> {         unsafe {             ffi::init();              cvt_p(ffi::X509_STORE_new()).map(|p| X509StoreBuilder::from_ptr(p))         }     }", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilder][ForeignType]from_ptr()." [label="from_ptr", tooltip="", fillcolor=white]
+    "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilderRef]add_cert()." [label="add_cert", tooltip="    pub fn add_cert(&mut self, cert: X509) -> Result<(), ErrorStack> {         unsafe { cvt(ffi::X509_STORE_add_cert(self.as_ptr(), cert.as_ptr())).map(|_| ()) }     }", fillcolor=white]
+  }
+  subgraph cluster_11 {
+    label = "sha256.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo sha2 0.10.0 sha256/compress256()." [label="compress256", tooltip="pub fn compress256(state: &mut [u32; 8], blocks: &[GenericArray<u8, U64>]) {     // SAFETY: GenericArray<u8, U64> and [u8; 64] have     // exactly the same memory layout     let p = blocks.as_ptr() as...", fillcolor=lightblue]
+  }
+  subgraph cluster_12 {
+    label = "x86.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo sha2 0.10.0 sha256/x86/digest_blocks()." [label="digest_blocks", tooltip="unsafe fn digest_blocks(state: &mut [u32; 8], blocks: &[[u8; 64]]) {     #[allow(non_snake_case)]     let MASK: __m128i = _mm_set_epi64x(         0x0C0D_0E0F_0809_0A0Bu64 as i64,         0x0405_0607_0...", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha256/x86/compress()." [label="compress", tooltip="pub fn compress(state: &mut [u32; 8], blocks: &[[u8; 64]]) {     // TODO: Replace with https://github.com/rust-lang/rfcs/pull/2725     // after stabilization     if shani_cpuid::get() {         unsafe...", fillcolor=lightblue]
+    "rust-analyzer cargo sha2 0.10.0 sha256/x86/shani_cpuid/get()." [label="get", tooltip="", fillcolor=white]
+  }
+  subgraph cluster_13 {
+    label = "sha512.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo sha2 0.10.0 sha512/soft/compress()." [label="compress", tooltip="            pub(crate) fn compress(state: &mut [u64; 8], blocks: &[[u8; 128]]) {                 sha2_asm::compress512(state, blocks);             }", fillcolor=lightblue]
+    "rust-analyzer cargo sha2 0.10.0 sha512/compress512()." [label="compress512", tooltip="pub fn compress512(state: &mut [u64; 8], blocks: &[GenericArray<u8, U128>]) {     // SAFETY: GenericArray<u8, U64> and [u8; 64] have     // exactly the same memory layout     let p = blocks.as_ptr() a...", fillcolor=lightblue]
+  }
+  subgraph cluster_14 {
+    label = "x86.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/avx2_cpuid/get()." [label="get", tooltip="", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha_round()." [label="sha_round", tooltip="fn sha_round(s: &mut State, x: u64) {     macro_rules! big_sigma0 {         ($a:expr) => {             $a.rotate_right(28) ^ $a.rotate_right(34) ^ $a.rotate_right(39)         };     }     macro_rules!...", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/accumulate_state()." [label="accumulate_state", tooltip="fn accumulate_state(dst: &mut State, src: &State) {     for i in 0..SHA512_HASH_WORDS_NUM {         dst[i] = dst[i].wrapping_add(src[i]);     } }", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_update_x_avx2()." [label="sha512_update_x_avx2", tooltip="fn_sha512_update_x!(sha512_update_x_avx2, __m256i, {         ADD64 = _mm256_add_epi64,         ALIGNR8 = _mm256_alignr_epi8,         SRL64 = _mm256_srli_epi64,         SLL64 = _mm256_slli_epi64,      ...", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_0_63_avx()." [label="rounds_0_63_avx", tooltip="unsafe fn rounds_0_63_avx(current_state: &mut State, x: &mut [__m128i; 8], ms: &mut MsgSchedule) {     let mut k64_idx: usize = SHA512_BLOCK_WORDS_NUM;      for _ in 0..4 {         for j in 0..8 {    ...", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/process_second_block()." [label="process_second_block", tooltip="fn process_second_block(current_state: &mut State, t2: &RoundStates) {     for t2 in t2.iter() {         sha_round(current_state, *t2);     } }", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/load_data_avx2()." [label="load_data_avx2", tooltip="unsafe fn load_data_avx2(     x: &mut [__m256i; 8],     ms: &mut MsgSchedule,     t2: &mut RoundStates,     data: *const __m128i, ) {     #[allow(non_snake_case)]     let MASK = _mm256_set_epi64x(    ...", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/compress()." [label="compress", tooltip="pub fn compress(state: &mut [u64; 8], blocks: &[[u8; 128]]) {     // TODO: Replace with https://github.com/rust-lang/rfcs/pull/2725     // after stabilization     if avx2_cpuid::get() {         unsafe...", fillcolor=lightblue]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_update_x_avx()." [label="sha512_update_x_avx", tooltip="fn_sha512_update_x!(sha512_update_x_avx, __m128i, {         ADD64 = _mm_add_epi64,         ALIGNR8 = _mm_alignr_epi8,         SRL64 = _mm_srli_epi64,         SLL64 = _mm_slli_epi64,         XOR = _mm_...", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_64_79()." [label="rounds_64_79", tooltip="fn rounds_64_79(current_state: &mut State, ms: &MsgSchedule) {     for i in 64..80 {         sha_round(current_state, ms[i & 0xf]);     } }", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/load_data_avx()." [label="load_data_avx", tooltip="unsafe fn load_data_avx(x: &mut [__m128i; 8], ms: &mut MsgSchedule, data: *const __m128i) {     #[allow(non_snake_case)]     let MASK = _mm_setr_epi32(0x04050607, 0x00010203, 0x0c0d0e0f, 0x08090a0b); ...", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx()." [label="sha512_compress_x86_64_avx", tooltip="unsafe fn sha512_compress_x86_64_avx(state: &mut [u64; 8], block: &[u8; 128]) {     let mut ms = Default::default();     let mut x = [_mm_setzero_si128(); 8];      // Reduced to single iteration     l...", fillcolor=lightblue]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_0_63_avx2()." [label="rounds_0_63_avx2", tooltip="unsafe fn rounds_0_63_avx2(     current_state: &mut State,     x: &mut [__m256i; 8],     ms: &mut MsgSchedule,     t2: &mut RoundStates, ) {     let mut k64x4_idx: usize = SHA512_BLOCK_WORDS_NUM;     ...", fillcolor=white]
+    "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx2()." [label="sha512_compress_x86_64_avx2", tooltip="unsafe fn sha512_compress_x86_64_avx2(state: &mut [u64; 8], blocks: &[[u8; 128]]) {     let mut start_block = 0;      if blocks.len() & 0b1 != 0 {         sha512_compress_x86_64_avx(state, &blocks[0])...", fillcolor=lightblue]
+  }
+  subgraph cluster_15 {
+    label = "lib.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo subtle 2.6.0 ConstantTimeEq#ct_ne()." [label="ct_ne", tooltip="    fn ct_ne(&self, other: &Self) -> Choice {         !self.ct_eq(other)     }", fillcolor=white]
+  }
+  subgraph cluster_16 {
+    label = "validation.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 decrypt_and_decompress_and_hmac()." [label="decrypt_and_decompress_and_hmac", tooltip="            })         });     }); }  fn decrypt_and_decompress_and_hmac(c: &mut Criterion) {     fn process<R: ReaderFactory<Reader: Unpin>>(input: R, key: &MessageBackupKey) {         futures::execu...", fillcolor=lightblue]
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 decrypt_and_decompress_and_hmac_and_segment()." [label="decrypt_and_decompress_and_hmac_and_segment", tooltip="            })         });     }); }  fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {     fn process<R: ReaderFactory<Reader: Unpin>, R2: AsyncRead + Unpin>(         input: R,     ...", fillcolor=lightblue]
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate()." [label="decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate", tooltip="            })         });     }); }  fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Criterion) {     fn process<R: ReaderFactory<Reader: Unpin>, R2: AsyncRead + Unpin>(...", fillcolor=lightblue]
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 decrypt_and_decompress_and_hmac_and_segment_and_parse()." [label="decrypt_and_decompress_and_hmac_and_segment_and_parse", tooltip="            })         });     }); }  fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {     fn process<R: ReaderFactory<Reader: Unpin>, R2: AsyncRead + Unpin>(         inpu...", fillcolor=lightblue]
+  }
+  subgraph cluster_17 {
+    label = "export.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 export/gzip_compress()." [label="gzip_compress", tooltip="pub fn gzip_compress<R: AsyncBufRead + Unpin>(contents: R) -> Vec<u8> {     let mut compressed_contents = Vec::new();     futures::executor::block_on(GzipEncoder::new(contents).read_to_end(&mut compre...", fillcolor=lightblue]
+  }
+  subgraph cluster_18 {
+    label = "frame.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/hmac_sha256()." [label="hmac_sha256", tooltip="async fn hmac_sha256(     hmac_key: &[u8],     reader: impl AsyncRead + Unpin, ) -> Result<[u8; HMAC_LEN], futures::io::Error> {     let mut reader = MacReader::new_sha256(reader, hmac_key);     let m...", fillcolor=white]
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`MacReader<R, hmac::digest::core_api::CoreWrapper<hmac::HmacCore<hmac::digest::core_api::CoreWrapper<hmac::digest::core_api::CtVariableCoreWrapper<sha2::Sha256VarCore, aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UTerm, aes::cipher::consts::B1>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>>>>>>`]new_sha256()." [label="new_sha256", tooltip="    pub fn new_sha256(reader: R, hmac_key: &[u8]) -> Self {         Self::new(             reader,             Hmac::<Sha256>::new_from_slice(hmac_key)                 .expect(' HMAC-SHA256 should acc...", fillcolor=white]
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`FramesReader<R>`]new()." [label="new", tooltip="    pub async fn new(         key: &MessageBackupKey,         mut reader_factory: impl ReaderFactory<Reader = R>,     ) -> Result<FramesReader<R>, ValidationError> {         let content_len;         l...", fillcolor=white]
+  }
+  subgraph cluster_19 {
+    label = "aes_read.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/aes_read/impl#[`Aes256CbcReader<R>`]new()." [label="new", tooltip="    pub fn new(key: &[u8; AES_KEY_SIZE], iv: &[u8; AES_IV_SIZE], reader: R) -> Self {         let rc_reader = Rc::new(RefCell::new(reader));         let reader = RcReader(rc_reader.clone());         l...", fillcolor=white]
+  }
+  subgraph cluster_20 {
+    label = "block_stream.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/block_stream/impl#[`BlockStream<N, R>`]new()." [label="new", tooltip="    pub(crate) fn new(reader: R) -> Self {         Self {             next_bytes: [0; N],             next_read: 0,             reader: Some(reader),         }     }", fillcolor=white]
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/block_stream/impl#[`ExactBlockStream<N, S>`]new()." [label="new", tooltip="    pub(crate) fn new(stream: S) -> Self {         Self { inner: stream }     }", fillcolor=white]
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/block_stream/impl#[`ExactBlockStream<N, BlockStream<N, R>>`]from_reader()." [label="from_reader", tooltip="    pub(crate) fn from_reader(reader: R) -> Self {         Self::new(BlockStream::new(reader))     }", fillcolor=white]
+  }
+  subgraph cluster_21 {
+    label = "cbc.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/cbc/impl#[`CbcStreamDecryptor<C, S>`]new()." [label="new", tooltip="    pub(crate) fn new(decryptor: cbc::Decryptor<C>, stream: S) -> Self {         Self {             decryptor,             source: stream,         }     }", fillcolor=white]
+  }
+  subgraph cluster_22 {
+    label = "mac_read.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/mac_read/impl#[`MacReader<R, M>`]finalize()." [label="finalize", tooltip="    pub fn finalize(self) -> GenericArray<u8, M::OutputSize>     where         M: Mac,     {         self.mac.finalize().into_bytes()     }", fillcolor=white]
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/mac_read/impl#[`MacReader<R, M>`]new()." [label="new", tooltip="    pub fn new(reader: R, mac: M) -> Self {         Self { reader, mac }     }", fillcolor=white]
+  }
+  subgraph cluster_23 {
+    label = "unpad.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/unpad/impl#[`UnpadLast<S, P, B, N>`]new()." [label="new", tooltip="    pub(crate) fn new(stream: S) -> Self {         Self {             maybe_stream: Some(stream),             maybe_buffer: None,             _marker: PhantomData,         }     }", fillcolor=white]
+  }
+  subgraph cluster_24 {
+    label = "lib.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 impl#[`BackupReader<frame::FramesReader<R>>`]new_encrypted_compressed()." [label="new_encrypted_compressed", tooltip="    pub async fn new_encrypted_compressed(         key: &MessageBackupKey,         factory: impl ReaderFactory<Reader = R>,         purpose: Purpose,     ) -> Result<Self, frame::ValidationError> {   ...", fillcolor=lightblue]
+  }
+  subgraph cluster_25 {
+    label = "parse.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-message-backup 0.1.0 parse/impl#[`VarintDelimitedReader<R>`]new()." [label="new", tooltip="    pub fn new(reader: R) -> Self {         Self {             reader,             buffer: ArrayVec::new(),         }     }", fillcolor=white]
+  }
+  subgraph cluster_26 {
+    label = "dns_message.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-net-infra 0.1.0 dns/dns_message/test/compressed_name_format_handled_correctly()." [label="compressed_name_format_handled_correctly", tooltip="    fn compressed_name_format_handled_correctly() {         let expected = ' signal.org' ;         // valid pointer case         let src = concat_bytes!(6, b' signal' , 3, b' org' , 0, POINTER_MASK, 0...", fillcolor=lightblue]
+    "rust-analyzer cargo libsignal-net-infra 0.1.0 dns/dns_message/test/compressed_name_format_handles_errors()." [label="compressed_name_format_handles_errors", tooltip="    fn compressed_name_format_handles_errors() {         let expected = ' signal.org' ;         // invalid pointer case         let src = concat_bytes!(6, b' signal' , 3, b' org' , 0, POINTER_MASK, 20...", fillcolor=lightblue]
+    "rust-analyzer cargo libsignal-net-infra 0.1.0 dns/dns_message/read_name_to_vec()." [label="read_name_to_vec", tooltip="fn read_name_to_vec<R: io::Read>(     reader: &mut ByteReader<R, BigEndian>,     preceding_bytes: &[u8],     dst: &mut Vec<u8>, ) -> Result<()> {     let mut buf: [u8; u8::MAX as usize] = [0; u8::MAX ...", fillcolor=white]
+  }
+  subgraph cluster_27 {
+    label = "endorsements.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]compress()." [label="compress", tooltip="    pub fn compress(self) -> Endorsement<CompressedRistretto> {         Endorsement {             R: self.R.compress(),         }     }", fillcolor=lightblue]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[`Endorsement<CompressedRistretto>`]decompress()." [label="decompress", tooltip="    pub fn decompress(self) -> Result<Endorsement<RistrettoPoint>, VerificationFailure> {         match self.R.decompress() {             Some(R) => Ok(Endorsement { R }),             None => Err(Veri...", fillcolor=lightblue]
+  }
+  subgraph cluster_28 {
+    label = "group_send_endorsement.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[`GroupSendEndorsement<curve25519_dalek_signal::ristretto::CompressedRistretto>`]decompress()." [label="decompress", tooltip="    pub fn decompress(         self,     ) -> Result<         GroupSendEndorsement<curve25519_dalek_signal::RistrettoPoint>,         ZkGroupDeserializationFailure,     > {         Ok(GroupSendEndorsem...", fillcolor=lightblue]
+    "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendEndorsement]compress()." [label="compress", tooltip="    pub fn compress(         self,     ) -> GroupSendEndorsement<curve25519_dalek_signal::ristretto::CompressedRistretto> {         GroupSendEndorsement {             reserved: self.reserved,         ...", fillcolor=lightblue]
+  }
+  subgraph cluster_29 {
+    label = "errors.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 common/errors/impl#[ZkGroupDeserializationFailure]new()." [label="new", tooltip="    pub fn new<T>() -> Self {         Self(std::any::type_name::<T>())     }", fillcolor=white]
+  }
+
+  "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilder]new()." -> "rust-analyzer cargo boring 4.15.0 cvt_p()."
+  "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilder]new()." -> "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilder][ForeignType]from_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]new_ex_index()." -> "rust-analyzer cargo boring 4.15.0 cvt_n()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]new_ex_index()." -> "rust-analyzer cargo boring 4.15.0 ssl/get_new_idx()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]new_ex_index()." -> "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]from_raw()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]new_ex_index()." -> "rust-analyzer cargo boring 4.15.0 ssl/free_data_box()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]as_ptr()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext][ForeignType]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]set_ex_data()." -> "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]as_raw()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 impl#[`BackupReader<frame::FramesReader<R>>`]new_encrypted_compressed()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`FramesReader<R>`]new()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 impl#[`BackupReader<frame::FramesReader<R>>`]new_encrypted_compressed()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 parse/impl#[`VarintDelimitedReader<R>`]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]setup_accept()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]set_accept_state()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]new_base()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]new_base()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl][ForeignType]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]set_ex_data()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]ex_data_mut()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]set_ex_data()." -> "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]as_raw()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]error_code()." -> "rust-analyzer cargo boring 4.15.0 ssl/error/impl#[ErrorCode]from_raw()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]builder()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]connect()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`MidHandshakeSslStream<S>`]handshake()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]connect()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]setup_connect()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_compress()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]cached_ex_index()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_compress()." -> "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoByteBuilder<'_>`]from_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_compress()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]ssl_context()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_compress()." -> "rust-analyzer cargo boring 4.15.0 ssl/CertificateCompressor#compress()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_compress()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]ex_data()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/new()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BioMethod]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/new()." -> "rust-analyzer cargo boring 4.15.0 cvt_p()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/new()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]get()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]builder()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslMethod]tls()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]builder()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]set_private_key_file()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]builder()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]set_certificate_chain_file()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]builder()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]builder()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]build()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]build()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]setup_connect()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]setup_connect()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]setup_connect()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]new()."
+  "rust-analyzer cargo libsignal-net-infra 0.1.0 dns/dns_message/test/compressed_name_format_handled_correctly()." -> "rust-analyzer cargo libsignal-net-infra 0.1.0 dns/dns_message/read_name_to_vec()."
+  "rust-analyzer cargo boring 4.15.0 cvt()." -> "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]get()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientSslBuilder]connect()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]connect()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]replace_ex_data()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]replace_ex_data()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext][ForeignType]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]new()." -> "rust-analyzer cargo boring 4.15.0 cvt_p()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]set_ex_data()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl][ForeignType]from_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext][Clone]clone()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]ex_data()." -> "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]as_raw()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()." -> "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_decompress()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]cached_ex_index()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()." -> "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_compress()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]replace_ex_data()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()." -> "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]get()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Client]builder()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoBufferBuilder<'a>`]build()." -> "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]get()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]check_panic()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]get_raw_rbio()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]check_panic()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/take_panic()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]client()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]builder()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]client()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslMethod]tls()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[`GroupSendEndorsement<curve25519_dalek_signal::ristretto::CompressedRistretto>`]decompress()." -> "rust-analyzer cargo zkgroup 0.9.0 common/errors/impl#[ZkGroupDeserializationFailure]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[`GroupSendEndorsement<curve25519_dalek_signal::ristretto::CompressedRistretto>`]decompress()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[`Endorsement<CompressedRistretto>`]decompress()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]cached_ex_index()." -> "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]as_raw()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]cached_ex_index()." -> "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]from_raw()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]cached_ex_index()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]new_ex_index()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`MidHandshakeSslStream<S>`]handshake()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl][ForeignType]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`MidHandshakeSslStream<S>`]handshake()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]make_error()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`MidHandshakeSslStream<S>`]handshake()." -> "rust-analyzer cargo boring 4.15.0 ssl/error/impl#[Error]would_block()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_0_63_avx()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha_round()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_0_63_avx()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_update_x_avx()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/hmac_sha256()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/mac_read/impl#[`MacReader<R, M>`]finalize()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/hmac_sha256()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`MacReader<R, hmac::digest::core_api::CoreWrapper<hmac::HmacCore<hmac::digest::core_api::CoreWrapper<hmac::digest::core_api::CtVariableCoreWrapper<sha2::Sha256VarCore, aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UTerm, aes::cipher::consts::B1>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>>>>>>`]new_sha256()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]ex_data_mut()." -> "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]as_raw()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef][ToOwned]to_owned()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext][ForeignType]from_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]set_accept_state()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl][ForeignType]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]connect()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]build()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilderRef]add_cert()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/impl#[BrotliCompressor][Default]default()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]builder()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]ctx()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]client()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilder]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]ctx()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]ctx()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]build()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilderRef]add_cert()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]builder()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilder]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]client()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]connect()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/client_and_server_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/impl#[BrotliCompressor][Default]default()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]connect()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientSslBuilder]connect()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]connect()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]build()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]connect()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Client]builder()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/process_second_block()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha_round()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/soft/compress()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/compress()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/compress()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/avx2_cpuid/get()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/compress()." -> "rust-analyzer cargo sha2 0.10.0 sha512/soft/compress()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/compress()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx2()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/impl#[BrotliCompressor][Default]default()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]add_certificate_compression_algorithm()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]builder()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilderRef]add_cert()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilder]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]build()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]ctx()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Server]client()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/cert_compressor/server_only_cert_compression()." -> "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[ClientBuilder]connect()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]set_certificate_chain_file()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]set_certificate_chain_file()." -> "rust-analyzer cargo boring 4.15.0 cvt()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/compress512()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/compress()."
+  "rust-analyzer cargo boring 4.15.0 cvt_n()." -> "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]get()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]from_ptr()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext][ForeignType]from_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]make_error()." -> "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]get()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]make_error()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]error_code()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]make_error()." -> "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]errors()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]make_error()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]check_panic()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]make_error()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]get_bio_error()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/aes_read/impl#[`Aes256CbcReader<R>`]new()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/unpad/impl#[`UnpadLast<S, P, B, N>`]new()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/aes_read/impl#[`Aes256CbcReader<R>`]new()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/cbc/impl#[`CbcStreamDecryptor<C, S>`]new()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/aes_read/impl#[`Aes256CbcReader<R>`]new()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/block_stream/impl#[`ExactBlockStream<N, BlockStream<N, R>>`]from_reader()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/take_error()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/state()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_64_79()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha_round()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/bputs()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/bwrite()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoBufferBuilder<'a>`]with_capacity()." -> "rust-analyzer cargo boring 4.15.0 cvt_p()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/create()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/BIO_set_num()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]accept()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]setup_accept()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]accept()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`MidHandshakeSslStream<S>`]handshake()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendEndorsement]compress()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]compress()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_0_63_avx()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/load_data_avx()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_64_79()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/accumulate_state()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext][Clone]clone()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef][ToOwned]to_owned()."
+  "rust-analyzer cargo sha2 0.10.0 sha256/x86/compress()." -> "rust-analyzer cargo sha2 0.10.0 sha256/x86/shani_cpuid/get()."
+  "rust-analyzer cargo sha2 0.10.0 sha256/x86/compress()." -> "rust-analyzer cargo sha2 0.10.0 sha256/x86/digest_blocks()."
+  "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilderRef]add_cert()." -> "rust-analyzer cargo boring 4.15.0 x509/impl#[X509][ForeignType]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 x509/store/impl#[X509StoreBuilderRef]add_cert()." -> "rust-analyzer cargo boring 4.15.0 cvt()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]setup_accept()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]setup_accept()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]setup_accept()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]replace_ex_data()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]ex_data_mut()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]replace_ex_data()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]set_ex_data()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslMethod]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]new()." -> "rust-analyzer cargo boring 4.15.0 cvt_p()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]from_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]setup_connect()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]set_connect_state()."
+  "rust-analyzer cargo libsignal-net-infra 0.1.0 dns/dns_message/test/compressed_name_format_handles_errors()." -> "rust-analyzer cargo libsignal-net-infra 0.1.0 dns/dns_message/read_name_to_vec()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/bwrite()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/retriable_error()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/bwrite()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/state()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/take_panic()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/state()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_0_63_avx2()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_update_x_avx2()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_0_63_avx2()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha_round()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]build()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]build()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl]accept()."
+  "rust-analyzer cargo boring 4.15.0 ssl/test/server/impl#[Builder]build()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]build()."
+  "rust-analyzer cargo boring 4.15.0 cvt_p()." -> "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]get()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_decompress()." -> "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoBufferBuilder<'a>`]build()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_decompress()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]ex_data()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_decompress()." -> "rust-analyzer cargo boring 4.15.0 ssl/CertificateCompressor#decompress()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_decompress()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]ssl_context()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_decompress()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContext]cached_ex_index()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_decompress()." -> "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoBufferBuilder<'a>`]with_capacity()."
+  "rust-analyzer cargo boring 4.15.0 ssl/callbacks/raw_ssl_cert_decompress()." -> "rust-analyzer cargo boring 4.15.0 ssl/callbacks/impl#[`CryptoBufferBuilder<'a>`]as_writer()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`MacReader<R, hmac::digest::core_api::CoreWrapper<hmac::HmacCore<hmac::digest::core_api::CoreWrapper<hmac::digest::core_api::CtVariableCoreWrapper<sha2::Sha256VarCore, aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UTerm, aes::cipher::consts::B1>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>>>>>>`]new_sha256()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/mac_read/impl#[`MacReader<R, M>`]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]get_bio_error()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/take_error()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]get_bio_error()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslRef]get_raw_rbio()."
+  "rust-analyzer cargo boring 4.15.0 error/impl#[ErrorStack]get()." -> "rust-analyzer cargo boring 4.15.0 error/impl#[Error]get()."
+  "rust-analyzer cargo sha2 0.10.0 sha256/compress256()." -> "rust-analyzer cargo sha2 0.10.0 sha256/x86/compress()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx2()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_64_79()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx2()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/accumulate_state()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx2()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/process_second_block()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx2()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/load_data_avx2()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx2()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx()."
+  "rust-analyzer cargo sha2 0.10.0 sha512/x86/sha512_compress_x86_64_avx2()." -> "rust-analyzer cargo sha2 0.10.0 sha512/x86/rounds_0_63_avx2()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStream<S>`]new_base()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/bread()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/retriable_error()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/bread()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/state()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextRef]ex_data_mut()." -> "rust-analyzer cargo boring 4.15.0 ex_data/impl#[`Index<T, U>`]as_raw()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`FramesReader<R>`]new()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/hmac_sha256()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`FramesReader<R>`]new()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/aes_read/impl#[`Aes256CbcReader<R>`]new()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`FramesReader<R>`]new()." -> "rust-analyzer cargo subtle 2.6.0 ConstantTimeEq#ct_ne()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`FramesReader<R>`]new()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/impl#[`MacReader<R, hmac::digest::core_api::CoreWrapper<hmac::HmacCore<hmac::digest::core_api::CoreWrapper<hmac::digest::core_api::CtVariableCoreWrapper<sha2::Sha256VarCore, aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UInt<aes::cipher::typenum::UTerm, aes::cipher::consts::B1>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>, aes::cipher::consts::B0>>>>>>`]new_sha256()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/ctrl()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/state()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[`SslStreamBuilder<S>`]set_connect_state()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[Ssl][ForeignType]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/bread()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/bwrite()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/ctrl()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/create()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/destroy()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/bputs()."
+  "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BioMethod]new()." -> "rust-analyzer cargo boring 4.15.0 ssl/bio/impl#[BIO_METHOD]new()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/block_stream/impl#[`ExactBlockStream<N, BlockStream<N, R>>`]from_reader()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/block_stream/impl#[`BlockStream<N, R>`]new()."
+  "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/block_stream/impl#[`ExactBlockStream<N, BlockStream<N, R>>`]from_reader()." -> "rust-analyzer cargo libsignal-message-backup 0.1.0 frame/block_stream/impl#[`ExactBlockStream<N, S>`]new()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]set_private_key_file()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]as_ptr()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]set_private_key_file()." -> "rust-analyzer cargo boring 4.15.0 cvt()."
+  "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslContextBuilder]set_private_key_file()." -> "rust-analyzer cargo boring 4.15.0 ssl/impl#[SslFiletype]as_raw()."
+}

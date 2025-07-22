@@ -1,0 +1,136 @@
+digraph {
+
+    graph [
+        label="rust_analyzer_test",
+        labelloc=t,
+
+        pad=0.4,
+
+        // Consider rendering the graph using a different layout algorithm, such as:
+        // [dot, neato, twopi, circo, fdp, sfdp]
+        layout=neato,
+        overlap=false,
+        splines="line",
+        rankdir=LR,
+
+        fontname="Helvetica", 
+        fontsize="36",
+    ];
+
+    node [
+        fontname="monospace",
+        fontsize="10",
+        shape="record",
+        style="filled",
+    ];
+
+    edge [
+        fontname="monospace",
+        fontsize="10",
+    ];
+
+    "alloc::alloc::Global" [label="external struct|alloc::alloc::Global", fillcolor="#81c169"]; // "struct" node
+    "alloc::string::String" [label="external struct|alloc::string::String", fillcolor="#81c169"]; // "struct" node
+    "alloc::vec::Vec" [label="external struct|alloc::vec::Vec", fillcolor="#81c169"]; // "struct" node
+    "bool" [label="external builtin|bool", fillcolor="#81c169"]; // "builtin" node
+    "core::fmt::Arguments" [label="external struct|core::fmt::Arguments", fillcolor="#81c169"]; // "struct" node
+    "core::fmt::Error" [label="external struct|core::fmt::Error", fillcolor="#81c169"]; // "struct" node
+    "core::fmt::Formatter" [label="external struct|core::fmt::Formatter", fillcolor="#81c169"]; // "struct" node
+    "core::fmt::builders::DebugStruct" [label="external struct|core::fmt::builders::DebugStruct", fillcolor="#81c169"]; // "struct" node
+    "core::fmt::rt::Argument" [label="external struct|core::fmt::rt::Argument", fillcolor="#81c169"]; // "struct" node
+    "core::fmt::rt::Count" [label="external enum|core::fmt::rt::Count", fillcolor="#81c169"]; // "enum" node
+    "core::fmt::rt::Placeholder" [label="external struct|core::fmt::rt::Placeholder", fillcolor="#81c169"]; // "struct" node
+    "core::fmt::rt::UnsafeArg" [label="external struct|core::fmt::rt::UnsafeArg", fillcolor="#81c169"]; // "struct" node
+    "core::iter::adapters::cloned::Cloned" [label="external struct|core::iter::adapters::cloned::Cloned", fillcolor="#81c169"]; // "struct" node
+    "core::iter::adapters::filter::Filter" [label="external struct|core::iter::adapters::filter::Filter", fillcolor="#81c169"]; // "struct" node
+    "core::iter::adapters::map::Map" [label="external struct|core::iter::adapters::map::Map", fillcolor="#81c169"]; // "struct" node
+    "core::result::Result" [label="external enum|core::result::Result", fillcolor="#81c169"]; // "enum" node
+    "core::slice::iter::Iter" [label="external struct|core::slice::iter::Iter", fillcolor="#81c169"]; // "struct" node
+    "i32" [label="external builtin|i32", fillcolor="#81c169"]; // "builtin" node
+    "rust_analyzer_test" [label="crate|rust_analyzer_test", fillcolor="#5397c8"]; // "crate" node
+    "rust_analyzer_test::Data" [label="pub struct|rust_analyzer_test::Data", fillcolor="#81c169"]; // "struct" node
+    "rust_analyzer_test::Data::fmt" [label="pub(crate) fn|rust_analyzer_test::Data::fmt", fillcolor="#f8c04c"]; // "fn" node
+    "rust_analyzer_test::Data::new" [label="pub fn|rust_analyzer_test::Data::new", fillcolor="#81c169"]; // "fn" node
+    "rust_analyzer_test::calculate" [label="pub fn|rust_analyzer_test::calculate", fillcolor="#81c169"]; // "fn" node
+    "rust_analyzer_test::helper" [label="pub mod|rust_analyzer_test::helper", fillcolor="#81c169"]; // "mod" node
+    "rust_analyzer_test::helper::data" [label="pub mod|rust_analyzer_test::helper::data", fillcolor="#81c169"]; // "mod" node
+    "rust_analyzer_test::helper::data::analyze_data" [label="pub fn|rust_analyzer_test::helper::data::analyze_data", fillcolor="#81c169"]; // "fn" node
+    "rust_analyzer_test::helper::data::filter_data" [label="pub fn|rust_analyzer_test::helper::data::filter_data", fillcolor="#81c169"]; // "fn" node
+    "rust_analyzer_test::helper::data::transform_data" [label="pub fn|rust_analyzer_test::helper::data::transform_data", fillcolor="#81c169"]; // "fn" node
+    "rust_analyzer_test::helper::math" [label="pub mod|rust_analyzer_test::helper::math", fillcolor="#81c169"]; // "mod" node
+    "rust_analyzer_test::helper::math::add" [label="pub fn|rust_analyzer_test::helper::math::add", fillcolor="#81c169"]; // "fn" node
+    "rust_analyzer_test::helper::math::multiply" [label="pub fn|rust_analyzer_test::helper::math::multiply", fillcolor="#81c169"]; // "fn" node
+    "rust_analyzer_test::helper::math::square" [label="pub fn|rust_analyzer_test::helper::math::square", fillcolor="#81c169"]; // "fn" node
+    "rust_analyzer_test::helper::utils" [label="pub mod|rust_analyzer_test::helper::utils", fillcolor="#81c169"]; // "mod" node
+    "rust_analyzer_test::helper::utils::format_string" [label="pub fn|rust_analyzer_test::helper::utils::format_string", fillcolor="#81c169"]; // "fn" node
+    "rust_analyzer_test::helper::utils::print_message" [label="pub fn|rust_analyzer_test::helper::utils::print_message", fillcolor="#81c169"]; // "fn" node
+    "str" [label="external builtin|str", fillcolor="#81c169"]; // "builtin" node
+    "u32" [label="external builtin|u32", fillcolor="#81c169"]; // "builtin" node
+    "usize" [label="external builtin|usize", fillcolor="#81c169"]; // "builtin" node
+
+    "rust_analyzer_test" -> "rust_analyzer_test::Data" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test" -> "rust_analyzer_test::calculate" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test" -> "rust_analyzer_test::helper" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::Data" -> "alloc::string::String" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data" -> "rust_analyzer_test::Data::fmt" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::Data" -> "rust_analyzer_test::Data::new" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::Data::fmt" -> "alloc::string::String" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::fmt" -> "core::fmt::Error" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::fmt" -> "core::fmt::Formatter" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::fmt" -> "core::fmt::builders::DebugStruct" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::fmt" -> "core::result::Result" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::fmt" -> "i32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::fmt" -> "rust_analyzer_test::Data" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::fmt" -> "str" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::new" -> "alloc::string::String" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::new" -> "i32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::new" -> "rust_analyzer_test::Data" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::Data::new" -> "str" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::calculate" -> "i32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper" -> "rust_analyzer_test::helper::data" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper" -> "rust_analyzer_test::helper::math" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper" -> "rust_analyzer_test::helper::utils" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper::data" -> "rust_analyzer_test::helper::data::analyze_data" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper::data" -> "rust_analyzer_test::helper::data::filter_data" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper::data" -> "rust_analyzer_test::helper::data::transform_data" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper::data::analyze_data" -> "core::slice::iter::Iter" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::analyze_data" -> "i32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::filter_data" -> "alloc::alloc::Global" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::filter_data" -> "alloc::vec::Vec" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::filter_data" -> "bool" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::filter_data" -> "core::iter::adapters::cloned::Cloned" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::filter_data" -> "core::iter::adapters::filter::Filter" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::filter_data" -> "core::slice::iter::Iter" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::filter_data" -> "i32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::transform_data" -> "alloc::alloc::Global" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::transform_data" -> "alloc::vec::Vec" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::transform_data" -> "core::iter::adapters::map::Map" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::transform_data" -> "core::slice::iter::Iter" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::data::transform_data" -> "i32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::math" -> "rust_analyzer_test::helper::math::add" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper::math" -> "rust_analyzer_test::helper::math::multiply" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper::math" -> "rust_analyzer_test::helper::math::square" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper::math::add" -> "i32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::math::multiply" -> "i32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::math::square" -> "i32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils" -> "rust_analyzer_test::helper::utils::format_string" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper::utils" -> "rust_analyzer_test::helper::utils::print_message" [label="owns", color="#000000", style="solid"] [constraint=true]; // "owns" edge
+    "rust_analyzer_test::helper::utils::format_string" -> "alloc::string::String" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::format_string" -> "core::fmt::Arguments" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::format_string" -> "core::fmt::rt::Argument" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::format_string" -> "core::fmt::rt::Count" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::format_string" -> "core::fmt::rt::Placeholder" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::format_string" -> "core::fmt::rt::UnsafeArg" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::format_string" -> "str" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::format_string" -> "u32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::format_string" -> "usize" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::print_message" -> "core::fmt::Arguments" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::print_message" -> "core::fmt::rt::Argument" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::print_message" -> "core::fmt::rt::Count" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::print_message" -> "core::fmt::rt::Placeholder" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::print_message" -> "core::fmt::rt::UnsafeArg" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::print_message" -> "str" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::print_message" -> "u32" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+    "rust_analyzer_test::helper::utils::print_message" -> "usize" [label="uses", color="#7f7f7f", style="dashed"] [constraint=false]; // "uses" edge
+
+}
