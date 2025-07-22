@@ -48,3 +48,15 @@ path = "generate_dot_from_unit_graph.rs"
 [[bin]]
 name = "generate_call_graph_dot"
 path = "src/bin/generate_call_graph_dot.rs"
+
+[[bin]]
+name = "generate_file_subgraph_dot"
+path = "src/bin/generate_file_subgraph_dot.rs"
+
+[[bin]]
+name = "generate_files_subgraph_dot"
+path = "src/bin/generate_files_subgraph_dot.rs"
+
+[[bin]]
+name = "generate_function_subgraph_dot"
+path = "src/bin/generate_function_subgraph_dot.rs"
