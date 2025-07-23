@@ -2,10 +2,11 @@
 
 ## Prerequirements
 
-Install:
+If you want to use your own json file., you need to install:
 - [rust-analyzer](https://rust-analyzer.github.io/book/installation.html) it is used to generate a scip output file
-[scip](https://github.com/sourcegraph/scip) it is used to generate a JSON from the scip output file  
-if you want to use your own json file. If you just want to get info about `libsignal`, simply replace `scip_data.json` by `index_scip_libsignal_deps.json` in the commands below.
+- [scip](https://github.com/sourcegraph/scip) it is used to generate a JSON from the scip output file  
+
+If you just want to get info about `libsignal`, simply replace `scip_data.json` by `index_scip_libsignal_deps.json` in the commands below.
 
 ## How to use
 
