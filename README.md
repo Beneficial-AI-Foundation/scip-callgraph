@@ -1,4 +1,3 @@
-# rust-analyzer-test
 
 ## Prerequirements
 
