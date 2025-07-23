@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -427,7 +428,24 @@ pub fn generate_call_graph_dot(call_graph: &HashMap<String, FunctionNode>, outpu
     }
 
     dot.push_str("}\n");
-    std::fs::write(output_path, dot)
+    // Write the DOT file
+    std::fs::write(output_path, &dot)?;
+    // Generate SVG using Graphviz
+    let svg_path = if output_path.ends_with(".dot") {
+        format!("{}.svg", &output_path[..output_path.len() - 4])
+    } else {
+        format!("{}.svg", output_path)
+    };
+    let status = Command::new("dot")
+        .args(&["-Tsvg", output_path, "-o", &svg_path])
+        .status()?;
+    if !status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to generate SVG: dot exited with {}", status),
+        ));
+    }
+    Ok(())
 }
 
 /// Generate a DOT file format for a subgraph of the call graph containing only nodes from a specific file path
@@ -724,6 +742,7 @@ pub fn generate_function_subgraph_dot(
     call_graph: &HashMap<String, FunctionNode>, 
     function_names: &[String], 
     output_path: &str,
+    include_callees: bool,
     include_callers: bool,
     depth: Option<usize>
 ) -> std::io::Result<()> {
@@ -777,16 +796,24 @@ pub fn generate_function_subgraph_dot(
     // BFS to find all transitive dependencies with depth tracking
     while let Some((symbol, current_depth)) = queue.pop_front() {
         if let Some(node) = call_graph.get(&symbol) {
-            /* 
-            // Add callees (dependencies) - always traverse all levels for callees
-            println!("Processing callees: {:?}", &node.callees);
-            for callee in &node.callees {
-                if !included_symbols.contains(callee) {
-                    included_symbols.insert(callee.clone());
-                    queue.push_back((callee.clone(), current_depth + 1));
-                    println!("  - {}", callee);
+            if include_callees {
+                let should_include_callees = match depth {
+                    Some(max_depth) => current_depth < max_depth,
+                    None => true, // No depth limit
+                };
+
+                if should_include_callees {
+                // Add callees (dependencies) - always traverse all levels for callees
+                    println!("Processing callees: {:?}", &node.callees);
+                    for callee in &node.callees {
+                        if !included_symbols.contains(callee) {
+                            included_symbols.insert(callee.clone());
+                            queue.push_back((callee.clone(), current_depth + 1));
+                            println!("  - {}", callee);
+                        }
+                    }
                 }
-            } */
+            }
             
             // Include callers with depth limitation
             if include_callers {
@@ -877,7 +904,24 @@ pub fn generate_function_subgraph_dot(
     }
     
     dot.push_str("}\n");
-    std::fs::write(output_path, dot)
+    // Write the DOT file
+    std::fs::write(output_path, &dot)?;
+    // Generate SVG using Graphviz
+    let svg_path = if output_path.ends_with(".dot") {
+        format!("{}.svg", &output_path[..output_path.len() - 4])
+    } else {
+        format!("{}.svg", output_path)
+    };
+    let status = Command::new("dot")
+        .args(&["-Tsvg", output_path, "-o", &svg_path])
+        .status()?;
+    if !status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to generate SVG: dot exited with {}", status),
+        ));
+    }
+    Ok(())
 }
 
 pub fn generate_call_graph_svg(call_graph: &HashMap<String, FunctionNode>, output_path: &str) -> std::io::Result<()> {
@@ -946,7 +990,6 @@ mod tests {
     use std::collections::HashMap;
     use std::fs;
     use tempfile::NamedTempFile;
-    use regex::Regex;
 
     // The previous tests referred to svg content in tooltips which is not in the code
     // Replacing with a more relevant test

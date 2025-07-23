@@ -15,11 +15,14 @@ syn = { version = "2.0", features = ["full", "visit", "parsing"] }
 petgraph = "0.6"
 quote = "1.0"
 prettyplease = "0.2.31"
-scip = "0.5.2" 
+scip = "0.5.2"
 prost = "0.13.5"
 protobuf = "4.31.0-beta1"
 html-escape = "0.2.13"
 quick-xml = "0.31"
+
+[dev-dependencies]
+tempfile = "3.5.0"
 
 [[bin]]
 name = "build_rustdoc_json"
