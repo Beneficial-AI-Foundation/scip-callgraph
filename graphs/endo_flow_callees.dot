@@ -1,0 +1,441 @@
+digraph function_subgraph {
+  rankdir=LR;
+  node [shape=box, style=filled, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "mod.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/cpuid_avx2/impl#[InitToken]get()." [label="get", tooltip="", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/get_selected_backend()." [label="get_selected_backend", tooltip="fn get_selected_backend() -> BackendKind {     #[cfg(all(curve25519_dalek_backend = ' simd' , nightly))]     {         cpufeatures::new!(cpuid_avx512, ' avx512ifma' , ' avx512vl' );         let token_...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/cpuid_avx2/init()." [label="init", tooltip="", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/straus_multiscalar_mul()." [label="straus_multiscalar_mul", tooltip="pub fn straus_multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint where     I: IntoIterator,     I::Item: core::borrow::Borrow<Scalar>,     J: IntoIterator,     J::Item: core::borrow::Borrow<...", fillcolor=white]
+  }
+  subgraph cluster_1 {
+    label = "mod.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/curve_models/impl#[ProjectivePoint]double()." [label="double", tooltip="    pub fn double(&self) -> CompletedPoint {         // Double()         let XX = self.X.square();         let YY = self.Y.square();         let ZZ2 = self.Z.square2();         let X_plus_Y = &self.X ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/curve_models/impl#[CompletedPoint]as_extended()." [label="as_extended", tooltip="    pub fn as_extended(&self) -> EdwardsPoint {         EdwardsPoint {             X: &self.X * &self.T,             Y: &self.Y * &self.Z,             Z: &self.Z * &self.T,             T: &self.X * &s...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/curve_models/impl#[CompletedPoint]as_projective()." [label="as_projective", tooltip="    pub fn as_projective(&self) -> ProjectivePoint {         ProjectivePoint {             X: &self.X * &self.T,             Y: &self.Y * &self.Z,             Z: &self.Z * &self.T,         }     }", fillcolor=white]
+  }
+  subgraph cluster_2 {
+    label = "straus.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/scalar_mul/straus/impl#[Straus][MultiscalarMul]multiscalar_mul()." [label="multiscalar_mul", tooltip="    fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint     where         I: IntoIterator,         I::Item: Borrow<Scalar>,         J: IntoIterator,         J::Item: Borrow<EdwardsPoint>, ...", fillcolor=white]
+  }
+  subgraph cluster_3 {
+    label = "field.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51][ConditionallySelectable]conditional_assign()." [label="conditional_assign", tooltip="    fn conditional_assign(&mut self, other: &FieldElement51, choice: Choice) {         self.0[0].conditional_assign(&other.0[0], choice);         self.0[1].conditional_assign(&other.0[1], choice);    ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()." [label="as_bytes", tooltip="    pub fn as_bytes(&self) -> [u8; 32] {         // Let h = limbs[0] + limbs[1]*2^51 + ... + limbs[4]*2^204.         //         // Write h = pq + r with 0 <= r < p.         //         // We want to co...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]from_bytes()." [label="from_bytes", tooltip="    pub fn from_bytes(bytes: &[u8; 32]) -> FieldElement51 {         let load8 = |input: &[u8]| -> u64 {                (input[0] as u64)             | ((input[1] as u64) << 8)             | ((input[2]...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()." [label="reduce", tooltip="    fn reduce(mut limbs: [u64; 5]) -> FieldElement51 {         const LOW_51_BIT_MASK: u64 = (1u64 << 51) - 1;          // Since the input limbs are bounded by 2^64, the biggest         // carry-out is...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]pow2k()." [label="pow2k", tooltip="    pub fn pow2k(&self, mut k: u32) -> FieldElement51 {          debug_assert!( k > 0 );          /// Multiply two 64-bit integers with 128 bits of output.         #[inline(always)]         fn m(x: u6...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]square()." [label="square", tooltip="    pub fn square(&self) -> FieldElement51 {         self.pow2k(1)     }", fillcolor=white]
+  }
+  subgraph cluster_4 {
+    label = "scalar.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]sub()." [label="sub", tooltip="    pub fn sub(a: &Scalar52, b: &Scalar52) -> Scalar52 {         // Optimization barrier to prevent compiler from inserting branch instructions         // TODO(tarcieri): find a better home (or abstra...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." [label="from_bytes_wide", tooltip="    pub fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar52 {         let mut words = [0u64; 8];         for i in 0..8 {             for j in 0..8 {                 words[i] |= (bytes[(i * 8) + j] as u64...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_square()." [label="montgomery_square", tooltip="    pub fn montgomery_square(&self) -> Scalar52 {         Scalar52::montgomery_reduce(&Scalar52::square_internal(self))     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_reduce()." [label="montgomery_reduce", tooltip="    pub (crate) fn montgomery_reduce(limbs: &[u128; 9]) -> Scalar52 {          #[inline(always)]         fn part1(sum: u128) -> (u128, u64) {             let p = (sum as u64).wrapping_mul(constants::L...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]as_montgomery()." [label="as_montgomery", tooltip="    pub fn as_montgomery(&self) -> Scalar52 {         Scalar52::montgomery_mul(self, &constants::RR)     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_montgomery()." [label="from_montgomery", tooltip="    pub fn from_montgomery(&self) -> Scalar52 {         let mut limbs = [0u128; 9];         for i in 0..5 {             limbs[i] = self[i] as u128;         }         Scalar52::montgomery_reduce(&limbs...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]mul_internal()." [label="mul_internal", tooltip="    pub (crate) fn mul_internal(a: &Scalar52, b: &Scalar52) -> [u128; 9] {         let mut z = [0u128; 9];          z[0] = m(a[0], b[0]);         z[1] = m(a[0], b[1]) + m(a[1], b[0]);         z[2] = m...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [label="montgomery_mul", tooltip="    pub fn montgomery_mul(a: &Scalar52, b: &Scalar52) -> Scalar52 {         Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b))     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]as_bytes()." [label="as_bytes", tooltip="    pub fn as_bytes(&self) -> [u8; 32] {         let mut s = [0u8; 32];          s[ 0] =  (self.0[ 0] >>  0)                      as u8;         s[ 1] =  (self.0[ 0] >>  8)                      as u8;...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/m()." [label="m", tooltip="fn m(x: u64, y: u64) -> u128 {     (x as u128) * (y as u128) }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]square_internal()." [label="square_internal", tooltip="    fn square_internal(a: &Scalar52) -> [u128; 9] {         let aa = [             a[0] * 2,             a[1] * 2,             a[2] * 2,             a[3] * 2,         ];          [             m( a[0]...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]add()." [label="add", tooltip="    pub fn add(a: &Scalar52, b: &Scalar52) -> Scalar52 {         let mut sum = Scalar52::ZERO;         let mask = (1u64 << 52) - 1;          // a + b         let mut carry: u64 = 0;         for i in 0...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes()." [label="from_bytes", tooltip="    pub fn from_bytes(bytes: &[u8; 32]) -> Scalar52 {         let mut words = [0u64; 4];         for i in 0..4 {             for j in 0..8 {                 words[i] |= (bytes[(i * 8) + j] as u64) << ...", fillcolor=white]
+  }
+  subgraph cluster_5 {
+    label = "edwards.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[ExtendedPoint][Identity]identity()." [label="identity", tooltip="    fn identity() -> ExtendedPoint {         constants::EXTENDEDPOINT_IDENTITY     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[ExtendedPoint][`From<crate::EdwardsPoint>`]from()." [label="from", tooltip="    fn from(P: edwards::EdwardsPoint) -> ExtendedPoint {         ExtendedPoint(FieldElement2625x4::new(&P.X, &P.Y, &P.Z, &P.T))     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[CachedPoint][`From<ExtendedPoint>`]from()." [label="from", tooltip="    fn from(P: ExtendedPoint) -> CachedPoint {         let mut x = P.0;          x = x.blend(x.diff_sum(), Lanes::AB);         // x = (Y2 - X2, Y2 + X2, Z2, T2) = (S2 S3 Z2 T2)          x = x * (12166...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[`LookupTable<CachedPoint>`][`From<&crate::EdwardsPoint>`]from()." [label="from", tooltip="    fn from(point: &edwards::EdwardsPoint) -> Self {         let P = ExtendedPoint::from(*point);         let mut points = [CachedPoint::from(P); 8];         for i in 0..7 {             points[i + 1] ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[ExtendedPoint]double()." [label="double", tooltip="    pub fn double(&self) -> ExtendedPoint {         // Want to compute (X1 Y1 Z1 X1+Y1).         // Not sure how to do this less expensively than computing         // (X1 Y1 Z1 T1) --(256bit shuffle)-...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[ExtendedPoint]mul_by_pow_2()." [label="mul_by_pow_2", tooltip="    pub fn mul_by_pow_2(&self, k: u32) -> ExtendedPoint {         let mut tmp: ExtendedPoint = *self;         for _ in 0..k {             tmp = tmp.double();         }         tmp     }", fillcolor=white]
+  }
+  subgraph cluster_6 {
+    label = "straus.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/scalar_mul/straus/spec_avx2/impl#[Straus][MultiscalarMul]multiscalar_mul()." [label="multiscalar_mul", tooltip="        fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint         where             I: IntoIterator,             I::Item: Borrow<Scalar>,             J: IntoIterator,             J::Item...", fillcolor=white]
+  }
+  subgraph cluster_7 {
+    label = "edwards.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint][Identity]identity()." [label="identity", tooltip="    fn identity() -> EdwardsPoint {         EdwardsPoint {             X: FieldElement::ZERO,             Y: FieldElement::ONE,             Z: FieldElement::ONE,             T: FieldElement::ZERO,    ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]mul_by_pow_2()." [label="mul_by_pow_2", tooltip="    pub(crate) fn mul_by_pow_2(&self, k: u32) -> EdwardsPoint {         debug_assert!(k > 0);         let mut r: CompletedPoint;         let mut s = self.as_projective();         for _ in 0..(k - 1) {...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint][MultiscalarMul]multiscalar_mul()." [label="multiscalar_mul", tooltip="    fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint     where         I: IntoIterator,         I::Item: Borrow<Scalar>,         J: IntoIterator,         J::Item: Borrow<EdwardsPoint>, ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]as_projective()." [label="as_projective", tooltip="    pub(crate) const fn as_projective(&self) -> ProjectivePoint {         ProjectivePoint {             X: self.X,             Y: self.Y,             Z: self.Z,         }     }", fillcolor=white]
+  }
+  subgraph cluster_8 {
+    label = "field.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_zero()." [label="is_zero", tooltip="    pub(crate) fn is_zero(&self) -> Choice {         let zero = [0u8; 32];         let bytes = self.as_bytes();          bytes.ct_eq(&zero)     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]pow_p58()." [label="pow_p58", tooltip="    fn pow_p58(&self) -> FieldElement {         // The bits of (p-5)/8 are 101111.....11.         //         //                                 nonzero bits of exponent         let (t19, _) = self.pow...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()." [label="sqrt_ratio_i", tooltip="    pub(crate) fn sqrt_ratio_i(u: &FieldElement, v: &FieldElement) -> (Choice, FieldElement) {         // Using the same trick as in ed25519 decoding, we merge the         // inversion, the square roo...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]invsqrt()." [label="invsqrt", tooltip="    pub(crate) fn invsqrt(&self) -> (Choice, FieldElement) {         FieldElement::sqrt_ratio_i(&FieldElement::ONE, self)     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()." [label="ct_eq", tooltip="    fn ct_eq(&self, other: &FieldElement) -> Choice {         self.as_bytes().ct_eq(&other.as_bytes())     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]pow22501()." [label="pow22501", tooltip="    fn pow22501(&self) -> (FieldElement, FieldElement) {         // Instead of managing which temporary variables are used         // for what, we define as many as we need and leave stack         // ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()." [label="is_negative", tooltip="    pub(crate) fn is_negative(&self) -> Choice {         let bytes = self.as_bytes();         (bytes[0] & 1).into()     }", fillcolor=white]
+  }
+  subgraph cluster_9 {
+    label = "ristretto.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]double_and_compress_batch()." [label="double_and_compress_batch", tooltip="    pub fn double_and_compress_batch<'a, I>(points: I) -> Vec<CompressedRistretto>     where         I: IntoIterator<Item = &'a RistrettoPoint>,     {         #[derive(Copy, Clone, Debug)]         str...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()." [label="elligator_ristretto_flavor", tooltip="    pub(crate) fn elligator_ristretto_flavor(r_0: &FieldElement) -> RistrettoPoint {         let i = &constants::SQRT_M1;         let d = &constants::EDWARDS_D;         let one_minus_d_sq = &constants...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]as_bytes()." [label="as_bytes", tooltip="    pub const fn as_bytes(&self) -> &[u8; 32] {         &self.0     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()." [label="step_2", tooltip="    pub(super) fn step_2(s: FieldElement) -> (Choice, Choice, Choice, RistrettoPoint) {         // Step 2.  Compute (X:Y:Z:T).         let one = FieldElement::ONE;         let ss = s.square();        ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()." [label="decompress", tooltip="    pub fn decompress(&self) -> Option<RistrettoPoint> {         let (s_encoding_is_canonical, s_is_negative, s) = decompress::step_1(self);          if (!s_encoding_is_canonical | s_is_negative).into...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]from_uniform_bytes()." [label="from_uniform_bytes", tooltip="    pub fn from_uniform_bytes(bytes: &[u8; 64]) -> RistrettoPoint {         // This follows the one-way map construction from the Ristretto RFC:         // https://datatracker.ietf.org/doc/html/draft-...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][MultiscalarMul]multiscalar_mul()." [label="multiscalar_mul", tooltip="    fn multiscalar_mul<I, J>(scalars: I, points: J) -> RistrettoPoint     where         I: IntoIterator,         I::Item: Borrow<Scalar>,         J: IntoIterator,         J::Item: Borrow<RistrettoPoin...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]to_bytes()." [label="to_bytes", tooltip="    pub const fn to_bytes(&self) -> [u8; 32] {         self.0     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()." [label="compress", tooltip="    pub fn compress(&self) -> CompressedRistretto {         let mut X = self.0.X;         let mut Y = self.0.Y;         let Z = &self.0.Z;         let T = &self.0.T;          let u1 = &(Z + &Y) * &(Z ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]mul_base()." [label="mul_base", tooltip="    pub fn mul_base(scalar: &Scalar) -> Self {         #[cfg(not(feature = ' precomputed-tables' ))]         {             scalar * constants::RISTRETTO_BASEPOINT_POINT         }          #[cfg(featur...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()." [label="step_1", tooltip="    pub(super) fn step_1(repr: &CompressedRistretto) -> (Choice, Choice, FieldElement) {         // Step 1. Check s for validity:         // 1.a) s must be 32 bytes (we get this from the type system) ...", fillcolor=white]
+  }
+  subgraph cluster_10 {
+    label = "scalar.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]is_canonical()." [label="is_canonical", tooltip="    fn is_canonical(&self) -> Choice {         self.ct_eq(&self.reduce())     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()." [label="montgomery_invert", tooltip="    pub fn montgomery_invert(&self) -> UnpackedScalar {         // Uses the addition chain from         // https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion         l...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [label="from_bytes_mod_order_wide", tooltip="    pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> Scalar {         UnpackedScalar::from_bytes_wide(input).pack()     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar][ConstantTimeEq]ct_eq()." [label="ct_eq", tooltip="    fn ct_eq(&self, other: &Self) -> Choice {         self.bytes.ct_eq(&other.bytes)     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order()." [label="from_bytes_mod_order", tooltip="    pub fn from_bytes_mod_order(bytes: [u8; 32]) -> Scalar {         // Temporarily allow s_unreduced.bytes > 2^255 ...         let s_unreduced = Scalar { bytes };          // Then reduce mod the grou...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()." [label="invert", tooltip="    pub fn invert(&self) -> Scalar {         self.unpack().invert().pack()     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]unpack()." [label="unpack", tooltip="    pub(crate) fn unpack(&self) -> UnpackedScalar {         UnpackedScalar::from_bytes(&self.bytes)     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." [label="invert", tooltip="    pub fn invert(&self) -> UnpackedScalar {         self.as_montgomery().montgomery_invert().from_montgomery()     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]reduce()." [label="reduce", tooltip="    fn reduce(&self) -> Scalar {         let x = self.unpack();         let xR = UnpackedScalar::mul_internal(&x, &constants::R);         let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);         ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]as_bytes()." [label="as_bytes", tooltip="    pub const fn as_bytes(&self) -> &[u8; 32] {         &self.bytes     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_canonical_bytes()." [label="from_canonical_bytes", tooltip="    pub fn from_canonical_bytes(bytes: [u8; 32]) -> CtOption<Scalar> {         let high_bit_unset = (bytes[31] >> 7).ct_eq(&0);         let candidate = Scalar { bytes };         CtOption::new(candidat...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]pack()." [label="pack", tooltip="    fn pack(&self) -> Scalar {         Scalar {             bytes: self.as_bytes(),         }     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]to_bytes()." [label="to_bytes", tooltip="    pub const fn to_bytes(&self) -> [u8; 32] {         self.bytes     }", fillcolor=white]
+  }
+  subgraph cluster_11 {
+    label = "traits.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 traits/VartimeMultiscalarMul#optional_multiscalar_mul()." [label="optional_multiscalar_mul", tooltip="    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<Self::Point>     where         I: IntoIterator,         I::Item: Borrow<Scalar>,         J: IntoIterator<Item = Option<Self::Poin...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 traits/VartimeMultiscalarMul#vartime_multiscalar_mul()." [label="vartime_multiscalar_mul", tooltip="    fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point     where         I: IntoIterator,         I::Item: Borrow<Scalar>,         J: IntoIterator,         J::Item: Borrow<Self::Po...", fillcolor=white]
+  }
+  subgraph cluster_12 {
+    label = "lib.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo subtle 2.6.0 impl#[Choice]unwrap_u8()." [label="unwrap_u8", tooltip="    pub fn unwrap_u8(&self) -> u8 {         self.0     }", fillcolor=white]
+    "rust-analyzer cargo subtle 2.6.0 impl#[Choice][`From<u8>`]from()." [label="from", tooltip="    fn from(input: u8) -> Choice {         debug_assert!((input == 0u8) | (input == 1u8));          // Our goal is to prevent the compiler from inferring that the value held inside the         // resu...", fillcolor=white]
+    "rust-analyzer cargo subtle 2.6.0 black_box()." [label="black_box", tooltip="fn black_box<T: Copy>(input: T) -> T {     unsafe {         // Optimization barrier         //         // SAFETY:         //   - &input is not NULL because we own input;         //   - input is Copy a...", fillcolor=white]
+    "rust-analyzer cargo subtle 2.6.0 impl#[`[T]`][ConstantTimeEq]ct_eq()." [label="ct_eq", tooltip="    fn ct_eq(&self, _rhs: &[T]) -> Choice {         let len = self.len();          // Short-circuit on the *lengths* of the slices, not their         // contents.         if len != _rhs.len() {       ...", fillcolor=white]
+  }
+  subgraph cluster_13 {
+    label = "args.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 args/impl#[ScalarArgs]new()." [label="new", tooltip="    pub fn new() -> Self {         Self(HashMap::new())     }", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 args/impl#[PointArgs]new()." [label="new", tooltip="    pub fn new() -> Self {         Self(HashMap::new())     }", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 args/impl#[PointArgs]add()." [label="add", tooltip="    pub fn add(&mut self, s: impl Into<Cow<'static, str>>, val: RistrettoPoint) {         self.0.insert(s.into(), val);     }", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 args/impl#[ScalarArgs]add()." [label="add", tooltip="    pub fn add(&mut self, s: impl Into<Cow<'static, str>>, val: Scalar) {         self.0.insert(s.into(), val);     }", fillcolor=white]
+  }
+  subgraph cluster_14 {
+    label = "proof.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 proof/impl#[Proof]to_bytes()." [label="to_bytes", tooltip="    pub fn to_bytes(&self) -> Vec<u8> {         [&self.challenge]             .into_iter()             .chain(&self.response)             .flat_map(|scalar| *scalar.as_bytes())             .collect() ...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 proof/impl#[Proof]from_slice()." [label="from_slice", tooltip="    pub fn from_slice(bytes: &[u8]) -> Option<Self> {         // TODO use Iterator::array_chunks once that's stabilized.         // See https://github.com/rust-lang/rust/issues/100450.         let chu...", fillcolor=white]
+  }
+  subgraph cluster_15 {
+    label = "shoapi.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#absorb_and_ratchet()." [label="absorb_and_ratchet", tooltip="    fn absorb_and_ratchet(&mut self, input: &[u8]) {         self.absorb(input);         self.ratchet();     }", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#squeeze_and_ratchet()." [label="squeeze_and_ratchet", tooltip="    fn squeeze_and_ratchet(&mut self, outlen: usize) -> Vec<u8> {         let mut out = vec![0; outlen];         self.squeeze_and_ratchet_into(&mut out);         out     }", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 shoapi/impl#[S][ShoApiExt]squeeze_and_ratchet_as_array()." [label="squeeze_and_ratchet_as_array", tooltip="    fn squeeze_and_ratchet_as_array<const N: usize>(&mut self) -> [u8; N] {         let mut out = [0; N];         self.squeeze_and_ratchet_into(&mut out);         out     }", fillcolor=white]
+  }
+  subgraph cluster_16 {
+    label = "shohmacsha256.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]ratchet()." [label="ratchet", tooltip="    fn ratchet(&mut self) {         if let Mode::RATCHETED = self.mode {             return;         }         self.hasher.update(&[0x00]);         self.cv             .copy_from_slice(&self.hasher.cl...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]absorb()." [label="absorb", tooltip="    fn absorb(&mut self, input: &[u8]) {         if let Mode::RATCHETED = self.mode {             self.hasher =                 Hmac::<Sha256>::new_from_slice(&self.cv).expect(' HMAC accepts 256-bit k...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]new()." [label="new", tooltip="    fn new(label: &[u8]) -> ShoHmacSha256 {         let mut sho = ShoHmacSha256 {             hasher: Hmac::<Sha256>::new_from_slice(&[0; HASH_LEN])                 .expect(' HMAC accepts 256-bit keys...", fillcolor=white]
+  }
+  subgraph cluster_17 {
+    label = "shosha256.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 shosha256/impl#[ShoSha256][ShoApi]new()." [label="new", tooltip="    fn new(label: &[u8]) -> ShoSha256 {         let mut sho = ShoSha256 {             hasher: Sha256::new(),             cv: [0; HASH_LEN],             mode: Mode::RATCHETED,         };         sho.ab...", fillcolor=white]
+  }
+  subgraph cluster_18 {
+    label = "statement.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]add()." [label="add", tooltip="    pub fn add(&mut self, lhs_str: &str, rhs_pairs: &[(&str, &str)]) {         if (lhs_str.is_empty())             || (rhs_pairs.is_empty())             || (rhs_pairs.len() > 255)             || (self...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." [label="verify_proof", tooltip="    pub fn verify_proof(         &self,         proof_bytes: &[u8],         point_args: &PointArgs,         message: &[u8],     ) -> Result<(), PokshoError> {         let proof = Proof::from_slice(pro...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]add_point()." [label="add_point", tooltip="    fn add_point(         &mut self,         point_name: impl Into<Cow<'static, str>>,     ) -> Result<PointIndex, PokshoError> {         let point_name = point_name.into();         match self.point_m...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." [label="prove", tooltip="    pub fn prove(         &self,         scalar_args: &ScalarArgs,         point_args: &PointArgs,         message: &[u8],         randomness: &[u8], // must be 32 bytes     ) -> Result<Vec<u8>, Poksh...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]add_scalar()." [label="add_scalar", tooltip="    fn add_scalar(         &mut self,         scalar_name: impl Into<Cow<'static, str>>,     ) -> Result<ScalarIndex, PokshoError> {         let scalar_name = scalar_name.into();         match self.sc...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]new()." [label="new", tooltip="    pub fn new() -> Self {         let mut point_map = HashMap::new();         point_map.insert(' G' .into(), 0); // G is base point         let point_vec = vec![' G' .into()];         Statement {    ...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]to_bytes()." [label="to_bytes", tooltip="    fn to_bytes(&self) -> Vec<u8> {         let equation_count =             u8::try_from(self.equations.len()).expect(' number of equations fits in a byte' );         let scalar_count =             u...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]sort_points()." [label="sort_points", tooltip="    fn sort_points(&self, point_args: &PointArgs) -> Result<Vec<RistrettoPoint>, PokshoError> {         if point_args.0.len() != self.point_vec.len() - 1 {             return Err(BadArgsWrongNumberOfP...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]sort_scalars()." [label="sort_scalars", tooltip="    fn sort_scalars(&self, scalar_args: &ScalarArgs) -> Result<G1, PokshoError> {         if scalar_args.0.len() != self.scalar_vec.len() {             return Err(BadArgsWrongNumberOfScalarArgs);     ...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]homomorphism_with_subtraction()." [label="homomorphism_with_subtraction", tooltip="    fn homomorphism_with_subtraction(         &self,         g1: &[Scalar],         all_points: &[RistrettoPoint],         challenge: Option<Scalar>,     ) -> G2 {         self.equations             ....", fillcolor=white]
+  }
+  subgraph cluster_19 {
+    label = "endorsements.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." [label="endorsement_flow", tooltip="fn endorsement_flow(c: &mut Criterion) {     let mut group = c.benchmark_group(' endorsements' );      let mut input_sho = poksho::ShoSha256::new(b' test' );     let inputs: Vec<RistrettoPoint> = (0.....", fillcolor=lightblue]
+  }
+  subgraph cluster_20 {
+    label = "endorsements.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()." [label="from_blinding_scalar", tooltip="    pub fn from_blinding_scalar(scalar: Scalar) -> Self {         Self {             a_inv: scalar.invert(),         }     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerDerivedKeyPair]verify()." [label="verify", tooltip="    pub fn verify(&self, point: &RistrettoPoint, token: &[u8]) -> Result<(), VerificationFailure> {         let P = self.sk_prime * point;         let expected = Endorsement::to_token_raw(P);         ...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootPublicKey]derive_key_from_tag_scalar()." [label="derive_key_from_tag_scalar", tooltip="    fn derive_key_from_tag_scalar(&self, t: &Scalar) -> ServerDerivedPublicKey {         ServerDerivedPublicKey {             PK_prime: self.PK + RistrettoPoint::mul_base(t),         }     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]generate()." [label="generate", tooltip="    pub fn generate(randomness: [u8; RANDOMNESS_LEN]) -> Self {         let mut sho = poksho::ShoHmacSha256::new(             b' Signal_ZKCredential_Endorsements_ServerRootKeyPair_generate_20240207' ,...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()." [label="derive_key", tooltip="    pub fn derive_key(&self, mut tag_info: impl ShoApi) -> ServerDerivedKeyPair {         let t = tag_info.get_scalar();         ServerDerivedKeyPair {             sk_prime: (self.sk + t).invert(),   ...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." [label="issue", tooltip="    pub fn issue(         hidden_attribute_points: impl IntoIterator<Item = RistrettoPoint>,         private_key: &ServerDerivedKeyPair,         randomness: [u8; RANDOMNESS_LEN],     ) -> EndorsementR...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]proof_statement()." [label="proof_statement", tooltip="    fn proof_statement() -> poksho::Statement {         let mut statement = poksho::Statement::new();         // We use a weighted sum where the weights are generated by hashing the inputs (a ' random...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]from_raw()." [label="from_raw", tooltip="    pub fn from_raw(sk: Scalar) -> Self {         Self {             sk,             public: ServerRootPublicKey {                 PK: RistrettoPoint::mul_base(&sk),             },         }     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]receive()." [label="receive", tooltip="    pub fn receive(         self,         hidden_attribute_points: impl IntoIterator<Item = RistrettoPoint>,         server_public_key: &ServerDerivedPublicKey,     ) -> Result<ReceivedEndorsements, V...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." [label="generate_weights_for_proof", tooltip="    fn generate_weights_for_proof(         public_key: &ServerDerivedPublicKey,         E: &[RistrettoPoint],         R: &[CompressedRistretto],     ) -> Vec<Scalar> {         debug_assert_eq!(E.len()...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootPublicKey]derive_key()." [label="derive_key", tooltip="    pub fn derive_key(&self, mut tag_info: impl ShoApi) -> ServerDerivedPublicKey {         let t = tag_info.get_scalar();         self.derive_key_from_tag_scalar(&t)     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token()." [label="to_token", tooltip="    pub fn to_token(&self, client_key: &ClientDecryptionKey) -> Box<[u8]> {         let P = self.R * client_key.a_inv;         Self::to_token_raw(P)     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]public_key()." [label="public_key", tooltip="    pub fn public_key(&self) -> &ServerRootPublicKey {         &self.public     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token_raw()." [label="to_token_raw", tooltip="    fn to_token_raw(unblinded_endorsement: RistrettoPoint) -> Box<[u8]> {         // Skip the Sho for this, we're hashing a single point into a single bitstring. We don't         // need domain separa...", fillcolor=white]
+  }
+  subgraph cluster_21 {
+    label = "sho.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_point()." [label="get_point", tooltip="    fn get_point(&mut self) -> RistrettoPoint {         let mut point_bytes = [0u8; 64];         self.squeeze_and_ratchet_into(&mut point_bytes);         RistrettoPoint::from_uniform_bytes(&point_byte...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()." [label="get_scalar", tooltip="    fn get_scalar(&mut self) -> Scalar {         let mut scalar_bytes = [0u8; 64];         self.squeeze_and_ratchet_into(&mut scalar_bytes);         Scalar::from_bytes_mod_order_wide(&scalar_bytes)   ...", fillcolor=white]
+  }
+
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerDerivedKeyPair]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token_raw()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerDerivedKeyPair]verify()." -> "rust-analyzer cargo subtle 2.6.0 impl#[`[T]`][ConstantTimeEq]ct_eq()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_zero()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootPublicKey]derive_key_from_tag_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]mul_base()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/scalar_mul/straus/spec_avx2/impl#[Straus][MultiscalarMul]multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[ExtendedPoint]mul_by_pow_2()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/scalar_mul/straus/spec_avx2/impl#[Straus][MultiscalarMul]multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[`LookupTable<CachedPoint>`][`From<&crate::EdwardsPoint>`]from()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/scalar_mul/straus/spec_avx2/impl#[Straus][MultiscalarMul]multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[ExtendedPoint][Identity]identity()."
+  "rust-analyzer cargo subtle 2.6.0 impl#[Choice][`From<u8>`]from()." -> "rust-analyzer cargo subtle 2.6.0 black_box()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]is_canonical()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]reduce()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]is_canonical()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar][ConstantTimeEq]ct_eq()."
+  "rust-analyzer cargo poksho 0.7.0 proof/impl#[Proof]to_bytes()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]add()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]add()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]add_scalar()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]add()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]add_point()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]pow_p58()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]pow22501()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]pow_p58()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]pow2k()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]generate()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#absorb_and_ratchet()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]generate()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]from_raw()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]generate()." -> "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]generate()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]new()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_square()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]square_internal()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_square()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_reduce()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/curve_models/impl#[ProjectivePoint]double()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]square()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootPublicKey]derive_key_from_tag_scalar()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()." -> "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]sort_points()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]ratchet()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/impl#[S][ShoApiExt]squeeze_and_ratchet_as_array()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]to_bytes()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]homomorphism_with_subtraction()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]to_bytes()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]new()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo poksho 0.7.0 proof/impl#[Proof]from_slice()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#absorb_and_ratchet()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]absorb()."
+  "rust-analyzer cargo poksho 0.7.0 shosha256/impl#[ShoSha256][ShoApi]new()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#absorb_and_ratchet()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo poksho 0.7.0 args/impl#[ScalarArgs]add()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo poksho 0.7.0 args/impl#[ScalarArgs]new()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo poksho 0.7.0 args/impl#[PointArgs]new()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][MultiscalarMul]multiscalar_mul()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo poksho 0.7.0 args/impl#[PointArgs]add()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]proof_statement()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]as_montgomery()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()."
+  "rust-analyzer cargo poksho 0.7.0 proof/impl#[Proof]from_slice()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_canonical_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51][ConditionallySelectable]conditional_assign()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/curve_models/impl#[CompletedPoint]as_extended()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]square()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_montgomery()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_reduce()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]proof_statement()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]add()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]proof_statement()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]new()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]mul_by_pow_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/curve_models/impl#[ProjectivePoint]double()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]mul_by_pow_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/curve_models/impl#[CompletedPoint]as_projective()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]mul_by_pow_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]as_projective()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]mul_by_pow_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/curve_models/impl#[CompletedPoint]as_extended()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]mul_internal()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/m()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_square()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#squeeze_and_ratchet()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]to_bytes()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]homomorphism_with_subtraction()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#absorb_and_ratchet()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]sort_points()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]absorb()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]to_bytes()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]to_bytes()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/impl#[S][ShoApiExt]squeeze_and_ratchet_as_array()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]new()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 proof/impl#[Proof]to_bytes()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]ratchet()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]sort_scalars()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[`LookupTable<CachedPoint>`][`From<&crate::EdwardsPoint>`]from()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[CachedPoint][`From<ExtendedPoint>`]from()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[`LookupTable<CachedPoint>`][`From<&crate::EdwardsPoint>`]from()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[ExtendedPoint][`From<crate::EdwardsPoint>`]from()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]square()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51][ConditionallySelectable]conditional_assign()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]pow_p58()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_reduce()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]mul_internal()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]from_raw()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]mul_base()."
+  "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_point()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]from_uniform_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]pack()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/scalar_mul/straus/impl#[Straus][MultiscalarMul]multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint][Identity]identity()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/scalar_mul/straus/impl#[Straus][MultiscalarMul]multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]mul_by_pow_2()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]receive()." -> "rust-analyzer cargo poksho 0.7.0 args/impl#[PointArgs]new()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]receive()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]receive()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 traits/VartimeMultiscalarMul#vartime_multiscalar_mul()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]receive()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]receive()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]receive()." -> "rust-analyzer cargo poksho 0.7.0 args/impl#[PointArgs]add()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]receive()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]proof_statement()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]reduce()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]invsqrt()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]unpack()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]pack()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]unpack()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_zero()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]square()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]invsqrt()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint][MultiscalarMul]multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/straus_multiscalar_mul()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]double_and_compress_batch()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]absorb()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]new()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]as_bytes()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#squeeze_and_ratchet()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]ratchet()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/get_selected_backend()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/cpuid_avx2/init()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/get_selected_backend()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/cpuid_avx2/impl#[InitToken]get()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]from_uniform_bytes()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]from_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]from_uniform_bytes()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]as_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]reduce()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]mul_internal()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]reduce()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]unpack()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]reduce()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]pack()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]reduce()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_reduce()."
+  "rust-analyzer cargo subtle 2.6.0 impl#[`[T]`][ConstantTimeEq]ct_eq()." -> "rust-analyzer cargo subtle 2.6.0 impl#[Choice]unwrap_u8()."
+  "rust-analyzer cargo subtle 2.6.0 impl#[`[T]`][ConstantTimeEq]ct_eq()." -> "rust-analyzer cargo subtle 2.6.0 impl#[Choice][`From<u8>`]from()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootPublicKey]derive_key()." -> "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootPublicKey]derive_key()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootPublicKey]derive_key_from_tag_scalar()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token_raw()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[ExtendedPoint]mul_by_pow_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/avx2/edwards/impl#[ExtendedPoint]double()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/straus_multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/scalar_mul/straus/impl#[Straus][MultiscalarMul]multiscalar_mul()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/straus_multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/vector/scalar_mul/straus/spec_avx2/impl#[Straus][MultiscalarMul]multiscalar_mul()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/straus_multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/get_selected_backend()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][MultiscalarMul]multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint][MultiscalarMul]multiscalar_mul()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51][ConditionallySelectable]conditional_assign()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]invsqrt()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]square()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_canonical_bytes()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]is_canonical()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]pow22501()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]square()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]pow22501()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]pow2k()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token_raw()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token_raw()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]pack()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]square_internal()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/m()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo poksho 0.7.0 shosha256/impl#[ShoSha256][ShoApi]new()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerDerivedKeyPair]verify()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]new()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]generate()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]public_key()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_point()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootPublicKey]derive_key()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#absorb_and_ratchet()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]receive()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]homomorphism_with_subtraction()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][MultiscalarMul]multiscalar_mul()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 traits/VartimeMultiscalarMul#vartime_multiscalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 traits/VartimeMultiscalarMul#optional_multiscalar_mul()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]from_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]as_bytes()."
+  "rust-analyzer cargo poksho 0.7.0 shohmacsha256/impl#[ShoHmacSha256][ShoApi]new()." -> "rust-analyzer cargo poksho 0.7.0 shoapi/ShoApi#absorb_and_ratchet()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]add()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]sub()."
+  "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]square()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]pow2k()."
+}

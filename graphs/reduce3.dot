@@ -1,0 +1,423 @@
+digraph function_subgraph {
+  rankdir=LR;
+  node [shape=box, style=filled, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "dalek_benchmarks.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto_benches/compress()." [label="compress", tooltip="    fn compress<M: Measurement>(c: &mut BenchmarkGroup<M>) {         c.bench_function(' RistrettoPoint compression' , |b| {             let B = &constants::RISTRETTO_BASEPOINT_POINT;             b.ite...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/compress()." [label="compress", tooltip="    fn compress<M: Measurement>(c: &mut BenchmarkGroup<M>) {         let B = &constants::ED25519_BASEPOINT_POINT;         c.bench_function(' EdwardsPoint compression' , move |b| b.iter(|| B.compress()...", fillcolor=white]
+  }
+  subgraph cluster_1 {
+    label = "pippenger.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/scalar_mul/pippenger/test/test_vartime_pippenger()." [label="test_vartime_pippenger", tooltip="    fn test_vartime_pippenger() {         // Reuse points across different tests         let mut n = 512;         let x = Scalar::from(2128506u64).invert();         let y = Scalar::from(4443282u64).in...", fillcolor=white]
+  }
+  subgraph cluster_2 {
+    label = "field.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[`&FieldElement51`][Neg]neg()." [label="neg", tooltip="    fn neg(self) -> FieldElement51 {         let mut output = *self;         output.negate();         output     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()." [label="as_bytes", tooltip="    pub fn as_bytes(&self) -> [u8; 32] {         // Let h = limbs[0] + limbs[1]*2^51 + ... + limbs[4]*2^204.         //         // Write h = pq + r with 0 <= r < p.         //         // We want to co...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[`&FieldElement51`][`Sub<&FieldElement51>`]sub()." [label="sub", tooltip="    fn sub(self, _rhs: &'b FieldElement51) -> FieldElement51 {         // To avoid underflow, first add a multiple of p.         // Choose 16*p = p << 4 to be larger than 54-bit _rhs.         //      ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]negate()." [label="negate", tooltip="    pub fn negate(&mut self) {         // See commentary in the Sub impl         let neg = FieldElement51::reduce([             36028797018963664u64 - self.0[0],             36028797018963952u64 - sel...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()." [label="reduce", tooltip="    fn reduce(mut limbs: [u64; 5]) -> FieldElement51 {         const LOW_51_BIT_MASK: u64 = (1u64 << 51) - 1;          // Since the input limbs are bounded by 2^64, the biggest         // carry-out is...", fillcolor=lightblue]
+  }
+  subgraph cluster_3 {
+    label = "constants.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 constants/test/test_sqrt_minus_one()." [label="test_sqrt_minus_one", tooltip="    fn test_sqrt_minus_one() {         let minus_one = FieldElement::MINUS_ONE;         let sqrt_m1_sq = &constants::SQRT_M1 * &constants::SQRT_M1;         assert_eq!(minus_one, sqrt_m1_sq);         a...", fillcolor=white]
+  }
+  subgraph cluster_4 {
+    label = "edwards.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_plus_basepoint_vs_basepoint2()." [label="basepoint_plus_basepoint_vs_basepoint2", tooltip="    fn basepoint_plus_basepoint_vs_basepoint2() {         let bp = constants::ED25519_BASEPOINT_POINT;         let bp_added = bp + bp;         assert_eq!(bp_added.compress(), BASE2_CMPRSSD);     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/scalar_mul_vs_ed25519py()." [label="scalar_mul_vs_ed25519py", tooltip="    fn scalar_mul_vs_ed25519py() {         let aB = constants::ED25519_BASEPOINT_POINT * A_SCALAR;         assert_eq!(aB.compress(), A_TIMES_BASEPOINT);     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/compressed_identity()." [label="compressed_identity", tooltip="    fn compressed_identity() {         assert_eq!(             EdwardsPoint::identity().compress(),             CompressedEdwardsY::identity()         );     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_double_vs_basepoint2()." [label="basepoint_double_vs_basepoint2", tooltip="    fn basepoint_double_vs_basepoint2() {         assert_eq!(             constants::ED25519_BASEPOINT_POINT.double().compress(),             BASE2_CMPRSSD         );     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_tables_unreduced_scalar()." [label="basepoint_tables_unreduced_scalar", tooltip="    fn basepoint_tables_unreduced_scalar() {         let P = &constants::ED25519_BASEPOINT_POINT;         let a = crate::scalar::test::LARGEST_UNREDUCED_SCALAR;          let table_radix16 = EdwardsBas...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_plus_basepoint_affine_niels_vs_basepoint2()." [label="basepoint_plus_basepoint_affine_niels_vs_basepoint2", tooltip="    fn basepoint_plus_basepoint_affine_niels_vs_basepoint2() {         let bp = constants::ED25519_BASEPOINT_POINT;         let bp_affine_niels = bp.as_affine_niels();         let bp_added = (&bp + &b...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint16_vs_mul_by_pow_2_4()." [label="basepoint16_vs_mul_by_pow_2_4", tooltip="    fn basepoint16_vs_mul_by_pow_2_4() {         let bp16 = constants::ED25519_BASEPOINT_POINT.mul_by_pow_2(4);         assert_eq!(bp16.compress(), BASE16_CMPRSSD);     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]nonspec_map_to_curve()." [label="nonspec_map_to_curve", tooltip="    pub fn nonspec_map_to_curve<D>(bytes: &[u8]) -> EdwardsPoint     where         D: Digest<OutputSize = U64> + Default,     {         let mut hash = D::new();         hash.update(bytes);         let...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/elligator_signal_test_vectors()." [label="elligator_signal_test_vectors", tooltip="    fn elligator_signal_test_vectors() {         for vector in test_vectors().iter() {             let input = hex::decode(vector[0]).unwrap();             let output = hex::decode(vector[1]).unwrap()...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/test_precomputed_basepoint_mult()." [label="test_precomputed_basepoint_mult", tooltip="    fn test_precomputed_basepoint_mult() {         let aB_1 = ED25519_BASEPOINT_TABLE * &A_SCALAR;         let aB_2 = constants::ED25519_BASEPOINT_POINT * A_SCALAR;         assert_eq!(aB_1.compress(),...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/vartime_precomputed_vs_nonprecomputed_multiscalar()." [label="vartime_precomputed_vs_nonprecomputed_multiscalar", tooltip="    fn vartime_precomputed_vs_nonprecomputed_multiscalar() {         let mut rng = rand::thread_rng();          let static_scalars = (0..128)             .map(|_| Scalar::random(&mut rng))            ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint][ConstantTimeEq]ct_eq()." [label="ct_eq", tooltip="    fn ct_eq(&self, other: &EdwardsPoint) -> Choice {         // We would like to check that the point (X/Z, Y/Z) is equal to         // the point (X'/Z', Y'/Z') without converting into affine        ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_projective_extended_round_trip()." [label="basepoint_projective_extended_round_trip", tooltip="    fn basepoint_projective_extended_round_trip() {         assert_eq!(             constants::ED25519_BASEPOINT_POINT                 .as_projective()                 .as_extended()                 ....", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/vartime/double_scalar_mul_basepoint_vs_ed25519py()." [label="double_scalar_mul_basepoint_vs_ed25519py", tooltip="        fn double_scalar_mul_basepoint_vs_ed25519py() {             let A = A_TIMES_BASEPOINT.decompress().unwrap();             let result =                 EdwardsPoint::vartime_double_scalar_mul_ba...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()." [label="to_montgomery", tooltip="    pub fn to_montgomery(&self) -> MontgomeryPoint {         // We have u = (1+y)/(1-y) = (Z+Y)/(Z-Y).         //         // The denominator is zero only when y=1, the identity point of         // the...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/vartime/multiscalar_mul_vs_ed25519py()." [label="multiscalar_mul_vs_ed25519py", tooltip="        fn multiscalar_mul_vs_ed25519py() {             let A = A_TIMES_BASEPOINT.decompress().unwrap();             let result = EdwardsPoint::vartime_multiscalar_mul(                 &[A_SCALAR, B_S...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_mult_one_vs_basepoint()." [label="basepoint_mult_one_vs_basepoint", tooltip="    fn basepoint_mult_one_vs_basepoint() {         let bp = ED25519_BASEPOINT_TABLE * &Scalar::ONE;         let compressed = bp.compress();         assert_eq!(compressed, constants::ED25519_BASEPOINT_...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_plus_basepoint_projective_niels_vs_basepoint2()." [label="basepoint_plus_basepoint_projective_niels_vs_basepoint2", tooltip="    fn basepoint_plus_basepoint_projective_niels_vs_basepoint2() {         let bp = constants::ED25519_BASEPOINT_POINT;         let bp_added = (&bp + &bp.as_projective_niels()).as_extended();         ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_decompression_compression()." [label="basepoint_decompression_compression", tooltip="    fn basepoint_decompression_compression() {         let base_X = FieldElement::from_bytes(&BASE_X_COORD_BYTES);         let bp = constants::ED25519_BASEPOINT_COMPRESSED             .decompress()   ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()." [label="compress", tooltip="    pub fn compress(&self) -> CompressedEdwardsY {         let recip = self.Z.invert();         let x = &self.X * &recip;         let y = &self.Y * &recip;         let mut s: [u8; 32];          s = y....", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_mult_vs_ed25519py()." [label="basepoint_mult_vs_ed25519py", tooltip="    fn basepoint_mult_vs_ed25519py() {         let aB = EdwardsPoint::mul_base(&A_SCALAR);         assert_eq!(aB.compress(), A_TIMES_BASEPOINT);     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_table_basepoint_function_correct()." [label="basepoint_table_basepoint_function_correct", tooltip="    fn basepoint_table_basepoint_function_correct() {         let bp = ED25519_BASEPOINT_TABLE.basepoint();         assert_eq!(bp.compress(), constants::ED25519_BASEPOINT_COMPRESSED);     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_tables()." [label="basepoint_tables", tooltip="    fn basepoint_tables() {         let P = &constants::ED25519_BASEPOINT_POINT;         let a = A_SCALAR;          let table_radix16 = EdwardsBasepointTableRadix16::create(P);         let table_radix...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/vartime/multiscalar_mul_vartime_vs_consttime()." [label="multiscalar_mul_vartime_vs_consttime", tooltip="        fn multiscalar_mul_vartime_vs_consttime() {             let A = A_TIMES_BASEPOINT.decompress().unwrap();             let result_vartime = EdwardsPoint::vartime_multiscalar_mul(                ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/to_affine_niels_clears_denominators()." [label="to_affine_niels_clears_denominators", tooltip="    fn to_affine_niels_clears_denominators() {         // construct a point as aB so it has denominators (ie. Z != 1)         let aB = ED25519_BASEPOINT_TABLE * &A_SCALAR;         let aB_affine_niels ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_mult_two_vs_basepoint2()." [label="basepoint_mult_two_vs_basepoint2", tooltip="    fn basepoint_mult_two_vs_basepoint2() {         let two = Scalar::from(2u64);         let bp2 = EdwardsPoint::mul_base(&two);         assert_eq!(bp2.compress(), BASE2_CMPRSSD);     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/scalarmult_extended_point_works_both_ways()." [label="scalarmult_extended_point_works_both_ways", tooltip="    fn scalarmult_extended_point_works_both_ways() {         let G: EdwardsPoint = constants::ED25519_BASEPOINT_POINT;         let s: Scalar = A_SCALAR;          let P1 = G * s;         let P2 = s * G...", fillcolor=white]
+  }
+  subgraph cluster_5 {
+    label = "field.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()." [label="ct_eq", tooltip="    fn ct_eq(&self, other: &FieldElement) -> Choice {         self.as_bytes().ct_eq(&other.as_bytes())     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/test/encoding_is_canonical()." [label="encoding_is_canonical", tooltip="    fn encoding_is_canonical() {         // Encode 1 wrongly as 1 + (2^255 - 19) = 2^255 - 18         let one_encoded_wrongly_bytes: [u8; 32] = [             0xee, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][`PartialEq<Self>`]eq()." [label="eq", tooltip="    fn eq(&self, other: &FieldElement) -> bool {         self.ct_eq(other).into()     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_zero()." [label="is_zero", tooltip="    pub(crate) fn is_zero(&self) -> Choice {         let zero = [0u8; 32];         let bytes = self.as_bytes();          bytes.ct_eq(&zero)     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]batch_invert()." [label="batch_invert", tooltip="    pub(crate) fn batch_invert(inputs: &mut [FieldElement]) {         // Montgomery’s Trick and Fast Implementation of Masked AES         // Genelle, Prouff and Quisquater         // Section 3.2    ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()." [label="sqrt_ratio_i", tooltip="    pub(crate) fn sqrt_ratio_i(u: &FieldElement, v: &FieldElement) -> (Choice, FieldElement) {         // Using the same trick as in ed25519 decoding, we merge the         // inversion, the square roo...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/test/sqrt_ratio_behavior()." [label="sqrt_ratio_behavior", tooltip="    fn sqrt_ratio_behavior() {         let zero = FieldElement::ZERO;         let one = FieldElement::ONE;         let i = constants::SQRT_M1;         let two = &one + &one; // 2 is nonsquare mod p.  ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()." [label="is_negative", tooltip="    pub(crate) fn is_negative(&self) -> Choice {         let bytes = self.as_bytes();         (bytes[0] & 1).into()     }", fillcolor=white]
+  }
+  subgraph cluster_6 {
+    label = "jacobi_quartic.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/jacobi_quartic/impl#[JacobiPoint]elligator_inv()." [label="elligator_inv", tooltip="    pub(crate) fn elligator_inv(&self) -> (Choice, FieldElement) {         let mut out = FieldElement::ZERO;          // Special case: s = 0.  If s is zero, either t = 1 or t = -1.         // If t=1, ...", fillcolor=white]
+  }
+  subgraph cluster_7 {
+    label = "lizard_ristretto.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]lizard_decode()." [label="lizard_decode", tooltip="    pub fn lizard_decode<D: Digest>(&self) -> Option<[u8; 16]>     where         D: Digest<OutputSize = U32>,     {         let mut result: [u8; 16] = Default::default();         let mut h: [u8; 32] =...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]to_jacobi_quartic_ristretto()." [label="to_jacobi_quartic_ristretto", tooltip="    fn to_jacobi_quartic_ristretto(self) -> [JacobiPoint; 4] {         let x2 = self.0.X.square(); // X^2         let y2 = self.0.Y.square(); // Y^2         let y4 = y2.square(); // Y^4         let z2...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/test/test_lizard_encode_helper()." [label="test_lizard_encode_helper", tooltip="    fn test_lizard_encode_helper(data: &[u8; 16], result: &[u8; 32]) {         let p = RistrettoPoint::lizard_encode::<Sha256>(data);         let p_bytes = p.compress().to_bytes();         assert!(&p_...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]decode_253_bits()." [label="decode_253_bits", tooltip="    pub fn decode_253_bits(&self) -> (u8, [[u8; 32]; 8]) {         let mut ret = [[0u8; 32]; 8];         let (mask, fes) = self.elligator_ristretto_flavor_inverse();          for j in 0..8 {          ...", fillcolor=white]
+  }
+  subgraph cluster_8 {
+    label = "montgomery.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_elligator_correct()." [label="montgomery_elligator_correct", tooltip="    fn montgomery_elligator_correct() {         let bytes: Vec<u8> = (0u8..32u8).collect();         let bits_in: [u8; 32] = (&bytes[..]).try_into().expect(' Range invariant broken' );          let fe ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_to_edwards_rejects_twist()." [label="montgomery_to_edwards_rejects_twist", tooltip="    fn montgomery_to_edwards_rejects_twist() {         let one = FieldElement::ONE;          // u = 2 corresponds to a point on the twist.         let two = MontgomeryPoint((&one + &one).as_bytes()); ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]mul_bits_be()." [label="mul_bits_be", tooltip="    pub fn mul_bits_be(&self, bits: impl Iterator<Item = bool>) -> MontgomeryPoint {         // Algorithm 8 of Costello-Smith 2017         let affine_u = FieldElement::from_bytes(&self.0);         let...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/identity_in_different_coordinates()." [label="identity_in_different_coordinates", tooltip="    fn identity_in_different_coordinates() {         let id_projective = ProjectivePoint::identity();         let id_montgomery = id_projective.as_affine();          assert!(id_montgomery == Montgomer...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_ladder_matches_edwards_scalarmult()." [label="montgomery_ladder_matches_edwards_scalarmult", tooltip="    fn montgomery_ladder_matches_edwards_scalarmult() {         let mut csprng = rand_core::OsRng;          for _ in 0..100 {             let p_edwards = rand_prime_order_point(&mut csprng);          ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint][Hash]hash()." [label="hash", tooltip="    fn hash<H: Hasher>(&self, state: &mut H) {         // Do a round trip through a `FieldElement`. `as_bytes` is guaranteed to give a canonical         // 32-byte encoding         let canonical_bytes...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_elligator_zero_zero()." [label="montgomery_elligator_zero_zero", tooltip="    fn montgomery_elligator_zero_zero() {         let zero = [0u8; 32];         let fe = FieldElement::from_bytes(&zero);         let eg = elligator_encode(&fe);         assert_eq!(eg.to_bytes(), zero...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]to_edwards()." [label="to_edwards", tooltip="    pub fn to_edwards(&self, sign: u8) -> Option<EdwardsPoint> {         // To decompress the Montgomery u coordinate to an         // `EdwardsPoint`, we apply the birational map to obtain the        ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]mul_base()." [label="mul_base", tooltip="    pub fn mul_base(scalar: &Scalar) -> Self {         EdwardsPoint::mul_base(scalar).to_montgomery()     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/identity_in_different_models()." [label="identity_in_different_models", tooltip="    fn identity_in_different_models() {         assert!(EdwardsPoint::identity().to_montgomery() == MontgomeryPoint::identity());     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/elligator_encode()." [label="elligator_encode", tooltip="pub(crate) fn elligator_encode(r_0: &FieldElement) -> MontgomeryPoint {     let one = FieldElement::ONE;     let d_1 = &one + &r_0.square2(); /* 2r^2 */      let d = &MONTGOMERY_A_NEG * &(d_1.invert()...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_mul_bits_be()." [label="montgomery_mul_bits_be", tooltip="    fn montgomery_mul_bits_be() {         let mut csprng = rand_core::OsRng;          for _ in 0..100 {             // Make a random prime-order point P             let p_edwards = rand_prime_order_po...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/basepoint_edwards_to_montgomery()." [label="basepoint_edwards_to_montgomery", tooltip="    fn basepoint_edwards_to_montgomery() {         assert_eq!(             constants::ED25519_BASEPOINT_POINT.to_montgomery(),             constants::X25519_BASEPOINT         );     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[ProjectivePoint]as_affine()." [label="as_affine", tooltip="    pub fn as_affine(&self) -> MontgomeryPoint {         let u = &self.U * &self.W.invert();         MontgomeryPoint(u.as_bytes())     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/basepoint_montgomery_to_edwards()." [label="basepoint_montgomery_to_edwards", tooltip="    fn basepoint_montgomery_to_edwards() {         // sign bit = 0 => basepoint         assert_eq!(             constants::ED25519_BASEPOINT_POINT,             constants::X25519_BASEPOINT.to_edwards(0...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint][ConstantTimeEq]ct_eq()." [label="ct_eq", tooltip="    fn ct_eq(&self, other: &MontgomeryPoint) -> Choice {         let self_fe = FieldElement::from_bytes(&self.0);         let other_fe = FieldElement::from_bytes(&other.0);          self_fe.ct_eq(&oth...", fillcolor=white]
+  }
+  subgraph cluster_9 {
+    label = "ristretto.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()." [label="compress", tooltip="    pub fn compress(&self) -> CompressedRistretto {         let mut X = self.0.X;         let mut Y = self.0.Y;         let Z = &self.0.Z;         let T = &self.0.T;          let u1 = &(Z + &Y) * &(Z ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/scalarmult_ristrettopoint_works_both_ways()." [label="scalarmult_ristrettopoint_works_both_ways", tooltip="    fn scalarmult_ristrettopoint_works_both_ways() {         let P = constants::RISTRETTO_BASEPOINT_POINT;         let s = Scalar::from(999u64);          let P1 = P * s;         let P2 = s * P;       ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/encodings_of_small_multiples_of_basepoint()." [label="encodings_of_small_multiples_of_basepoint", tooltip="    fn encodings_of_small_multiples_of_basepoint() {         // Table of encodings of i*basepoint         // Generated using ristretto.sage         let compressed = [             CompressedRistretto([...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/basepoint_roundtrip()." [label="basepoint_roundtrip", tooltip="    fn basepoint_roundtrip() {         let bp_compressed_ristretto = constants::RISTRETTO_BASEPOINT_POINT.compress();         let bp_recaf = bp_compressed_ristretto.decompress().unwrap().0;         //...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()." [label="step_1", tooltip="    pub(super) fn step_1(repr: &CompressedRistretto) -> (Choice, Choice, FieldElement) {         // Step 1. Check s for validity:         // 1.a) s must be 32 bytes (we get this from the type system) ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/decompress_negative_s_fails()." [label="decompress_negative_s_fails", tooltip="    fn decompress_negative_s_fails() {         // constants::d is neg, so decompression should fail as |d| != d.         let bad_compressed = CompressedRistretto(constants::EDWARDS_D.as_bytes());     ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/one_way_map()." [label="one_way_map", tooltip="    fn one_way_map() {         // These inputs are from         // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-ristretto255-decaf448-04#appendix-A.3         let test_vectors: &[([u8; 64], Co...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/random_roundtrip()." [label="random_roundtrip", tooltip="    fn random_roundtrip() {         let mut rng = OsRng;         for _ in 0..100 {             let P = RistrettoPoint::mul_base(&Scalar::random(&mut rng));             let compressed_P = P.compress();...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[BatchCompressState][`From<&RistrettoPoint>`]from()." [label="from", tooltip="            fn from(P: &'a RistrettoPoint) -> BatchCompressState {                 let XX = P.0.X.square();                 let YY = P.0.Y.square();                 let ZZ = P.0.Z.square();           ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][ConstantTimeEq]ct_eq()." [label="ct_eq", tooltip="    fn ct_eq(&self, other: &RistrettoPoint) -> Choice {         let X1Y2 = &self.0.X * &other.0.Y;         let Y1X2 = &self.0.Y * &other.0.X;         let X1X2 = &self.0.X * &other.0.X;         let Y1Y...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/double_and_compress_1024_random_points()." [label="double_and_compress_1024_random_points", tooltip="    fn double_and_compress_1024_random_points() {         let mut rng = OsRng;          let mut points: Vec<RistrettoPoint> = (0..1024)             .map(|_| RistrettoPoint::random(&mut rng))          ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()." [label="elligator_ristretto_flavor", tooltip="    pub(crate) fn elligator_ristretto_flavor(r_0: &FieldElement) -> RistrettoPoint {         let i = &constants::SQRT_M1;         let d = &constants::EDWARDS_D;         let one_minus_d_sq = &constants...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/elligator_vs_ristretto_sage()." [label="elligator_vs_ristretto_sage", tooltip="    fn elligator_vs_ristretto_sage() {         // Test vectors extracted from ristretto.sage.         //         // Notice that all of the byte sequences have bit 255 set to 0; this is because        ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Debug]fmt()." [label="fmt", tooltip="    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {         let coset = self.coset4();         write!(             f,             ' RistrettoPoint: coset \n{:?}\n{:?}\n{:?}\n{:?...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()." [label="decompress", tooltip="    pub fn decompress(&self) -> Option<RistrettoPoint> {         let (s_encoding_is_canonical, s_is_negative, s) = decompress::step_1(self);          if (!s_encoding_is_canonical | s_is_negative).into...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/decompress_id()." [label="decompress_id", tooltip="    fn decompress_id() {         let compressed_id = CompressedRistretto::identity();         let id = compressed_id.decompress().unwrap();         let mut identity_in_coset = false;         for P in ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()." [label="step_2", tooltip="    pub(super) fn step_2(s: FieldElement) -> (Choice, Choice, Choice, RistrettoPoint) {         // Step 2.  Compute (X:Y:Z:T).         let one = FieldElement::ONE;         let ss = s.square();        ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/vartime_precomputed_vs_nonprecomputed_multiscalar()." [label="vartime_precomputed_vs_nonprecomputed_multiscalar", tooltip="    fn vartime_precomputed_vs_nonprecomputed_multiscalar() {         let mut rng = rand::thread_rng();          let static_scalars = (0..128)             .map(|_| Scalar::random(&mut rng))            ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/compress_id()." [label="compress_id", tooltip="    fn compress_id() {         let id = RistrettoPoint::identity();         assert_eq!(id.compress(), CompressedRistretto::identity());     }", fillcolor=white]
+  }
+  subgraph cluster_10 {
+    label = "signing.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo ed25519-dalek 2.1.0 signing/impl#[ExpandedSecretKey]raw_sign()." [label="raw_sign", tooltip="    pub(crate) fn raw_sign<CtxDigest>(         &self,         message: &[u8],         verifying_key: &VerifyingKey,     ) -> Signature     where         CtxDigest: Digest<OutputSize = U64>,     {     ...", fillcolor=white]
+  }
+  subgraph cluster_11 {
+    label = "verifying.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo ed25519-dalek 2.1.0 verifying/impl#[VerifyingKey]recompute_R()." [label="recompute_R", tooltip="    fn recompute_R<CtxDigest>(         &self,         context: Option<&[u8]>,         signature: &InternalSignature,         M: &[u8],     ) -> CompressedEdwardsY     where         CtxDigest: Digest<O...", fillcolor=white]
+    "rust-analyzer cargo ed25519-dalek 2.1.0 verifying/impl#[VerifyingKey]to_montgomery()." [label="to_montgomery", tooltip="    pub fn to_montgomery(&self) -> MontgomeryPoint {         self.point.to_montgomery()     }", fillcolor=white]
+    "rust-analyzer cargo ed25519-dalek 2.1.0 verifying/impl#[VerifyingKey][`From<EdwardsPoint>`]from()." [label="from", tooltip="    fn from(point: EdwardsPoint) -> VerifyingKey {         VerifyingKey {             point,             compressed: point.compress(),         }     }", fillcolor=white]
+  }
+  subgraph cluster_12 {
+    label = "ed25519.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/compute_challenge()." [label="compute_challenge", tooltip="    fn compute_challenge(         message: &[u8],         pub_key: &EdwardsPoint,         signature_r: &EdwardsPoint,         context: Option<&[u8]>,     ) -> Scalar {         let mut h = Sha512::defa...", fillcolor=white]
+    "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/serialize_signature()." [label="serialize_signature", tooltip="    fn serialize_signature(r: &EdwardsPoint, s: &Scalar) -> Vec<u8> {         [&r.compress().as_bytes()[..], &s.as_bytes()[..]].concat()     }", fillcolor=white]
+    "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/repudiation()." [label="repudiation", tooltip="    fn repudiation() {         let message1 = b' Send 100 USD to Alice' ;         let message2 = b' Send 100000 USD to Alice' ;          let mut s: Scalar = non_null_scalar();         let pubkey = WEA...", fillcolor=white]
+  }
+  subgraph cluster_13 {
+    label = "x25519.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo x25519-dalek 2.0.0 x25519/impl#[PublicKey][`From<&EphemeralSecret>`]from()." [label="from", tooltip="    fn from(secret: &'a EphemeralSecret) -> PublicKey {         PublicKey(EdwardsPoint::mul_base_clamped(secret.0).to_montgomery())     }", fillcolor=white]
+    "rust-analyzer cargo x25519-dalek 2.0.0 x25519/impl#[PublicKey][`From<&StaticSecret>`]from()." [label="from", tooltip="    fn from(secret: &'a StaticSecret) -> PublicKey {         PublicKey(EdwardsPoint::mul_base_clamped(secret.0).to_montgomery())     }", fillcolor=white]
+  }
+  subgraph cluster_14 {
+    label = "x25519_tests.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo x25519-dalek 2.0.0 byte_basepoint_matches_edwards_scalar_mul()." [label="byte_basepoint_matches_edwards_scalar_mul", tooltip="fn byte_basepoint_matches_edwards_scalar_mul() {     let mut scalar_bytes = [0x37; 32];      for i in 0..32 {         scalar_bytes[i] += 2;          let result = x25519(scalar_bytes, X25519_BASEPOINT_...", fillcolor=white]
+  }
+  subgraph cluster_15 {
+    label = "ed_to_xed.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-core 0.1.0 main()." [label="main", tooltip="fn main() {     let mut input = vec![];     std::io::stdin()         .read_to_end(&mut input)         .expect(' can read input' );     let key = boring::pkey::PKey::public_key_from_pem(&input).expect(...", fillcolor=white]
+  }
+  subgraph cluster_16 {
+    label = "curve25519.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/curve25519/impl#[PrivateKey]calculate_signature()." [label="calculate_signature", tooltip="    pub fn calculate_signature<R>(         &self,         csprng: &mut R,         message: &[&[u8]],     ) -> [u8; SIGNATURE_LENGTH]     where         R: CryptoRng + Rng,     {         let mut random_...", fillcolor=white]
+    "rust-analyzer cargo libsignal-core 0.1.0 curve/curve25519/impl#[PrivateKey]verify_signature()." [label="verify_signature", tooltip="    pub fn verify_signature(         their_public_key: &[u8; PUBLIC_KEY_LENGTH],         message: &[&[u8]],         signature: &[u8; SIGNATURE_LENGTH],     ) -> bool {         let mont_point = Montgom...", fillcolor=white]
+  }
+  subgraph cluster_17 {
+    label = "vrf.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-keytrans 0.0.1 vrf/tests/test_encode_to_curve_try_and_increment()." [label="test_encode_to_curve_try_and_increment", tooltip="    fn test_encode_to_curve_try_and_increment() {         for v in TEST_VECTORS {             let got = encode_to_curve_try_and_increment(&v.pk, v.alpha)                 .compress()                 .0...", fillcolor=white]
+    "rust-analyzer cargo libsignal-keytrans 0.0.1 vrf/proof_to_hash()." [label="proof_to_hash", tooltip="fn proof_to_hash(gamma: &EdwardsPoint) -> [u8; 32] {     let mut hasher = Sha512::new();     hasher.update([SUITE_ID, DOMAIN_SEPARATOR_PROOF]);     hasher.update(gamma.mul_by_cofactor().compress().0);...", fillcolor=white]
+    "rust-analyzer cargo libsignal-keytrans 0.0.1 vrf/impl#[PublicKey]proof_to_hash()." [label="proof_to_hash", tooltip="    pub fn proof_to_hash(&self, m: &[u8], proof: &[u8; 80]) -> Result<[u8; 32]> {         // Decode proof into its component parts: gamma, c, and s.         let gamma = CompressedEdwardsY(proof[..32]....", fillcolor=white]
+  }
+  subgraph cluster_18 {
+    label = "statement.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." [label="prove", tooltip="    pub fn prove(         &self,         scalar_args: &ScalarArgs,         point_args: &PointArgs,         message: &[u8],         randomness: &[u8], // must be 32 bytes     ) -> Result<Vec<u8>, Poksh...", fillcolor=white]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." [label="verify_proof", tooltip="    pub fn verify_proof(         &self,         proof_bytes: &[u8],         point_args: &PointArgs,         message: &[u8],     ) -> Result<(), PokshoError> {         let proof = Proof::from_slice(pro...", fillcolor=white]
+  }
+  subgraph cluster_19 {
+    label = "lib.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-svrb 0.1.0 auth_secret()." [label="auth_secret", tooltip="fn auth_secret(input: &[u8; 64], auth_pt: &RistrettoPoint) -> [u8; 32] {     Kdf::make(         b' Signal_SVR_MasterAuthorizationKey_20240823' ,         input,         &auth_pt.compress().to_bytes(), ...", fillcolor=white]
+    "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[`Restore1<'a>`]new()." [label="new", tooltip="    pub fn new<R: Rng + CryptoRng>(server_ids: &'a [u64], password: &[u8], rng: &mut R) -> Self {         let blind = random_scalar(rng);         let input = password_to_uniform_input(password);      ...", fillcolor=white]
+    "rust-analyzer cargo libsignal-svrb 0.1.0 test/impl#[TestServer]restore1()." [label="restore1", tooltip="        fn restore1(&mut self, req_bytes: &[u8]) -> Vec<u8> {             let req = match svrb::Request4::decode(req_bytes)                 .expect(' decode Request4' )                 .inner         ...", fillcolor=white]
+    "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[`Restore1<'a>`]restore2()." [label="restore2", tooltip="    pub fn restore2<R: Rng + CryptoRng>(         self,         responses1_bytes: &[Vec<u8>],         handshake_hashes: &[&[u8]],         rng: &mut R,     ) -> Result<Restore2<'a>, Error> {         if ...", fillcolor=white]
+    "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[Backup4]new()." [label="new", tooltip="    pub fn new<R: Rng + CryptoRng>(         server_ids: &[u64],         password: &[u8],         max_tries: NonZeroU32,         rng: &mut R,     ) -> Self {         assert!(!server_ids.is_empty());   ...", fillcolor=white]
+  }
+  subgraph cluster_20 {
+    label = "username.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo usernames 0.1.0 username/impl#[Username]hash()." [label="hash", tooltip="    pub fn hash(&self) -> [u8; 32] {         *Self::hash_from_scalars(&self.scalars).compress().as_bytes()     }", fillcolor=white]
+    "rust-analyzer cargo usernames 0.1.0 username/impl#[Username]proof()." [label="proof", tooltip="    pub fn proof(&self, randomness: &[u8; 32]) -> Result<Vec<u8>, UsernameError> {         let hash = Self::hash_from_scalars(&self.scalars);         let scalar_args = Self::make_scalar_args(&self.sca...", fillcolor=white]
+  }
+  subgraph cluster_21 {
+    label = "endorsements.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." [label="generate_weights_for_proof", tooltip="    fn generate_weights_for_proof(         public_key: &ServerDerivedPublicKey,         E: &[RistrettoPoint],         R: &[CompressedRistretto],     ) -> Vec<Scalar> {         debug_assert_eq!(E.len()...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]compress()." [label="compress", tooltip="    pub fn compress(self) -> Endorsement<CompressedRistretto> {         Endorsement {             R: self.R.compress(),         }     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token_raw()." [label="to_token_raw", tooltip="    fn to_token_raw(unblinded_endorsement: RistrettoPoint) -> Box<[u8]> {         // Skip the Sho for this, we're hashing a single point into a single bitstring. We don't         // need domain separa...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." [label="issue", tooltip="    pub fn issue(         hidden_attribute_points: impl IntoIterator<Item = RistrettoPoint>,         private_key: &ServerDerivedKeyPair,         randomness: [u8; RANDOMNESS_LEN],     ) -> EndorsementR...", fillcolor=white]
+  }
+  subgraph cluster_22 {
+    label = "profile_key_encryption.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/profile_key_encryption/impl#[ProfileKeyEncryptionDomain]decrypt()." [label="decrypt", tooltip="    pub(crate) fn decrypt(         key_pair: &KeyPair,         ciphertext: &Ciphertext,         uid_bytes: UidBytes,     ) -> Result<profile_key_struct::ProfileKeyStruct, ZkGroupVerificationFailure> {...", fillcolor=white]
+  }
+  subgraph cluster_23 {
+    label = "uid_encryption.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/impl#[UidEncryptionDomain]decrypt()." [label="decrypt", tooltip="    pub(crate) fn decrypt(         key_pair: &KeyPair,         ciphertext: &Ciphertext,     ) -> Result<libsignal_core::ServiceId, ZkGroupVerificationFailure> {         let M2 = key_pair             ....", fillcolor=white]
+  }
+  subgraph cluster_24 {
+    label = "integration_tests.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 test_lizard()." [label="test_lizard", tooltip="fn test_lizard() {     let p = RistrettoPoint::lizard_encode::<Sha256>(&zkgroup::common::constants::TEST_ARRAY_16);     let data_out = p.lizard_decode::<Sha256>();     assert_hex_eq!(data_out.unwrap()...", fillcolor=white]
+  }
+
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo ed25519-dalek 2.1.0 verifying/impl#[VerifyingKey]recompute_R()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_plus_basepoint_vs_basepoint2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo x25519-dalek 2.0.0 x25519/impl#[PublicKey][`From<&EphemeralSecret>`]from()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/scalarmult_ristrettopoint_works_both_ways()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/encodings_of_small_multiples_of_basepoint()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/basepoint_roundtrip()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/basepoint_roundtrip()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/basepoint_roundtrip()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/curve25519/impl#[PrivateKey]calculate_signature()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_lizard()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]lizard_decode()."
+  "rust-analyzer cargo libsignal-keytrans 0.0.1 vrf/tests/test_encode_to_curve_try_and_increment()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo libsignal-svrb 0.1.0 auth_secret()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[Endorsement]to_token_raw()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_elligator_correct()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/elligator_encode()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/scalar_mul_vs_ed25519py()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/decompress_negative_s_fails()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/decompress_negative_s_fails()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/compressed_identity()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/test/encoding_is_canonical()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_to_edwards_rejects_twist()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_to_edwards_rejects_twist()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]to_edwards()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_double_vs_basepoint2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]lizard_decode()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/one_way_map()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]mul_bits_be()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[ProjectivePoint]as_affine()."
+  "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[`Restore1<'a>`]new()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/random_roundtrip()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/random_roundtrip()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]generate_weights_for_proof()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[EndorsementResponse]issue()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_tables_unreduced_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/identity_in_different_coordinates()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[ProjectivePoint]as_affine()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_plus_basepoint_affine_niels_vs_basepoint2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint16_vs_mul_by_pow_2_4()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]nonspec_map_to_curve()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/elligator_encode()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]nonspec_map_to_curve()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]to_edwards()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/elligator_signal_test_vectors()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]nonspec_map_to_curve()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/elligator_signal_test_vectors()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_ladder_matches_edwards_scalarmult()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint][Hash]hash()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo libsignal-svrb 0.1.0 test/impl#[TestServer]restore1()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_elligator_zero_zero()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/elligator_encode()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]to_jacobi_quartic_ristretto()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_zero()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[BatchCompressState][`From<&RistrettoPoint>`]from()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[BatchCompressState][`From<&RistrettoPoint>`]from()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]batch_invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[BatchCompressState][`From<&RistrettoPoint>`]from()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/test_precomputed_basepoint_mult()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/vartime_precomputed_vs_nonprecomputed_multiscalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]to_edwards()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[`&FieldElement51`][Neg]neg()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]negate()."
+  "rust-analyzer cargo libsignal-core 0.1.0 main()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo usernames 0.1.0 username/impl#[Username]hash()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo usernames 0.1.0 username/impl#[Username]proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo usernames 0.1.0 username/impl#[Username]proof()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/impl#[UidEncryptionDomain]decrypt()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]lizard_decode()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][`PartialEq<Self>`]eq()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][ConstantTimeEq]ct_eq()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]mul_base()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo x25519-dalek 2.0.0 x25519/impl#[PublicKey][`From<&StaticSecret>`]from()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint][ConstantTimeEq]ct_eq()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()."
+  "rust-analyzer cargo ed25519-dalek 2.1.0 verifying/impl#[VerifyingKey]to_montgomery()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/double_and_compress_1024_random_points()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_projective_extended_round_trip()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/vartime/double_scalar_mul_basepoint_vs_ed25519py()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_zero()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo libsignal-keytrans 0.0.1 vrf/proof_to_hash()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo x25519-dalek 2.0.0 byte_basepoint_matches_edwards_scalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/identity_in_different_models()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]batch_invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_zero()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 constants/test/test_sqrt_minus_one()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/vartime/multiscalar_mul_vs_ed25519py()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/elligator_vs_ristretto_sage()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/elligator_vs_ristretto_sage()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]elligator_ristretto_flavor()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()."
+  "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[`Restore1<'a>`]restore2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_mult_one_vs_basepoint()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/jacobi_quartic/impl#[JacobiPoint]elligator_inv()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_zero()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/jacobi_quartic/impl#[JacobiPoint]elligator_inv()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/jacobi_quartic/impl#[JacobiPoint]elligator_inv()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Debug]fmt()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Debug]fmt()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/profile_key_encryption/impl#[ProfileKeyEncryptionDomain]decrypt()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]decode_253_bits()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_1()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_plus_basepoint_projective_niels_vs_basepoint2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto_benches/compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[`&FieldElement51`][`Sub<&FieldElement51>`]sub()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/elligator_encode()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/elligator_encode()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo libsignal-keytrans 0.0.1 vrf/impl#[PublicKey]proof_to_hash()." -> "rust-analyzer cargo libsignal-keytrans 0.0.1 vrf/proof_to_hash()."
+  "rust-analyzer cargo libsignal-keytrans 0.0.1 vrf/impl#[PublicKey]proof_to_hash()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_decompression_compression()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/decompress_id()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/decompress_id()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_mult_vs_ed25519py()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_mul_bits_be()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_mul_bits_be()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]mul_bits_be()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/test/sqrt_ratio_behavior()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/test/sqrt_ratio_behavior()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]sqrt_ratio_i()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_zero()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/decompress/step_2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_table_basepoint_function_correct()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/basepoint_edwards_to_montgomery()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]to_montgomery()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[ProjectivePoint]as_affine()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/compute_challenge()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_tables()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo ed25519-dalek 2.1.0 signing/impl#[ExpandedSecretKey]raw_sign()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/vartime/multiscalar_mul_vartime_vs_consttime()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/to_affine_niels_clears_denominators()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/basepoint_montgomery_to_edwards()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]to_edwards()."
+  "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/serialize_signature()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/basepoint_mult_two_vs_basepoint2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/test/scalarmult_extended_point_works_both_ways()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo ed25519-dalek 2.1.0 verifying/impl#[VerifyingKey][`From<EdwardsPoint>`]from()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/vartime_precomputed_vs_nonprecomputed_multiscalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/test/test_lizard_encode_helper()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]lizard_decode()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/test/test_lizard_encode_helper()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/test/test_lizard_encode_helper()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[CompressedRistretto]decompress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`]is_negative()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]negate()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint][ConstantTimeEq]ct_eq()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 field/impl#[`crate::lizard::lizard_constants::FieldElement51`][ConstantTimeEq]ct_eq()."
+  "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/repudiation()." -> "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/serialize_signature()."
+  "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/repudiation()." -> "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/compute_challenge()."
+  "rust-analyzer cargo ed25519-dalek 2.1.0 vectors/repudiation()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/compress_id()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/curve25519/impl#[PrivateKey]verify_signature()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo libsignal-core 0.1.0 curve/curve25519/impl#[PrivateKey]verify_signature()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/impl#[MontgomeryPoint]to_edwards()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/scalar_mul/pippenger/test/test_vartime_pippenger()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/impl#[EdwardsPoint]compress()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 lizard/lizard_ristretto/impl#[RistrettoPoint]decode_253_bits()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]as_bytes()."
+  "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[Backup4]new()." -> "rust-analyzer cargo libsignal-svrb 0.1.0 auth_secret()."
+  "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[Backup4]new()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint]compress()."
+}
