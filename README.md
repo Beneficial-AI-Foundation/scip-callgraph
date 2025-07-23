@@ -54,6 +54,5 @@ Flags:
 Example:
 
 ```bash
-cargo run --bin generate_function_subgraph_dot scip_data.json function_subgraph.dot process_data handle_request --include-callers --depth 3
-dot -Tsvg function_subgraph.dot -o function_subgraph.svg
+argo run --bin generate_function_subgraph_dot index_scip_libsignal_deps.json reduce3.dot "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()" --include-callers --depth 3
 ```
