@@ -1,0 +1,398 @@
+digraph function_subgraph {
+  rankdir=LR;
+  node [shape=box, style=filled, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "ristretto.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/double_and_compress_1024_random_points()." [label="double_and_compress_1024_random_points", tooltip="    fn double_and_compress_1024_random_points() {         let mut rng = OsRng;          let mut points: Vec<RistrettoPoint> = (0..1024)             .map(|_| RistrettoPoint::random(&mut rng))          ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Default]default()." [label="default", tooltip="    fn default() -> RistrettoPoint {         RistrettoPoint::identity()     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/compress_id()." [label="compress_id", tooltip="    fn compress_id() {         let id = RistrettoPoint::identity();         assert_eq!(id.compress(), CompressedRistretto::identity());     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][`Sum<T>`]sum()." [label="sum", tooltip="    fn sum<I>(iter: I) -> Self     where         I: Iterator<Item = T>,     {         iter.fold(RistrettoPoint::identity(), |acc, item| acc + item.borrow())     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/encodings_of_small_multiples_of_basepoint()." [label="encodings_of_small_multiples_of_basepoint", tooltip="    fn encodings_of_small_multiples_of_basepoint() {         // Table of encodings of i*basepoint         // Generated using ristretto.sage         let compressed = [             CompressedRistretto([...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/impl_sum()." [label="impl_sum", tooltip="    fn impl_sum() {         // Test that sum works for non-empty iterators         let BASE = constants::RISTRETTO_BASEPOINT_POINT;          let s1 = Scalar::from(999u64);         let P1 = BASE * s1; ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()." [label="identity", tooltip="    fn identity() -> RistrettoPoint {         RistrettoPoint(EdwardsPoint::identity())     }", fillcolor=lightblue]
+  }
+  subgraph cluster_1 {
+    label = "zkgroup.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic()." [label="ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic", tooltip="fn ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(     server_secret_params: &ServerSecretParams,     randomness: &[u8; RANDOMNESS_LEN],     aci: Aci,     pni: Pni,     redemption_time:...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId()." [label="ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId", tooltip="fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(     params: &ServerPublicParams,     aci: Aci,     pni: Pni,     redemption_time: Timestamp,     auth_credential_with_pni_response_bytes:...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CreateCallLinkCredentialRequestContext_ReceiveResponse()." [label="CreateCallLinkCredentialRequestContext_ReceiveResponse", tooltip="fn CreateCallLinkCredentialRequestContext_ReceiveResponse(     context_bytes: &[u8],     response_bytes: &[u8],     user_id: Aci,     params_bytes: &[u8], ) -> Result<Vec<u8>, ZkGroupVerificationFailu...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic()." [label="ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic", tooltip="fn ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(     server_public_params: &ServerPublicParams,     randomness: &[u8; RANDOMNESS_LEN],     group_secret_params: Serial...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CreateCallLinkCredentialPresentation_Verify()." [label="CreateCallLinkCredentialPresentation_Verify", tooltip="fn CreateCallLinkCredentialPresentation_Verify(     presentation_bytes: &[u8],     room_id: &[u8],     now: Timestamp,     server_params_bytes: &[u8],     call_link_params_bytes: &[u8], ) -> Result<()...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkAuthCredential_PresentDeterministic()." [label="CallLinkAuthCredential_PresentDeterministic", tooltip="fn CallLinkAuthCredential_PresentDeterministic(     credential_bytes: &[u8],     user_id: Aci,     redemption_time: Timestamp,     server_params_bytes: &[u8],     call_link_params_bytes: &[u8],     ra...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkAuthCredentialResponse_IssueDeterministic()." [label="CallLinkAuthCredentialResponse_IssueDeterministic", tooltip="fn CallLinkAuthCredentialResponse_IssueDeterministic(     user_id: Aci,     redemption_time: Timestamp,     params_bytes: &[u8],     randomness: &[u8; RANDOMNESS_LEN], ) -> Vec<u8> {     let params = ...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkAuthCredentialResponse_Receive()." [label="CallLinkAuthCredentialResponse_Receive", tooltip="fn CallLinkAuthCredentialResponse_Receive(     response_bytes: &[u8],     user_id: Aci,     redemption_time: Timestamp,     params_bytes: &[u8], ) -> Result<Vec<u8>, ZkGroupVerificationFailure> {     ...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkAuthCredentialPresentation_Verify()." [label="CallLinkAuthCredentialPresentation_Verify", tooltip="fn CallLinkAuthCredentialPresentation_Verify(     presentation_bytes: &[u8],     now: Timestamp,     server_params_bytes: &[u8],     call_link_params_bytes: &[u8], ) -> Result<(), ZkGroupVerificationF...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerSecretParams_VerifyAuthCredentialPresentation()." [label="ServerSecretParams_VerifyAuthCredentialPresentation", tooltip="fn ServerSecretParams_VerifyAuthCredentialPresentation(     server_secret_params: &ServerSecretParams,     group_public_params: Serialized<GroupPublicParams>,     presentation_bytes: &[u8],     curren...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CreateCallLinkCredential_PresentDeterministic()." [label="CreateCallLinkCredential_PresentDeterministic", tooltip="fn CreateCallLinkCredential_PresentDeterministic(     credential_bytes: &[u8],     room_id: &[u8],     user_id: Aci,     server_params_bytes: &[u8],     call_link_params_bytes: &[u8],     randomness: ...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic()." [label="ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic", tooltip="fn ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(     server_public_params: &ServerPublicParams,     randomness: &[u8; RANDOMNESS_LEN],     group_secret_params: Serialized<Gr...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CreateCallLinkCredentialRequest_IssueDeterministic()." [label="CreateCallLinkCredentialRequest_IssueDeterministic", tooltip="fn CreateCallLinkCredentialRequest_IssueDeterministic(     request_bytes: &[u8],     user_id: Aci,     timestamp: Timestamp,     params_bytes: &[u8],     randomness: &[u8; RANDOMNESS_LEN], ) -> Vec<u8...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/BackupAuthCredentialRequest_IssueDeterministic()." [label="BackupAuthCredentialRequest_IssueDeterministic", tooltip="fn BackupAuthCredentialRequest_IssueDeterministic(     request_bytes: &[u8],     redemption_time: Timestamp,     backup_level: AsType<BackupLevel, u8>,     credential_type: AsType<BackupCredentialType...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/BackupAuthCredentialPresentation_Verify()." [label="BackupAuthCredentialPresentation_Verify", tooltip="fn BackupAuthCredentialPresentation_Verify(     presentation_bytes: &[u8],     now: Timestamp,     server_params_bytes: &[u8], ) -> Result<(), ZkGroupVerificationFailure> {     let presentation = binc...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/BackupAuthCredential_PresentDeterministic()." [label="BackupAuthCredential_PresentDeterministic", tooltip="fn BackupAuthCredential_PresentDeterministic(     credential_bytes: &[u8],     server_params_bytes: &[u8],     randomness: &[u8; RANDOMNESS_LEN], ) -> Result<Vec<u8>, ZkGroupVerificationFailure> {    ...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/BackupAuthCredentialRequestContext_ReceiveResponse()." [label="BackupAuthCredentialRequestContext_ReceiveResponse", tooltip="fn BackupAuthCredentialRequestContext_ReceiveResponse(     context_bytes: &[u8],     response_bytes: &[u8],     expected_redemption_time: Timestamp,     params_bytes: &[u8], ) -> Result<Vec<u8>, ZkGro...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerSecretParams_VerifyProfileKeyCredentialPresentation()." [label="ServerSecretParams_VerifyProfileKeyCredentialPresentation", tooltip="fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(     server_secret_params: &ServerSecretParams,     group_public_params: Serialized<GroupPublicParams>,     presentation_bytes: &[u8],     ...", fillcolor=white]
+  }
+  subgraph cluster_2 {
+    label = "attributes.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 attributes/tests/derive_default_generator_points_checks_for_reuse_in_debug_builds()." [label="derive_default_generator_points_checks_for_reuse_in_debug_builds", tooltip="    fn derive_default_generator_points_checks_for_reuse_in_debug_builds() {         let storage = std::sync::OnceLock::from([RistrettoPoint::default(); 2]);         derive_default_generator_points::<E...", fillcolor=white]
+  }
+  subgraph cluster_3 {
+    label = "issuance.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()." [label="new", tooltip="    pub fn new(label: &[u8]) -> Self {         Self::with_authenticated_message(label, &[])     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]with_authenticated_message()." [label="with_authenticated_message", tooltip="    pub fn with_authenticated_message(label: &[u8], message: &'a [u8]) -> Self {         Self {             public_attrs: ShoHmacSha256::new(label),             // Reserve the first point for public a...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]verify()." [label="verify", tooltip="    pub fn verify(         mut self,         public_key: &CredentialPublicKey,         // Even though it would work with a borrow, this deliberately consumes         // IssuanceProof to indicate that ...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]issue()." [label="issue", tooltip="    pub fn issue(         mut self,         key_pair: &CredentialKeyPair,         randomness: [u8; RANDOMNESS_LEN],     ) -> IssuanceProof {         self.finalize_public_attrs();          let mut sho ...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]finalize_public_attrs()." [label="finalize_public_attrs", tooltip="    fn finalize_public_attrs(&mut self) {         debug_assert!(self.attr_points[0] == RistrettoPoint::identity());         self.attr_points[0] = self.public_attrs.get_point();     }", fillcolor=white]
+  }
+  subgraph cluster_4 {
+    label = "blind.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]finalize_public_attrs()." [label="finalize_public_attrs", tooltip="    fn finalize_public_attrs(&mut self) {         self.inner.finalize_public_attrs()     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]verify()." [label="verify", tooltip="    pub fn verify(         mut self,         public_key: &CredentialPublicKey,         blinding_key: &BlindingKeyPair,         proof: BlindedIssuanceProof,     ) -> Result<Credential, VerificationFail...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]issue()." [label="issue", tooltip="    pub fn issue(         mut self,         key_pair: &CredentialKeyPair,         blinding_key: &BlindingPublicKey,         randomness: [u8; RANDOMNESS_LEN],     ) -> BlindedIssuanceProof {         se...", fillcolor=white]
+  }
+  subgraph cluster_5 {
+    label = "presentation.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]finalize_public_attrs()." [label="finalize_public_attrs", tooltip="    fn finalize_public_attrs(&mut self) {         debug_assert!(self.core.attr_points[0] == RistrettoPoint::identity());         self.core.attr_points[0] = self.public_attrs.get_point();     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()." [label="verify", tooltip="    pub fn verify(         mut self,         key_pair: &CredentialKeyPair,         proof: &PresentationProof,     ) -> Result<(), VerificationFailure> {         self.finalize_public_attrs();          ...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]with_authenticated_message()." [label="with_authenticated_message", tooltip="    pub fn with_authenticated_message(label: &[u8], message: &'a [u8]) -> Self {         Self {             core: PresentationProofBuilderCore::with_authenticated_message(message),             public_...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()." [label="present", tooltip="    pub fn present(         self,         public_key: &CredentialPublicKey,         credential: &Credential,         randomness: [u8; RANDOMNESS_LEN],     ) -> PresentationProof {         let credenti...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]add_revealed_attribute()." [label="add_revealed_attribute", tooltip="    pub fn add_revealed_attribute(mut self, attr: &dyn RevealedAttribute) -> Self {         // We don't actually need the value! The server will check it for us.         _ = attr;         self.core.ad...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilderCore<'a, T>`]with_authenticated_message()." [label="with_authenticated_message", tooltip="    fn with_authenticated_message(message: &'a [u8]) -> Self {         Self {             encryption_keys: vec![],             attributes: vec![],             // Reserve the first point for public att...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]new()." [label="new", tooltip="    pub fn new(label: &[u8]) -> Self {         Self::with_authenticated_message(label, &[])     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]new()." [label="new", tooltip="    pub fn new(label: &[u8]) -> Self {         Self::with_authenticated_message(label, &[])     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]with_authenticated_message()." [label="with_authenticated_message", tooltip="    pub fn with_authenticated_message(label: &[u8], message: &'a [u8]) -> Self {         _ = label;         Self {             core: PresentationProofBuilderCore::with_authenticated_message(message), ...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilderCore<'a, T>`]prepare_non_attribute_point_args()." [label="prepare_non_attribute_point_args", tooltip="    fn prepare_non_attribute_point_args(         &self,         I: RistrettoPoint,         commitments: &PresentationProofCommitments,     ) -> poksho::PointArgs {         let credentials_system = Sys...", fillcolor=white]
+  }
+  subgraph cluster_6 {
+    label = "serialization.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 benches()." [label="benches", tooltip="criterion_group!(benches, bench_server_param_serialization,); criterion_main!(benches);", fillcolor=white]
+  }
+  subgraph cluster_7 {
+    label = "zkgroup_benchmarks.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_auth()." [label="benchmark_integration_auth", tooltip="fn benchmark_integration_auth(c: &mut Criterion) {     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);     let server_public_params = server_secret_params.get...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_profile()." [label="benchmark_integration_profile", tooltip="pub fn benchmark_integration_profile(c: &mut Criterion) {     // SERVER     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);     let server_public_params = ser...", fillcolor=white]
+  }
+  subgraph cluster_8 {
+    label = "auth_credential_with_pni.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/impl#[AuthCredentialWithPniResponse]receive()." [label="receive", tooltip="    pub fn receive(         self,         public_params: &ServerPublicParams,         aci: Aci,         pni: Pni,         redemption_time: crate::Timestamp,     ) -> Result<AuthCredentialWithPni, ZkGr...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/impl#[AuthCredentialWithPni]present()." [label="present", tooltip="    pub fn present(         &self,         public_params: &ServerPublicParams,         group_secret_params: &GroupSecretParams,         randomness: RandomnessBytes,     ) -> AnyAuthCredentialPresentat...", fillcolor=white]
+  }
+  subgraph cluster_9 {
+    label = "zkc.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential()." [label="issue_credential", tooltip="    pub fn issue_credential(         aci: Aci,         pni: Pni,         redemption_time: Timestamp,         params: &ServerSecretParams,         randomness: RandomnessBytes,     ) -> Self {         S...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/test/issue_receive_present()." [label="issue_receive_present", tooltip="    fn issue_receive_present() {         const ACI: Aci = Aci::from_uuid_bytes([b'a'; 16]);         const PNI: Pni = Pni::from_uuid_bytes([b'p'; 16]);         const REDEMPTION_TIME: Timestamp = Timest...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present()." [label="present", tooltip="    pub fn present(         &self,         public_params: &ServerPublicParams,         group_secret_params: &GroupSecretParams,         randomness: RandomnessBytes,     ) -> AuthCredentialWithPniZkcPr...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify()." [label="verify", tooltip="    pub fn verify(         &self,         params: &ServerSecretParams,         group_public_params: &GroupPublicParams,         redemption_time: Timestamp,     ) -> Result<(), ZkGroupVerificationFailu...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential_for_key()." [label="issue_credential_for_key", tooltip="    pub(crate) fn issue_credential_for_key(         aci: Aci,         pni: Pni,         redemption_time: Timestamp,         credential_key: &CredentialKeyPair,         randomness: RandomnessBytes,    ...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present_for_key()." [label="present_for_key", tooltip="    pub(crate) fn present_for_key(         &self,         public_key: &CredentialPublicKey,         group_secret_params: &GroupSecretParams,         randomness: RandomnessBytes,     ) -> AuthCredentia...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive_for_key()." [label="receive_for_key", tooltip="    pub(crate) fn receive_for_key(         self,         aci: Aci,         pni: Pni,         redemption_time: Timestamp,         public_key: &CredentialPublicKey,     ) -> Result<AuthCredentialWithPni...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify_for_key()." [label="verify_for_key", tooltip="    pub(crate) fn verify_for_key(         &self,         credential_key: &CredentialKeyPair,         group_public_params: &GroupPublicParams,         redemption_time: Timestamp,     ) -> Result<(), Zk...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive()." [label="receive", tooltip="    pub fn receive(         self,         aci: Aci,         pni: Pni,         redemption_time: Timestamp,         public_params: &ServerPublicParams,     ) -> Result<AuthCredentialWithPniZkc, ZkGroupV...", fillcolor=white]
+  }
+  subgraph cluster_10 {
+    label = "auth_credential.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_receipt_level()." [label="test_server_verify_wrong_receipt_level", tooltip="    fn test_server_verify_wrong_receipt_level() {         let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);         let valid_presentation =             credential.present(&server_secret_pa...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()." [label="present", tooltip="    pub fn present(         &self,         server_params: &GenericServerPublicParams,         randomness: RandomnessBytes,     ) -> BackupAuthCredentialPresentation {         BackupAuthCredentialPrese...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_client_enforces_timestamp_granularity()." [label="test_client_enforces_timestamp_granularity", tooltip="    fn test_client_enforces_timestamp_granularity() {         let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP.add_seconds(60 * 60); // not on a day boundary!          let request_context = Back...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialPresentation]verify()." [label="verify", tooltip="    pub fn verify(         &self,         current_time: Timestamp,         server_params: &GenericServerSecretParams,     ) -> Result<(), ZkGroupVerificationFailure> {         let acceptable_start_tim...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequest]issue()." [label="issue", tooltip="    pub fn issue(         &self,         redemption_time: Timestamp,         backup_level: BackupLevel,         credential_type: BackupCredentialType,         params: &GenericServerSecretParams,      ...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequestContext]receive()." [label="receive", tooltip="    pub fn receive(         self,         response: BackupAuthCredentialResponse,         params: &GenericServerPublicParams,         expected_redemption_time: Timestamp,     ) -> Result<BackupAuthCre...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_client_enforces_timestamp()." [label="test_client_enforces_timestamp", tooltip="    fn test_client_enforces_timestamp() {         let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP;          let request_context = BackupAuthCredentialRequestContext::new(&KEY, ACI.into());     ...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_backup_id()." [label="test_server_verify_wrong_backup_id", tooltip="    fn test_server_verify_wrong_backup_id() {         let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);         let valid_presentation =             credential.present(&server_secret_params...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/generate_credential()." [label="generate_credential", tooltip="    fn generate_credential(redemption_time: Timestamp) -> BackupAuthCredential {         // client generated materials; issuance request         let request_context = BackupAuthCredentialRequestContex...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_redemption()." [label="test_server_verify_wrong_redemption", tooltip="    fn test_server_verify_wrong_redemption() {         let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);         let valid_presentation =             credential.present(&server_secret_param...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_expiration()." [label="test_server_verify_expiration", tooltip="    fn test_server_verify_expiration() {         let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);         let presentation =             credential.present(&server_secret_params().get_publ...", fillcolor=white]
+  }
+  subgraph cluster_11 {
+    label = "auth_credential.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredential]present()." [label="present", tooltip="    pub fn present(         &self,         user_id: libsignal_core::Aci,         redemption_time: Timestamp,         server_params: &GenericServerPublicParams,         call_link_params: &CallLinkSecre...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]receive()." [label="receive", tooltip="    pub fn receive(         self,         user_id: libsignal_core::Aci,         redemption_time: Timestamp,         params: &GenericServerPublicParams,     ) -> Result<CallLinkAuthCredential, ZkGroupV...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialPresentation]verify()." [label="verify", tooltip="    pub fn verify(         &self,         current_time: Timestamp,         server_params: &GenericServerSecretParams,         call_link_params: &CallLinkPublicParams,     ) -> Result<(), ZkGroupVerifi...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]issue_credential()." [label="issue_credential", tooltip="    pub fn issue_credential(         user_id: libsignal_core::Aci,         redemption_time: Timestamp,         params: &GenericServerSecretParams,         randomness: RandomnessBytes,     ) -> CallLin...", fillcolor=white]
+  }
+  subgraph cluster_12 {
+    label = "create_credential.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredential]present()." [label="present", tooltip="    pub fn present(         &self,         room_id: &[u8],         user_id: libsignal_core::Aci,         server_params: &GenericServerPublicParams,         call_link_params: &CallLinkSecretParams,    ...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialPresentation]verify()." [label="verify", tooltip="    pub fn verify(         &self,         room_id: &[u8],         current_time: Timestamp,         server_params: &GenericServerSecretParams,         call_link_params: &CallLinkPublicParams,     ) -> ...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequestContext]receive()." [label="receive", tooltip="    pub fn receive(         self,         response: CreateCallLinkCredentialResponse,         user_id: libsignal_core::Aci,         params: &GenericServerPublicParams,     ) -> Result<CreateCallLinkCr...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequest]issue()." [label="issue", tooltip="    pub fn issue(         &self,         user_id: libsignal_core::Aci,         timestamp: Timestamp,         params: &GenericServerSecretParams,         randomness: RandomnessBytes,     ) -> CreateCal...", fillcolor=white]
+  }
+  subgraph cluster_13 {
+    label = "server_params.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_profile_key_credential_presentation()." [label="verify_profile_key_credential_presentation", tooltip="    pub fn verify_profile_key_credential_presentation(         &self,         group_public_params: api::groups::GroupPublicParams,         presentation: &api::profiles::AnyProfileKeyCredentialPresenta...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_auth_credential_presentation()." [label="verify_auth_credential_presentation", tooltip="    pub fn verify_auth_credential_presentation(         &self,         group_public_params: api::groups::GroupPublicParams,         presentation: &api::auth::AnyAuthCredentialPresentation,         cur...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerPublicParams]create_expiring_profile_key_credential_presentation()." [label="create_expiring_profile_key_credential_presentation", tooltip="    pub fn create_expiring_profile_key_credential_presentation(         &self,         randomness: RandomnessBytes,         group_secret_params: api::groups::GroupSecretParams,         expiring_profil...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_expiring_profile_key_credential_presentation()." [label="verify_expiring_profile_key_credential_presentation", tooltip="    pub fn verify_expiring_profile_key_credential_presentation(         &self,         group_public_params: api::groups::GroupPublicParams,         presentation: &api::profiles::ExpiringProfileKeyCred...", fillcolor=white]
+  }
+  subgraph cluster_14 {
+    label = "proofs.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/proofs/impl#[ExpiringProfileKeyCredentialPresentationProof]new()." [label="new", tooltip="    pub fn new(         uid_enc_key_pair: uid_encryption::KeyPair,         profile_key_enc_key_pair: profile_key_encryption::KeyPair,         credentials_public_key: credentials::PublicKey,         cr...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/proofs/impl#[ExpiringProfileKeyCredentialPresentationProof]verify()." [label="verify", tooltip="    pub fn verify(         &self,         credentials_key_pair: credentials::KeyPair<credentials::ExpiringProfileKeyCredential>,         uid_ciphertext: uid_encryption::Ciphertext,         uid_enc_pub...", fillcolor=white]
+  }
+  subgraph cluster_15 {
+    label = "zkcredential_examples.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential_only_verifying_one_encryption_key()." [label="test_profile_key_credential_only_verifying_one_encryption_key", tooltip="fn test_profile_key_credential_only_verifying_one_encryption_key() {     let mut sho = ShoSha256::new(b' Test_Credentials' );     let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_a...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic_without_verifying_encryption_key()." [label="test_mac_generic_without_verifying_encryption_key", tooltip="fn test_mac_generic_without_verifying_encryption_key() {     let mut sho = ShoSha256::new(b' Test_Credentials' );     let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());    ...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/impl#[RoomId][RevealedAttribute]as_point()." [label="as_point", tooltip="        fn as_point(&self) -> RistrettoPoint {             self.opaque_id         }", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential()." [label="test_profile_key_credential", tooltip="fn test_profile_key_credential() {     let mut sho = ShoSha256::new(b' Test_Credentials' );     let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());     let blinding_keypair ...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic()." [label="test_mac_generic", tooltip="fn test_mac_generic() {     let mut sho = ShoSha256::new(b' Test_Credentials' );     let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());      let label = b' 20221221_AuthCre...", fillcolor=white]
+  }
+  subgraph cluster_16 {
+    label = "backup_auth_flow.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 test_backup_auth_request_response()." [label="test_backup_auth_request_response", tooltip="fn test_backup_auth_request_response() {     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];     let randomness3: Randomne...", fillcolor=white]
+  }
+  subgraph cluster_17 {
+    label = "call_link_flow.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_request_response()." [label="test_create_call_link_request_response", tooltip="fn test_create_call_link_request_response() {     let randomness0: RandomnessBytes = [0x42u8; RANDOMNESS_LEN];     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let randomness2: Ran...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential_enforces_timestamp_granularity()." [label="test_auth_credential_enforces_timestamp_granularity", tooltip="fn test_auth_credential_enforces_timestamp_granularity() {     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];      // cli...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_enforces_timestamp_granularity()." [label="test_create_call_link_enforces_timestamp_granularity", tooltip="fn test_create_call_link_enforces_timestamp_granularity() {     let randomness0: RandomnessBytes = [0x42u8; RANDOMNESS_LEN];     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let ra...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential()." [label="test_auth_credential", tooltip="fn test_auth_credential() {     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];     let randomness3: RandomnessBytes = [0x...", fillcolor=white]
+  }
+  subgraph cluster_18 {
+    label = "integration_tests.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 test_profile_key_credential_presentation_v1_does_not_verify()." [label="test_profile_key_credential_presentation_v1_does_not_verify", tooltip="fn test_profile_key_credential_presentation_v1_does_not_verify() {     // Originally from test_integration_profile.     // SERVER     let server_secret_params = zkgroup::ServerSecretParams::generate(z...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 test_integration_expiring_profile()." [label="test_integration_expiring_profile", tooltip="fn test_integration_expiring_profile() {     // SERVER     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);     let server_public_params = server_secret_params...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 test_integration_auth_zkc()." [label="test_integration_auth_zkc", tooltip="fn test_integration_auth_zkc() {     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);     let server_public_params = server_secret_params.get_public_params(); ...", fillcolor=white]
+  }
+
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/double_and_compress_1024_random_points()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredential]present()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredential]present()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_receipt_level()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_receipt_level()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_receipt_level()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/generate_credential()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_backup_auth_request_response()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequestContext]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_backup_auth_request_response()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_backup_auth_request_response()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_backup_auth_request_response()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequest]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential_for_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_auth()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_auth()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_auth()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_auth()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential_only_verifying_one_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]with_authenticated_message()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential_only_verifying_one_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]with_authenticated_message()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential_only_verifying_one_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential_only_verifying_one_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]with_authenticated_message()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential_only_verifying_one_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential_only_verifying_one_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential_only_verifying_one_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]issue()."
+  "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]finalize_public_attrs()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]finalize_public_attrs()."
+  "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]finalize_public_attrs()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic_without_verifying_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic_without_verifying_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic_without_verifying_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic_without_verifying_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic_without_verifying_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic_without_verifying_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic_without_verifying_encryption_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/test/issue_receive_present()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify_for_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/test/issue_receive_present()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive_for_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/test/issue_receive_present()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential_for_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/test/issue_receive_present()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present_for_key()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/impl#[AuthCredentialWithPniResponse]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredential]present()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]add_revealed_attribute()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredential]present()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredential]present()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present_for_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialPresentation]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialPresentation]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_request_response()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredential]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_request_response()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequestContext]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_request_response()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequest]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_request_response()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify_for_key()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]finalize_public_attrs()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Default]default()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CreateCallLinkCredentialRequestContext_ReceiveResponse()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequestContext]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential_enforces_timestamp_granularity()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]issue_credential()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential_enforces_timestamp_granularity()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential_for_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential_for_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_profile_key_credential_presentation_v1_does_not_verify()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_profile_key_credential_presentation()."
+  "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]with_authenticated_message()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerPublicParams]create_expiring_profile_key_credential_presentation()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/compress_id()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present_for_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present_for_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CreateCallLinkCredentialPresentation_Verify()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialPresentation]verify()."
+  "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]with_authenticated_message()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]finalize_public_attrs()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilderCore<'a, T>`]prepare_non_attribute_point_args()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]finalize_public_attrs()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]with_authenticated_message()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilderCore<'a, T>`]with_authenticated_message()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]add_revealed_attribute()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkAuthCredential_PresentDeterministic()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredential]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]receive()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]receive()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][`Sum<T>`]sum()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkAuthCredentialResponse_IssueDeterministic()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]issue_credential()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkAuthCredentialResponse_Receive()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]receive()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilderCore<'a, T>`]prepare_non_attribute_point_args()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]add_revealed_attribute()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/impl#[RoomId][RevealedAttribute]as_point()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/impl#[RoomId][RevealedAttribute]as_point()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/impl#[RoomId][RevealedAttribute]as_point()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/impl#[RoomId][RevealedAttribute]as_point()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/impl#[RoomId][RevealedAttribute]as_point()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/impl#[RoomId][RevealedAttribute]as_point()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]add_revealed_attribute()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/impl#[RoomId][RevealedAttribute]as_point()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/impl#[RoomId][RevealedAttribute]as_point()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]with_authenticated_message()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]with_authenticated_message()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]with_authenticated_message()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_profile_key_credential()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()."
+  "rust-analyzer cargo zkcredential 0.1.0 attributes/tests/derive_default_generator_points_checks_for_reuse_in_debug_builds()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Default]default()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkAuthCredentialPresentation_Verify()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/impl#[AuthCredentialWithPniResponse]receive()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilderCore<'a, T>`]with_authenticated_message()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_mac_generic()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_enforces_timestamp_granularity()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequestContext]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_enforces_timestamp_granularity()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequest]issue()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]new()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]with_authenticated_message()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerSecretParams_VerifyAuthCredentialPresentation()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_auth_credential_presentation()."
+  "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]issue()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]finalize_public_attrs()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]new()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]with_authenticated_message()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialPresentation]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialPresentation]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]new()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilder<'a>`]with_authenticated_message()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilderCore<'a, T>`]with_authenticated_message()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive_for_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive_for_key()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequestContext]receive()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequestContext]receive()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]issue_credential()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredential]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_profile_key_credential_presentation()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_expiring_profile_key_credential_presentation()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_client_enforces_timestamp_granularity()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequest]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_client_enforces_timestamp_granularity()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequestContext]receive()."
+  "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofBuilderCore<'a, T>`]prepare_non_attribute_point_args()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_auth_credential_presentation()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialPresentation]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialPresentation]verify()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]issue_credential()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/auth_credential/impl#[CallLinkAuthCredentialResponse]issue_credential()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_integration_expiring_profile()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerPublicParams]create_expiring_profile_key_credential_presentation()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_integration_expiring_profile()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_profile_key_credential_presentation()."
+  "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]finalize_public_attrs()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CreateCallLinkCredential_PresentDeterministic()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredential]present()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/impl#[AuthCredentialWithPni]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequest]issue()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequest]issue()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify_for_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify_for_key()." -> "rust-analyzer cargo zkcredential 0.1.0 presentation/impl#[`PresentationProofVerifier<'a>`]verify()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CreateCallLinkCredentialRequest_IssueDeterministic()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequest]issue()."
+  "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]issue()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]finalize_public_attrs()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequestContext]receive()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequestContext]receive()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequest]issue()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/blind/impl#[`BlindedIssuanceProofBuilder<'_>`]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/create_credential/impl#[CreateCallLinkCredentialRequest]issue()." -> "rust-analyzer cargo zkcredential 0.1.0 issuance/impl#[`IssuanceProofBuilder<'a>`]new()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_integration_auth_zkc()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_integration_auth_zkc()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]issue_credential()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_integration_auth_zkc()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_integration_auth_zkc()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_integration_auth_zkc()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_auth_credential_presentation()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/impl#[AuthCredentialWithPni]present()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkc]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_client_enforces_timestamp()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequest]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_client_enforces_timestamp()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequestContext]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/proofs/impl#[ExpiringProfileKeyCredentialPresentationProof]new()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/BackupAuthCredentialRequest_IssueDeterministic()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequest]issue()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/BackupAuthCredentialPresentation_Verify()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_backup_id()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_backup_id()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_backup_id()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/generate_credential()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive()." -> "rust-analyzer cargo zkgroup 0.9.0 api/auth/auth_credential_with_pni/zkc/impl#[AuthCredentialWithPniZkcResponse]receive_for_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/generate_credential()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequestContext]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/generate_credential()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequest]issue()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_profile()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_expiring_profile_key_credential_presentation()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_profile()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerPublicParams]create_expiring_profile_key_credential_presentation()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/proofs/impl#[ExpiringProfileKeyCredentialPresentationProof]verify()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_redemption()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_redemption()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_wrong_redemption()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/generate_credential()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/encodings_of_small_multiples_of_basepoint()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/BackupAuthCredential_PresentDeterministic()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/test/impl_sum()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 ristretto/impl#[RistrettoPoint][Identity]identity()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/BackupAuthCredentialRequestContext_ReceiveResponse()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialRequestContext]receive()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_expiration()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/generate_credential()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_expiration()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredential]present()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/tests/test_server_verify_expiration()." -> "rust-analyzer cargo zkgroup 0.9.0 api/backups/auth_credential/impl#[BackupAuthCredentialPresentation]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerPublicParams]create_expiring_profile_key_credential_presentation()." -> "rust-analyzer cargo zkgroup 0.9.0 crypto/proofs/impl#[ExpiringProfileKeyCredentialPresentationProof]new()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/ServerSecretParams_VerifyProfileKeyCredentialPresentation()." -> "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_profile_key_credential_presentation()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/server_params/impl#[ServerSecretParams]verify_expiring_profile_key_credential_presentation()." -> "rust-analyzer cargo zkgroup 0.9.0 crypto/proofs/impl#[ExpiringProfileKeyCredentialPresentationProof]verify()."
+  "rust-analyzer cargo zkgroup 0.9.0 benches()." -> "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_auth()."
+  "rust-analyzer cargo zkgroup 0.9.0 benches()." -> "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_profile()."
+}
