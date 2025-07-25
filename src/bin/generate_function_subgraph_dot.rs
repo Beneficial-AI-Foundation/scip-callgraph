@@ -4,13 +4,15 @@ use std::env;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 4 {
-        eprintln!("Usage: {} <input-scip-json> <output-dot-file> <function-name1> [<function-name2> ...] [--include-callees] [--include-callers] [--depth <n>]", args[0]);
+        eprintln!("Usage: {} <input-scip-json> <output-dot-file> <function-name1> [<function-name2> ...] [--filter-non-libsignal-sources] [--include-callees] [--include-callers] [--depth <n>]", args[0]);
         eprintln!("Example: {} scip_data.json output.dot process_data handle_request --include-callers --depth 3", args[0]);
         std::process::exit(1);
     }
 
     let input_path = &args[1];
     let output_path = &args[2];
+
+    let filter_non_libsignal_sources = args.iter().any(|arg| arg == "--filter-non-libsignal-sources");
 
     // Check if --include-callees flag is present
     let include_callees = args.iter().any(|arg| arg == "--include-callees");
@@ -75,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("No depth limit for callers");
     }
     
-    match generate_function_subgraph_dot(&call_graph, &function_names, output_path, include_callees, include_callers, depth) {
+    match generate_function_subgraph_dot(&call_graph, &function_names, output_path, include_callees, include_callers, depth, filter_non_libsignal_sources) {
         Ok(_) => {
             println!("Function subgraph DOT and SVG files generated successfully!");
         },
