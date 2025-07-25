@@ -836,6 +836,38 @@ pub fn generate_function_subgraph_dot(
         }
     }
     
+    // Helper function to determine if a node is from libsignal
+    let is_libsignal_node = |symbol: &str| -> bool {
+        if let Some(node) = call_graph.get(symbol) {
+            // Check for various libsignal patterns in the symbol itself
+            node.symbol.contains("libsignal-protocol") || 
+            node.symbol.contains("libsignal-core") ||
+            node.symbol.contains("libsignal-net") ||
+            node.symbol.contains("libsignal-keytrans") ||
+            node.symbol.contains("libsignal-svrb") ||
+            node.symbol.contains("libsignal") ||
+            // Also check file paths for older format compatibility
+            node.file_path.contains("libsignal") ||
+            node.relative_path.contains("libsignal") ||
+            // Check for zkgroup which might be part of libsignal ecosystem
+            node.symbol.contains("zkgroup")
+        } else {
+            false
+        }
+    };
+    
+    // Separate libsignal nodes from non-libsignal nodes
+    let mut libsignal_symbols = HashSet::new();
+    let mut non_libsignal_symbols = HashSet::new();
+    
+    for symbol in &included_symbols {
+        if is_libsignal_node(symbol) {
+            libsignal_symbols.insert(symbol.clone());
+        } else {
+            non_libsignal_symbols.insert(symbol.clone());
+        }
+    }
+    
     // Group nodes by file path for visual organization
     let mut file_groups: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for symbol in &included_symbols {
@@ -855,7 +887,15 @@ pub fn generate_function_subgraph_dot(
         dot.push_str(&format!("  subgraph cluster_{} {{\n", cluster_id));
         dot.push_str(&format!("    label = \"{}\";\n", file_label));
         dot.push_str("    style=filled;\n");
-        dot.push_str("    color=lightgrey;\n");
+        
+        // Different cluster styling for libsignal vs non-libsignal
+        let is_libsignal_cluster = file_path.contains("libsignal");
+        if is_libsignal_cluster {
+            dot.push_str("    color=lightgrey;\n");
+        } else {
+            dot.push_str("    color=lightcoral;\n");
+            dot.push_str("    style=\"filled,dotted\";\n");
+        }
         dot.push_str("    fontname=Helvetica;\n");
         
         for symbol in symbols {
@@ -872,16 +912,22 @@ pub fn generate_function_subgraph_dot(
                     "".to_string()
                 };
                 
-                // Color the initially matched nodes differently
-                let fillcolor = if matched_symbols.contains(symbol) {
-                    "lightblue"
+                // Style nodes based on whether they're from libsignal and if they're initially matched
+                let (fillcolor, style) = if matched_symbols.contains(symbol) {
+                    if libsignal_symbols.contains(symbol) {
+                        ("lightblue", "filled")
+                    } else {
+                        ("lightcoral", "filled,dotted")
+                    }
+                } else if libsignal_symbols.contains(symbol) {
+                    ("white", "filled")
                 } else {
-                    "white"
+                    ("lightgray", "filled,dotted")
                 };
                 
                 dot.push_str(&format!(
-                    "    \"{}\" [label=\"{}\", tooltip=\"{}\", fillcolor={}]\n",
-                    node.symbol, label, tooltip, fillcolor
+                    "    \"{}\" [label=\"{}\", tooltip=\"{}\", fillcolor={}, style=\"{}\"]\n",
+                    node.symbol, label, tooltip, fillcolor, style
                 ));
             }
         }
@@ -892,12 +938,30 @@ pub fn generate_function_subgraph_dot(
     
     dot.push_str("\n");
     
-    // Draw edges between all included nodes
+    // Draw edges between all included nodes with different styles for libsignal vs non-libsignal
     for symbol in &included_symbols {
         if let Some(node) = call_graph.get(symbol) {
             for callee in &node.callees {
                 if included_symbols.contains(callee) {
-                    dot.push_str(&format!("  \"{}\" -> \"{}\"\n", node.symbol, callee));
+                    // Determine edge style based on whether both nodes are from libsignal
+                    let caller_is_libsignal = libsignal_symbols.contains(symbol);
+                    let callee_is_libsignal = libsignal_symbols.contains(callee);
+                    
+                    let edge_style = if caller_is_libsignal && callee_is_libsignal {
+                        // Both from libsignal - solid edge
+                        "color=gray"
+                    } else if caller_is_libsignal && !callee_is_libsignal {
+                        // libsignal calling non-libsignal - dotted edge with different color
+                        "color=red, style=dotted"
+                    } else if !caller_is_libsignal && callee_is_libsignal {
+                        // non-libsignal calling libsignal - dashed edge
+                        "color=orange, style=dashed"
+                    } else {
+                        // Both non-libsignal - dotted edge
+                        "color=lightgray, style=dotted"
+                    };
+                    
+                    dot.push_str(&format!("  \"{}\" -> \"{}\" [{}]\n", node.symbol, callee, edge_style));
                 }
             }
         }
