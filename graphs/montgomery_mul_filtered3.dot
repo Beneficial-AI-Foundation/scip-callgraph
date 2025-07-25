@@ -1,0 +1,83 @@
+digraph function_subgraph {
+  rankdir=LR;
+  node [shape=box, style=filled, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "scalar.rs";
+    style=filled;
+    color=lightgrey;
+    style="filled,dotted";
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [label="montgomery_mul", tooltip="    pub fn montgomery_mul(a: &Scalar52, b: &Scalar52) -> Scalar52 {         Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b))     }", fillcolor=green, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." [label="from_bytes_wide", tooltip="    pub fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar52 {         let mut words = [0u64; 8];         for i in 0..8 {             for j in 0..8 {                 words[i] |= (bytes[(i * 8) + j] as u64...", fillcolor=lightgray, style="filled,dotted"]
+  }
+  subgraph cluster_1 {
+    label = "scalar.rs";
+    style=filled;
+    color=lightgrey;
+    style="filled,dotted";
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [label="from_bytes_mod_order_wide", tooltip="    pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> Scalar {         UnpackedScalar::from_bytes_wide(input).pack()     }", fillcolor=lightgray, style="filled,dotted"]
+  }
+  subgraph cluster_2 {
+    label = "scalar.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 scalar/scalar_from_slice_wide()." [label="scalar_from_slice_wide", tooltip="pub fn scalar_from_slice_wide(bytes: &[u8]) -> Scalar {     let mut scalar_bytes = [0u8; 64];     scalar_bytes.copy_from_slice(bytes);     Scalar::from_bytes_mod_order_wide(&scalar_bytes) }", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_3 {
+    label = "sign.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 sign/tests/test_signature()." [label="test_signature", tooltip="    fn test_signature() {         let mut block64 = [0u8; 64];         let mut block32 = [0u8; 32];         let mut block100 = [0u8; 100];         for i in 0..32 {             block32[i] = i as u8;   ...", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_4 {
+    label = "statement.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." [label="verify_proof", tooltip="    pub fn verify_proof(         &self,         proof_bytes: &[u8],         point_args: &PointArgs,         message: &[u8],     ) -> Result<(), PokshoError> {         let proof = Proof::from_slice(pro...", fillcolor=white, style="filled"]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." [label="prove", tooltip="    pub fn prove(         &self,         scalar_args: &ScalarArgs,         point_args: &PointArgs,         message: &[u8],         randomness: &[u8], // must be 32 bytes     ) -> Result<Vec<u8>, Poksh...", fillcolor=white, style="filled"]
+    "rust-analyzer cargo poksho 0.7.0 statement/tests/test_complex_statement()." [label="test_complex_statement", tooltip="    fn test_complex_statement() {         let mut block32 = [0u8; 32];         let mut block64a = [0u8; 64];         let mut block64b = [0u8; 64];         let mut block64c = [0u8; 64];         let mut...", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_5 {
+    label = "lib.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-svrb 0.1.0 test/scalars_summing_to_works()." [label="scalars_summing_to_works", tooltip="    fn scalars_summing_to_works() {         proptest!(|(n in 1usize..10)| {             let mut rng = OsRng.unwrap_err();             let mut seed = [0u8; 64];             rng.try_fill_bytes(&mut seed...", fillcolor=white, style="filled"]
+    "rust-analyzer cargo libsignal-svrb 0.1.0 random_scalar()." [label="random_scalar", tooltip="fn random_scalar<R: Rng + CryptoRng>(r: &mut R) -> Scalar {     let mut scalar_bytes = [0u8; 64];     r.fill_bytes(&mut scalar_bytes);     Scalar::from_bytes_mod_order_wide(&scalar_bytes) }", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_6 {
+    label = "sho.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()." [label="get_scalar", tooltip="    fn get_scalar(&mut self) -> Scalar {         let mut scalar_bytes = [0u8; 64];         self.squeeze_and_ratchet_into(&mut scalar_bytes);         Scalar::from_bytes_mod_order_wide(&scalar_bytes)   ...", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_7 {
+    label = "sho.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 common/sho/impl#[Sho]get_scalar()." [label="get_scalar", tooltip="    pub fn get_scalar(&mut self) -> Scalar {         Scalar::from_bytes_mod_order_wide(&self.internal_sho.squeeze_and_ratchet_as_array())     }", fillcolor=white, style="filled"]
+  }
+
+  "rust-analyzer cargo zkgroup 0.9.0 common/sho/impl#[Sho]get_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo libsignal-svrb 0.1.0 test/scalars_summing_to_works()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." [color=blue, style=dashed]
+  "rust-analyzer cargo poksho 0.7.0 statement/tests/test_complex_statement()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." [color=blue, style=dashed]
+  "rust-analyzer cargo poksho 0.7.0 statement/tests/test_complex_statement()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo poksho 0.7.0 statement/tests/test_complex_statement()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." [color=blue, style=dashed]
+  "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo poksho 0.7.0 scalar/scalar_from_slice_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo poksho 0.7.0 sign/tests/test_signature()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo libsignal-svrb 0.1.0 random_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [color=gray, style=dashed]
+}

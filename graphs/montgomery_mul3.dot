@@ -1,0 +1,144 @@
+digraph function_subgraph {
+  rankdir=LR;
+  node [shape=box, style=filled, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "dalek_benchmarks.rs";
+    style=filled;
+    color=lightgrey;
+    style="filled,dotted";
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/batch_scalar_inversion()." [label="batch_scalar_inversion", tooltip="    fn batch_scalar_inversion<M: Measurement>(c: &mut BenchmarkGroup<M>) {         for batch_size in &BATCH_SIZES {             c.bench_with_input(                 BenchmarkId::new(' Batch scalar inve...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_benches()." [label="scalar_benches", tooltip="    pub(crate) fn scalar_benches() {         let mut c = Criterion::default();         let mut g = c.benchmark_group(' scalar benches' );          scalar_arith(&mut g);         batch_scalar_inversion(...", fillcolor=lightgray, style="filled,dotted"]
+  }
+  subgraph cluster_1 {
+    label = "scalar.rs";
+    style=filled;
+    color=lightgrey;
+    style="filled,dotted";
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [label="montgomery_mul", tooltip="    pub fn montgomery_mul(a: &Scalar52, b: &Scalar52) -> Scalar52 {         Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b))     }", fillcolor=green, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." [label="from_bytes_wide", tooltip="    pub fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar52 {         let mut words = [0u64; 8];         for i in 0..8 {             for j in 0..8 {                 words[i] |= (bytes[(i * 8) + j] as u64...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]as_montgomery()." [label="as_montgomery", tooltip="    pub fn as_montgomery(&self) -> Scalar52 {         Scalar52::montgomery_mul(self, &constants::RR)     }", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/test/from_bytes_wide()." [label="from_bytes_wide", tooltip="    fn from_bytes_wide() {         let bignum = [255u8; 64]; // 2^512 - 1         let reduced = Scalar52::from_bytes_wide(&bignum);         for i in 0..5 {             assert!(reduced[i] == C[i]);    ...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/test/montgomery_mul_max()." [label="montgomery_mul_max", tooltip="    fn montgomery_mul_max() {         let res = Scalar52::montgomery_mul(&X, &X);         for i in 0..5 {             assert!(res[i] == XX_MONT[i]);         }     }", fillcolor=green, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/test/montgomery_mul()." [label="montgomery_mul", tooltip="    fn montgomery_mul() {         let res = Scalar52::montgomery_mul(&X, &Y);         for i in 0..5 {             assert!(res[i] == XY_MONT[i]);         }     }", fillcolor=green, style="filled,dotted"]
+  }
+  subgraph cluster_2 {
+    label = "montgomery.rs";
+    style=filled;
+    color=lightgrey;
+    style="filled,dotted";
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_mul_bits_be_twist()." [label="montgomery_mul_bits_be_twist", tooltip="    fn montgomery_mul_bits_be_twist() {         let mut csprng = rand_core::OsRng;          for _ in 0..100 {             // Make a random point P on the curve or its twist             let p_montgomer...", fillcolor=green, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_mul_bits_be()." [label="montgomery_mul_bits_be", tooltip="    fn montgomery_mul_bits_be() {         let mut csprng = rand_core::OsRng;          for _ in 0..100 {             // Make a random prime-order point P             let p_edwards = rand_prime_order_po...", fillcolor=green, style="filled,dotted"]
+  }
+  subgraph cluster_3 {
+    label = "scalar.rs";
+    style=filled;
+    color=lightgrey;
+    style="filled,dotted";
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_consistency()." [label="batch_invert_consistency", tooltip="    fn batch_invert_consistency() {         let mut x = Scalar::from(1u64);         let mut v1: Vec<_> = (0..16)             .map(|_| {                 let tmp = x;                 x = x + x;         ...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/from_bytes_mod_order_wide()." [label="from_bytes_mod_order_wide", tooltip="    fn from_bytes_mod_order_wide() {         let mut bignum = [0u8; 64];         // set bignum = x + 2^256x         for i in 0..32 {             bignum[i] = X[i];             bignum[32 + i] = X[i];   ...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_hash()." [label="from_hash", tooltip="    pub fn from_hash<D>(hash: D) -> Scalar     where         D: Digest<OutputSize = U64>,     {         let mut output = [0u8; 64];         output.copy_from_slice(hash.finalize().as_slice());         ...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]random()." [label="random", tooltip="    pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> Self {         let mut scalar_bytes = [0u8; 64];         rng.fill_bytes(&mut scalar_bytes);         Scalar::from_bytes_mod_order_wide(&scal...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/montgomery_reduce_matches_from_bytes_mod_order_wide()." [label="montgomery_reduce_matches_from_bytes_mod_order_wide", tooltip="    fn montgomery_reduce_matches_from_bytes_mod_order_wide() {         let mut bignum = [0u8; 64];          // set bignum = x + 2^256x         for i in 0..32 {             bignum[i] = X[i];           ...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()." [label="montgomery_invert", tooltip="    pub fn montgomery_invert(&self) -> UnpackedScalar {         // Uses the addition chain from         // https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion         l...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/square_multiply()." [label="square_multiply", tooltip="        fn square_multiply(y: &mut UnpackedScalar, squarings: usize, x: &UnpackedScalar) {             for _ in 0..squarings {                 *y = y.montgomery_square();             }             *y ...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." [label="invert", tooltip="    pub fn invert(&self) -> UnpackedScalar {         self.as_montgomery().montgomery_invert().from_montgomery()     }", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_empty()." [label="batch_invert_empty", tooltip="    fn batch_invert_empty() {         assert_eq!(Scalar::ONE, Scalar::batch_invert(&mut []));     }", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()." [label="invert", tooltip="    pub fn invert(&self) -> Scalar {         self.unpack().invert().pack()     }", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [label="from_bytes_mod_order_wide", tooltip="    pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> Scalar {         UnpackedScalar::from_bytes_wide(input).pack()     }", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/fuzzer_testcase_reduction()." [label="fuzzer_testcase_reduction", tooltip="    fn fuzzer_testcase_reduction() {         // LE bytes of 24519928653854221733733552434404946937899825954937634815         let a_bytes = [             255, 255, 255, 255, 255, 255, 255, 255, 255, 25...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_with_a_zero_input_panics()." [label="batch_invert_with_a_zero_input_panics", tooltip="    fn batch_invert_with_a_zero_input_panics() {         let mut xs = vec![Scalar::ONE; 16];         xs[3] = Scalar::ZERO;         // This should panic in debug mode.         Scalar::batch_invert(&mut...", fillcolor=lightgray, style="filled,dotted"]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." [label="batch_invert", tooltip="    pub fn batch_invert(inputs: &mut [Scalar]) -> Scalar {         // This code is essentially identical to the FieldElement         // implementation, and is documented there.  Unfortunately,        ...", fillcolor=lightgray, style="filled,dotted"]
+  }
+  subgraph cluster_4 {
+    label = "scalar.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 scalar/scalar_from_slice_wide()." [label="scalar_from_slice_wide", tooltip="pub fn scalar_from_slice_wide(bytes: &[u8]) -> Scalar {     let mut scalar_bytes = [0u8; 64];     scalar_bytes.copy_from_slice(bytes);     Scalar::from_bytes_mod_order_wide(&scalar_bytes) }", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_5 {
+    label = "sign.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 sign/tests/test_signature()." [label="test_signature", tooltip="    fn test_signature() {         let mut block64 = [0u8; 64];         let mut block32 = [0u8; 32];         let mut block100 = [0u8; 100];         for i in 0..32 {             block32[i] = i as u8;   ...", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_6 {
+    label = "statement.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." [label="prove", tooltip="    pub fn prove(         &self,         scalar_args: &ScalarArgs,         point_args: &PointArgs,         message: &[u8],         randomness: &[u8], // must be 32 bytes     ) -> Result<Vec<u8>, Poksh...", fillcolor=white, style="filled"]
+    "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." [label="verify_proof", tooltip="    pub fn verify_proof(         &self,         proof_bytes: &[u8],         point_args: &PointArgs,         message: &[u8],     ) -> Result<(), PokshoError> {         let proof = Proof::from_slice(pro...", fillcolor=white, style="filled"]
+    "rust-analyzer cargo poksho 0.7.0 statement/tests/test_complex_statement()." [label="test_complex_statement", tooltip="    fn test_complex_statement() {         let mut block32 = [0u8; 32];         let mut block64a = [0u8; 64];         let mut block64b = [0u8; 64];         let mut block64c = [0u8; 64];         let mut...", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_7 {
+    label = "lib.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-svrb 0.1.0 random_scalar()." [label="random_scalar", tooltip="fn random_scalar<R: Rng + CryptoRng>(r: &mut R) -> Scalar {     let mut scalar_bytes = [0u8; 64];     r.fill_bytes(&mut scalar_bytes);     Scalar::from_bytes_mod_order_wide(&scalar_bytes) }", fillcolor=white, style="filled"]
+    "rust-analyzer cargo libsignal-svrb 0.1.0 test/scalars_summing_to_works()." [label="scalars_summing_to_works", tooltip="    fn scalars_summing_to_works() {         proptest!(|(n in 1usize..10)| {             let mut rng = OsRng.unwrap_err();             let mut seed = [0u8; 64];             rng.try_fill_bytes(&mut seed...", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_8 {
+    label = "sho.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()." [label="get_scalar", tooltip="    fn get_scalar(&mut self) -> Scalar {         let mut scalar_bytes = [0u8; 64];         self.squeeze_and_ratchet_into(&mut scalar_bytes);         Scalar::from_bytes_mod_order_wide(&scalar_bytes)   ...", fillcolor=white, style="filled"]
+  }
+  subgraph cluster_9 {
+    label = "sho.rs";
+    style=filled;
+    color=lightblue;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 common/sho/impl#[Sho]get_scalar()." [label="get_scalar", tooltip="    pub fn get_scalar(&mut self) -> Scalar {         Scalar::from_bytes_mod_order_wide(&self.internal_sho.squeeze_and_ratchet_as_array())     }", fillcolor=white, style="filled"]
+  }
+
+  "rust-analyzer cargo poksho 0.7.0 scalar/scalar_from_slice_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_consistency()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_consistency()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." [color=gray, style=dashed]
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." [color=blue, style=dashed]
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/batch_scalar_inversion()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/batch_scalar_inversion()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]random()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/from_bytes_mod_order_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_hash()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]random()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo zkgroup 0.9.0 common/sho/impl#[Sho]get_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/montgomery_reduce_matches_from_bytes_mod_order_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/montgomery_reduce_matches_from_bytes_mod_order_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_benches()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/batch_scalar_inversion()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/square_multiply()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]as_montgomery()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_empty()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]as_montgomery()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/test/from_bytes_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." [color=gray, style=dashed]
+  "rust-analyzer cargo poksho 0.7.0 statement/tests/test_complex_statement()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo poksho 0.7.0 statement/tests/test_complex_statement()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]prove()." [color=blue, style=dashed]
+  "rust-analyzer cargo poksho 0.7.0 statement/tests/test_complex_statement()." -> "rust-analyzer cargo poksho 0.7.0 statement/impl#[Statement]verify_proof()." [color=blue, style=dashed]
+  "rust-analyzer cargo libsignal-svrb 0.1.0 random_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery/test/montgomery_mul_bits_be()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo zkcredential 0.1.0 sho/ShoExt#get_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]from_bytes_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/fuzzer_testcase_reduction()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_with_a_zero_input_panics()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." [color=gray, style=dashed]
+  "rust-analyzer cargo poksho 0.7.0 sign/tests/test_signature()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]as_montgomery()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()." [color=gray, style=dashed]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/test/montgomery_mul_max()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [color=gray, style=dashed]
+  "rust-analyzer cargo libsignal-svrb 0.1.0 test/scalars_summing_to_works()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]from_bytes_mod_order_wide()." [color=blue]
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/test/montgomery_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/scalar/impl#[Scalar52]montgomery_mul()." [color=gray, style=dashed]
+}
