@@ -1,11 +1,12 @@
-
 ## Prerequirements
 
 If you want to use your own json file., you need to install:
-- [rust-analyzer](https://rust-analyzer.github.io/book/installation.html) it is used to generate a scip output file
-- [scip](https://github.com/sourcegraph/scip) it is used to generate a JSON from the scip output file  
 
-If you just want to get info about `libsignal`, simply replace `scip_data.json` by `index_scip_libsignal_deps.json` in the commands below.
+- [rust-analyzer](https://rust-analyzer.github.io/book/installation.html) it is used to generate a scip output file
+- [scip](https://github.com/sourcegraph/scip) it is used to generate a JSON from the scip output file
+
+If you just want to get info about `libsignal`, simply replace `scip_data.json` by `index_scip_libsignal_deps.json` in the commands below. (If you want to format it so you can see its structure, you can use the command `jq '.' index_scip_libsignal_deps.json > formatted_index_scip_libsignal_deps
+.json`.)
 
 ## How to use
 
@@ -20,7 +21,8 @@ cargo run --bin generate_call_graph_dot <path_to_rust_repo>
 ```
 
 This outputs:
-- `call_graph.json`: the call graph data in JSON format  
+
+- `call_graph.json`: the call graph data in JSON format
 - `call_graph.dot`: the call graph in Graphviz DOT format
 
 ### 2. Generate file subgraph
@@ -47,9 +49,10 @@ cargo run --bin generate_function_subgraph_dot <input-scip-json> <output-dot-fil
 ```
 
 Flags:
-- `--include-callees`: include functions called by the specified functions  
-- `--include-callers`: include functions that call the specified functions  
-- `--depth <n>`: limit the caller/callee expansion to depth *n*  
+
+- `--include-callees`: include functions called by the specified functions
+- `--include-callers`: include functions that call the specified functions
+- `--depth <n>`: limit the caller/callee expansion to depth _n_
 
 Example:
 
