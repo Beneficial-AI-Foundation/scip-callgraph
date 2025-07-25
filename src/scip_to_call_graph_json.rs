@@ -744,7 +744,8 @@ pub fn generate_function_subgraph_dot(
     output_path: &str,
     include_callees: bool,
     include_callers: bool,
-    depth: Option<usize>
+    depth: Option<usize>,
+    filter_non_libsignal_sources: bool
 ) -> std::io::Result<()> {
     use std::collections::{BTreeMap, HashSet, VecDeque};
     let mut dot = String::from("digraph function_subgraph {\n");
@@ -784,6 +785,26 @@ pub fn generate_function_subgraph_dot(
         println!("  - {} ({})", node.display_name, node.symbol);
     }
     
+    // Helper function to determine if a node is from libsignal
+    let is_libsignal_node = |symbol: &str| -> bool {
+        if let Some(node) = call_graph.get(symbol) {
+            // Check for various libsignal patterns in the symbol itself
+            node.symbol.contains("libsignal-protocol") || 
+            node.symbol.contains("libsignal-core") ||
+            node.symbol.contains("libsignal-net") ||
+            node.symbol.contains("libsignal-keytrans") ||
+            node.symbol.contains("libsignal-svrb") ||
+            node.symbol.contains("libsignal") ||
+            // Check for zkgroup which might be part of libsignal ecosystem
+            node.symbol.contains("zkgroup") ||
+            node.symbol.contains("poksho")  ||
+            node.symbol.contains("zkcredential") ||
+            node.symbol.contains("usernames")
+        } else {
+            false
+        }
+    };
+    
     // Build the transitive closure of dependencies
     let mut included_symbols = matched_symbols.clone();
     let mut queue = VecDeque::new();
@@ -793,7 +814,7 @@ pub fn generate_function_subgraph_dot(
         queue.push_back((symbol.clone(), 0));
     }
     
-    // BFS to find all transitive dependencies with depth tracking
+    // BFS to find all transitive dependencies with depth tracking (no filtering here)
     while let Some((symbol, current_depth)) = queue.pop_front() {
         if let Some(node) = call_graph.get(&symbol) {
             if include_callees {
@@ -803,13 +824,11 @@ pub fn generate_function_subgraph_dot(
                 };
 
                 if should_include_callees {
-                // Add callees (dependencies) - always traverse all levels for callees
-                    println!("Processing callees: {:?}", &node.callees);
+                    // Add callees (dependencies)
                     for callee in &node.callees {
                         if !included_symbols.contains(callee) {
                             included_symbols.insert(callee.clone());
                             queue.push_back((callee.clone(), current_depth + 1));
-                            println!("  - {}", callee);
                         }
                     }
                 }
@@ -823,12 +842,10 @@ pub fn generate_function_subgraph_dot(
                 };
                 
                 if should_include_callers {
-                    println!("Processing callers: {:?}", &node.callers);
                     for caller in &node.callers {
                         if !included_symbols.contains(caller) {
                             included_symbols.insert(caller.clone());
                             queue.push_back((caller.clone(), current_depth + 1));
-                            println!("  - {}", caller);
                         }
                     }
                 }
@@ -836,32 +853,72 @@ pub fn generate_function_subgraph_dot(
         }
     }
     
-    // Helper function to determine if a node is from libsignal
-    let is_libsignal_node = |symbol: &str| -> bool {
-        if let Some(node) = call_graph.get(symbol) {
-            // Check for various libsignal patterns in the symbol itself
-            node.symbol.contains("libsignal-protocol") || 
-            node.symbol.contains("libsignal-core") ||
-            node.symbol.contains("libsignal-net") ||
-            node.symbol.contains("libsignal-keytrans") ||
-            node.symbol.contains("libsignal-svrb") ||
-            node.symbol.contains("libsignal") ||
-            // Also check file paths for older format compatibility
-            node.file_path.contains("libsignal") ||
-            node.relative_path.contains("libsignal") ||
-            // Check for zkgroup which might be part of libsignal ecosystem
-            node.symbol.contains("zkgroup")
-        } else {
-            false
+    // Second step: Construct a filtered graph with only paths starting from libsignal nodes if filtering is enabled
+    let final_included_symbols = if filter_non_libsignal_sources {
+        // Find source nodes (nodes with no incoming edges within the included set)
+        let mut has_incoming_edge = HashSet::new();
+        for symbol in &included_symbols {
+            if let Some(node) = call_graph.get(symbol) {
+                for callee in &node.callees {
+                    if included_symbols.contains(callee) {
+                        has_incoming_edge.insert(callee.clone());
+                    }
+                }
+            }
         }
+        
+        let source_nodes: Vec<_> = included_symbols.iter()
+            .filter(|symbol| !has_incoming_edge.contains(*symbol))
+            .cloned()
+            .collect();
+        
+        // Identify libsignal source nodes
+        let libsignal_sources: Vec<_> = source_nodes.iter()
+            .filter(|symbol| is_libsignal_node(symbol))
+            .cloned()
+            .collect();
+        
+        // Build a new graph by traversing only from libsignal source nodes
+        let mut filtered_symbols = HashSet::new();
+        for source in &libsignal_sources {
+            // DFS to find all nodes reachable from this libsignal source
+            let mut stack = vec![source.clone()];
+            let mut visited = HashSet::new();
+            
+            while let Some(symbol) = stack.pop() {
+                if visited.contains(&symbol) {
+                    continue;
+                }
+                visited.insert(symbol.clone());
+                filtered_symbols.insert(symbol.clone());
+                
+                if let Some(node) = call_graph.get(&symbol) {
+                    for callee in &node.callees {
+                        if included_symbols.contains(callee) && !visited.contains(callee) {
+                            stack.push(callee.clone());
+                        }
+                    }
+                }
+            }
+        }
+        
+        println!("Filtered to {} nodes reachable from {} libsignal source nodes (from original {} nodes)", 
+                 filtered_symbols.len(), libsignal_sources.len(), included_symbols.len());
+        
+        filtered_symbols
+    } else {
+        // No filtering, use all included symbols
+        included_symbols
     };
     
     // Separate libsignal nodes from non-libsignal nodes
     let mut libsignal_symbols = HashSet::new();
     let mut non_libsignal_symbols = HashSet::new();
     
-    for symbol in &included_symbols {
+    for symbol in &final_included_symbols {
+        //println!("Checking symbol: {}", symbol);
         if is_libsignal_node(symbol) {
+            //println!("  - is libsignal: {}", symbol);
             libsignal_symbols.insert(symbol.clone());
         } else {
             non_libsignal_symbols.insert(symbol.clone());
@@ -870,7 +927,7 @@ pub fn generate_function_subgraph_dot(
     
     // Group nodes by file path for visual organization
     let mut file_groups: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for symbol in &included_symbols {
+    for symbol in &final_included_symbols {
         if let Some(node) = call_graph.get(symbol) {
             file_groups.entry(node.file_path.clone()).or_default().push(symbol.clone());
         }
@@ -889,11 +946,32 @@ pub fn generate_function_subgraph_dot(
         dot.push_str("    style=filled;\n");
         
         // Different cluster styling for libsignal vs non-libsignal
-        let is_libsignal_cluster = file_path.contains("libsignal");
+        // Check if any node in this cluster is actually from libsignal using the same logic as is_libsignal_node
+        let is_libsignal_cluster = symbols.iter().any(|symbol| {
+            if let Some(node) = call_graph.get(symbol) {
+                // Use the same logic as is_libsignal_node function
+                node.symbol.contains("libsignal-protocol") || 
+                node.symbol.contains("libsignal-core") ||
+                node.symbol.contains("libsignal-net") ||
+                node.symbol.contains("libsignal-keytrans") ||
+                node.symbol.contains("libsignal-svrb") ||
+                node.symbol.contains("libsignal") ||
+                // Check relative paths instead of absolute paths to avoid false positives from folder names
+                node.relative_path.contains("libsignal") ||
+                // Check for zkgroup which might be part of libsignal ecosystem
+                node.symbol.contains("zkgroup") ||
+                node.symbol.contains("poksho")  ||
+                node.symbol.contains("zkcredential") ||
+                node.symbol.contains("usernames")
+            } else {
+                false
+            }
+        });
+        println!("Processing file cluster: {} (libsignal: {})", file_path, is_libsignal_cluster);
         if is_libsignal_cluster {
-            dot.push_str("    color=lightgrey;\n");
+            dot.push_str("    color=lightblue;\n");
         } else {
-            dot.push_str("    color=lightcoral;\n");
+            dot.push_str("    color=lightgrey;\n");
             dot.push_str("    style=\"filled,dotted\";\n");
         }
         dot.push_str("    fontname=Helvetica;\n");
@@ -913,11 +991,12 @@ pub fn generate_function_subgraph_dot(
                 };
                 
                 // Style nodes based on whether they're from libsignal and if they're initially matched
-                let (fillcolor, style) = if matched_symbols.contains(symbol) {
+                let (fillcolor, style) = 
+                if matched_symbols.contains(symbol) {
                     if libsignal_symbols.contains(symbol) {
-                        ("lightblue", "filled")
+                        ("blue", "filled")
                     } else {
-                        ("lightcoral", "filled,dotted")
+                        ("green", "filled,dotted")
                     }
                 } else if libsignal_symbols.contains(symbol) {
                     ("white", "filled")
@@ -939,26 +1018,28 @@ pub fn generate_function_subgraph_dot(
     dot.push_str("\n");
     
     // Draw edges between all included nodes with different styles for libsignal vs non-libsignal
-    for symbol in &included_symbols {
+    for symbol in &final_included_symbols {
         if let Some(node) = call_graph.get(symbol) {
             for callee in &node.callees {
-                if included_symbols.contains(callee) {
+                if final_included_symbols.contains(callee) {
                     // Determine edge style based on whether both nodes are from libsignal
                     let caller_is_libsignal = libsignal_symbols.contains(symbol);
                     let callee_is_libsignal = libsignal_symbols.contains(callee);
                     
+                    println!("Processing edge: {} -> {} (libsignal: {}, {})", symbol, callee, caller_is_libsignal, callee_is_libsignal);
+                    
                     let edge_style = if caller_is_libsignal && callee_is_libsignal {
                         // Both from libsignal - solid edge
-                        "color=gray"
+                        "color=blue, style=dashed"
                     } else if caller_is_libsignal && !callee_is_libsignal {
                         // libsignal calling non-libsignal - dotted edge with different color
-                        "color=red, style=dotted"
+                        "color=blue"
                     } else if !caller_is_libsignal && callee_is_libsignal {
                         // non-libsignal calling libsignal - dashed edge
                         "color=orange, style=dashed"
                     } else {
                         // Both non-libsignal - dotted edge
-                        "color=lightgray, style=dotted"
+                        "color=gray, style=dashed"
                     };
                     
                     dot.push_str(&format!("  \"{}\" -> \"{}\" [{}]\n", node.symbol, callee, edge_style));
