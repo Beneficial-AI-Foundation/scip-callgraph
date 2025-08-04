@@ -45,7 +45,7 @@ dot -Tsvg files_subgraph.dot -o files_subgraph.svg
 Extract the subgraph of functions based on a set of function names, with optional caller/callee expansion:
 
 ```bash
-cargo run --bin generate_function_subgraph_dot <input-scip-json> <output-dot-file> <function-name1> [<function-name2> ...] [--include-callees] [--include-callers] [--depth <n>]
+cargo run --bin generate_function_subgraph_dot <input-scip-json> <output-dot-file> <function-name1> [<function-name2> ...] [--include-callees] [--include-callers] [--depth <n>] [--filter-non-libsignal-sources]
 ```
 
 Flags:
@@ -53,9 +53,10 @@ Flags:
 - `--include-callees`: include functions called by the specified functions
 - `--include-callers`: include functions that call the specified functions
 - `--depth <n>`: limit the caller/callee expansion to depth _n_
+- `--filter-non-libsignal-sources`: filter out functions that are not from libsignal sources
 
 Example:
 
 ```bash
-argo run --bin generate_function_subgraph_dot index_scip_libsignal_deps.json reduce3.dot "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()" --include-callers --depth 3
+cargo run --bin generate_function_subgraph_dot index_scip_libsignal_deps.json reduce3.dot "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()" --include-callers --depth 3
 ```
