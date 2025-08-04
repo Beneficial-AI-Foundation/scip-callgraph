@@ -854,7 +854,8 @@ pub fn generate_function_subgraph_dot(
     }
     
     // Second step: Construct a filtered graph with only paths starting from libsignal nodes if filtering is enabled
-    let final_included_symbols = if filter_non_libsignal_sources {
+    // Only apply filtering when include_callers is true and not when include_callees is true
+    let final_included_symbols = if filter_non_libsignal_sources && include_callers && !include_callees {
         // Find source nodes (nodes with no incoming edges within the included set)
         let mut has_incoming_edge = HashSet::new();
         for symbol in &included_symbols {
