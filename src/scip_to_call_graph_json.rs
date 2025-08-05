@@ -31,6 +31,7 @@ pub struct Document {
     pub language: String,
     pub relative_path: String,
     pub occurrences: Vec<Occurrence>,
+    #[serde(default)]
     pub symbols: Vec<Symbol>,
     pub position_encoding: i32,
 }
