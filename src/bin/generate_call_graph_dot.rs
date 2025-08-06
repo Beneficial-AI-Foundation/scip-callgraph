@@ -1,4 +1,6 @@
-use rust_analyzer_test::scip_to_call_graph_json::{parse_scip_json, build_call_graph, generate_call_graph_dot};
+use rust_analyzer_test::scip_to_call_graph_json::{
+    build_call_graph, generate_call_graph_dot, parse_scip_json,
+};
 use std::env;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,15 +15,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Parsing SCIP JSON from {}...", input_path);
     let scip_data = parse_scip_json(input_path)?;
-    
+
     println!("Building call graph...");
     let call_graph = build_call_graph(&scip_data);
     println!("Call graph contains {} functions", call_graph.len());
-    
+
     println!("Generating DOT file at {}...", output_path);
     generate_call_graph_dot(&call_graph, output_path)?;
     println!("DOT file generated successfully!");
-    println!("To generate SVG, run: dot -Tsvg {} -o graph.svg", output_path);
+    println!(
+        "To generate SVG, run: dot -Tsvg {} -o graph.svg",
+        output_path
+    );
 
     Ok(())
 }
