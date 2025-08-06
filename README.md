@@ -8,6 +8,58 @@ If you want to use your own json file., you need to install:
 If you just want to get info about `libsignal`, simply replace `scip_data.json` by `index_scip_libsignal_deps.json` in the commands below. (If you want to format it so you can see its structure, you can use the command `jq '.' index_scip_libsignal_deps.json > formatted_index_scip_libsignal_deps
 .json`.)
 
+## Building a Release
+
+### Local Build
+
+To build an optimized release version of the `generate_function_subgraph_dot` tool locally:
+
+```bash
+# Option 1: Use the build script
+./build_release.sh
+
+# Option 2: Build manually
+cargo build --release --bin generate_function_subgraph_dot
+```
+
+The release binary will be located at `target/release/generate_function_subgraph_dot` and can be distributed as a standalone executable.
+
+### GitHub Actions Automated Builds
+
+This repository includes GitHub Actions workflows for automated building and releasing:
+
+#### Continuous Integration
+
+- **Workflow**: `.github/workflows/build.yml`
+- **Triggers**: Every push to `master`/`main` branch and pull requests
+- **Platforms**: Linux, Windows, macOS
+- **Actions**: Format check, linting, debug and release builds, basic functionality testing
+
+#### Release Builds
+
+- **Workflow**: `.github/workflows/release.yml`
+- **Triggers**:
+  - Git tags matching `v*` (e.g., `v1.0.0`, `v1.2.3`)
+  - Manual workflow dispatch
+- **Platforms**: Linux x86_64, Windows x86_64, macOS x86_64, macOS ARM64
+- **Output**: Creates GitHub releases with downloadable binaries for each platform
+
+#### Creating a Release
+
+To create a new release with automated builds:
+
+```bash
+# Tag your release
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This will automatically:
+
+1. Build binaries for all supported platforms
+2. Create archives with documentation
+3. Create a GitHub release with all binaries attached
+
 ## How to use
 
 Below are the main utilities provided by this repository:
