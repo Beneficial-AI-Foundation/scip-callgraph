@@ -9,7 +9,7 @@ pub mod scip_reader;
 
 pub mod scip_to_call_graph_json;
 /// Performs a simple calculation
-/// 
+///
 /// # Examples
 /// ```
 /// let result = rust_analyzer_test::calculate(2, 3);

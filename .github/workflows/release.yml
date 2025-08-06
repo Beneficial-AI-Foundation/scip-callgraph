@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*" # Trigger on version tags like v1.0.0
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary-name: generate_function_subgraph_dot
+            asset-name: generate_function_subgraph_dot-linux-x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary-name: generate_function_subgraph_dot.exe
+            asset-name: generate_function_subgraph_dot-windows-x86_64.exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            binary-name: generate_function_subgraph_dot
+            asset-name: generate_function_subgraph_dot-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary-name: generate_function_subgraph_dot
+            asset-name: generate_function_subgraph_dot-macos-arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+            ${{ runner.os }}-cargo-
+
+      - name: Build release binary
+        run: cargo build --release --bin generate_function_subgraph_dot --target ${{ matrix.target }}
+
+      - name: Prepare release asset (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p release-${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/${{ matrix.binary-name }} release-${{ matrix.target }}/${{ matrix.asset-name }}
+          cp README.md release-${{ matrix.target }}/
+          cp release/README_RELEASE.md release-${{ matrix.target }}/
+          chmod +x release-${{ matrix.target }}/${{ matrix.asset-name }}
+
+      - name: Prepare release asset (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          New-Item -ItemType Directory -Force -Path "release-${{ matrix.target }}"
+          Copy-Item "target\${{ matrix.target }}\release\${{ matrix.binary-name }}" "release-${{ matrix.target }}\${{ matrix.asset-name }}"
+          Copy-Item "README.md" "release-${{ matrix.target }}\"
+          Copy-Item "release\README_RELEASE.md" "release-${{ matrix.target }}\"
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd release-${{ matrix.target }}
+          tar -czf ../${{ matrix.asset-name }}.tar.gz *
+          cd ..
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          Compress-Archive -Path "release-${{ matrix.target }}\*" -DestinationPath "${{ matrix.asset-name }}.zip"
+
+      - name: Upload release asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset-name }}
+          path: |
+            ${{ matrix.asset-name }}.tar.gz
+            ${{ matrix.asset-name }}.zip
+          if-no-files-found: ignore
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+          body: |
+            ## Function Subgraph Analyzer Release
+
+            This release contains the `generate_function_subgraph_dot` binary for multiple platforms.
+
+            ### Available Binaries:
+            - **Linux x86_64**: `generate_function_subgraph_dot-linux-x86_64.tar.gz`
+            - **Windows x86_64**: `generate_function_subgraph_dot-windows-x86_64.exe.zip`
+            - **macOS x86_64**: `generate_function_subgraph_dot-macos-x86_64.tar.gz`
+            - **macOS ARM64**: `generate_function_subgraph_dot-macos-arm64.tar.gz`
+
+            ### Usage:
+            ```bash
+            ./generate_function_subgraph_dot <input-scip-json> <output-dot-file> <function-name1> [flags...]
+            ```
+
+            ### Flags:
+            - `--include-callees`: Include functions called by the specified functions
+            - `--include-callers`: Include functions that call the specified functions
+            - `--depth <n>`: Limit the caller/callee expansion to depth n
+            - `--filter-non-libsignal-sources`: Filter out non-libsignal sources
+
+            See the README files included in each archive for detailed usage instructions.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

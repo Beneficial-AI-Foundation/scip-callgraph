@@ -2,6 +2,11 @@
 name = "rust-analyzer-test"
 version = "0.1.0"
 edition = "2021"
+description = "Function subgraph analyzer for Rust codebases using SCIP data"
+repository = "https://github.com/Beneficial-AI-Foundation/rust-analyzer-test"
+license = "MIT OR Apache-2.0"
+keywords = ["rust", "analyzer", "call-graph", "scip", "visualization"]
+categories = ["development-tools", "visualization"]
 
 [lib]
 path = "src/lib.rs"
@@ -25,20 +30,16 @@ quick-xml = "0.31"
 tempfile = "3.5.0"
 
 [[bin]]
-name = "build_rustdoc_json"
-path = "build_rustdoc_json.rs"
+name = "generate_function_subgraph_dot"
+path = "src/bin/generate_function_subgraph_dot.rs"
 
 [[bin]]
-name = "parse_rustdoc_deps"
-path = "parse_rustdoc_deps.rs"
+name = "generate_call_graph_dot"
+path = "src/bin/generate_call_graph_dot.rs"
 
 [[bin]]
-name = "call_graph_with_syn_v1"
-path = "call_graph_with_syn_v1.rs"
-
-[[bin]]
-name = "call_graph_with_syn_v2"
-path = "call_graph_with_syn_v2.rs"
+name = "generate_files_subgraph_dot"
+path = "src/bin/generate_files_subgraph_dot.rs"
 
 [[bin]]
 name = "stats_unit_graph"
@@ -47,19 +48,3 @@ path = "stats_unit_graph.rs"
 [[bin]]
 name = "generate_dot_from_unit_graph"
 path = "generate_dot_from_unit_graph.rs"
-
-[[bin]]
-name = "generate_call_graph_dot"
-path = "src/bin/generate_call_graph_dot.rs"
-
-[[bin]]
-name = "generate_file_subgraph_dot"
-path = "src/bin/generate_file_subgraph_dot.rs"
-
-[[bin]]
-name = "generate_files_subgraph_dot"
-path = "src/bin/generate_files_subgraph_dot.rs"
-
-[[bin]]
-name = "generate_function_subgraph_dot"
-path = "src/bin/generate_function_subgraph_dot.rs"

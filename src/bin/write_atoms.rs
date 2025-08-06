@@ -1,4 +1,6 @@
-use rust_analyzer_test::scip_to_call_graph_json::{parse_scip_json, build_call_graph, write_call_graph_as_atoms_json};
+use rust_analyzer_test::scip_to_call_graph_json::{
+    build_call_graph, parse_scip_json, write_call_graph_as_atoms_json,
+};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -21,4 +23,5 @@ fn main() {
         eprintln!("Failed to write atoms JSON: {}", e);
         std::process::exit(1);
     }
-    println!("Atoms JSON written to {}", output_path);}
+    println!("Atoms JSON written to {}", output_path);
+}
