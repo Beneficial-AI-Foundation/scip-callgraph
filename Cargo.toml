@@ -8,9 +8,6 @@ license = "MIT OR Apache-2.0"
 keywords = ["rust", "analyzer", "call-graph", "scip", "visualization"]
 categories = ["development-tools", "visualization"]
 
-[lib]
-path = "src/lib.rs"
-
 [dependencies]
 regex = "1.10.3"
 rustdoc-json = "0.9.5"

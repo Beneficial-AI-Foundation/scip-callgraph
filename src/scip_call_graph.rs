@@ -587,9 +587,15 @@ impl Serialize for Atom {
     }
 }
 
+// Type aliases to simplify complex return types and improve readability
+/// Result type for DOT file parsing: returns (node_id -> label, edges as (from, to) pairs)
+type DotParseResult = Result<(HashMap<String, String>, Vec<(String, String)>), Box<dyn std::error::Error>>;
+/// Result type for SCIP symbol range parsing: returns symbol -> (relative_path, range)
+type ScipSymbolRangeResult = Result<HashMap<String, (String, Vec<i32>)>, Box<dyn std::error::Error>>;
+
 fn parse_dot_file(
     dot_file: &str,
-) -> Result<(HashMap<String, String>, Vec<(String, String)>), Box<dyn std::error::Error>> {
+) -> DotParseResult {
     use std::fs::File;
     use std::io::{BufRead, BufReader};
     let file = File::open(dot_file)?;
@@ -623,7 +629,7 @@ fn parse_dot_file(
 
 fn parse_scip_symbol_ranges(
     scip_json: &str,
-) -> Result<HashMap<String, (String, Vec<i32>)>, Box<dyn std::error::Error>> {
+) -> ScipSymbolRangeResult {
     use serde_json;
     use std::fs::File;
     let scip: serde_json::Value = serde_json::from_reader(File::open(scip_json)?)?;
