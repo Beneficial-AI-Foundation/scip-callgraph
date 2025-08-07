@@ -1,7 +1,7 @@
 // src/helper.rs
 pub mod utils {
     pub fn print_message(msg: &str) {
-        println!("Message: {}", msg);
+        println!("Message: {msg}");
     }
 
     pub fn format_string(s: &str) -> String {

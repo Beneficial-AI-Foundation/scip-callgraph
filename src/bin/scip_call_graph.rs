@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let call_graph = scip_call_graph::build_call_graph(&scip_data);
 
             // Print summary
-            println!("Call graph generated from {}", scip_path);
+            println!("Call graph generated from {scip_path}");
             scip_call_graph::print_call_graph_summary(&call_graph);
 
             // Generate DOT file
@@ -43,14 +43,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(path) = output_path {
                 let mut file = File::create(path)?;
                 file.write_all(dot_content.as_bytes())?;
-                println!("\nDOT file written to: {}", path);
+                println!("\nDOT file written to: {path}");
                 println!(
-                    "You can visualize it with: dot -Tpng {} -o call_graph.png",
-                    path
+                    "You can visualize it with: dot -Tpng {path} -o call_graph.png"
                 );
             } else {
                 println!("\nDOT format call graph:\n");
-                println!("{}", dot_content);
+                println!("{dot_content}");
             }
         }
         "filter" => {
@@ -69,10 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let max_depth = if args.len() >= 6 {
-                match args[5].parse::<usize>() {
-                    Ok(depth) => Some(depth),
-                    Err(_) => None,
-                }
+                args[5].parse::<usize>().ok()
             } else {
                 None
             };
@@ -92,15 +88,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             if matching_entries.is_empty() {
-                println!("Error: No functions matching '{}' found.", entry_point);
+                println!("Error: No functions matching '{entry_point}' found.");
                 return Ok(());
             }
 
             // If we have multiple matches, show them and let user be more specific
             if matching_entries.len() > 1 {
                 println!(
-                    "Multiple functions match '{}'. Please be more specific:",
-                    entry_point
+                    "Multiple functions match '{entry_point}'. Please be more specific:"
                 );
                 for (i, symbol) in matching_entries.iter().enumerate() {
                     if let Some(node) = full_graph.get(symbol) {
@@ -118,9 +113,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
 
             // Print summary
-            println!("Filtered call graph starting from '{}'", entry_point);
+            println!("Filtered call graph starting from '{entry_point}'");
             if let Some(depth) = max_depth {
-                println!("(limited to depth {})", depth);
+                println!("(limited to depth {depth})");
             }
             scip_call_graph::print_call_graph_summary(&filtered_graph);
 
@@ -130,14 +125,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(path) = output_path {
                 let mut file = File::create(path)?;
                 file.write_all(dot_content.as_bytes())?;
-                println!("\nFiltered DOT file written to: {}", path);
+                println!("\nFiltered DOT file written to: {path}");
                 println!(
-                    "You can visualize it with: dot -Tpng {} -o filtered_call_graph.png",
-                    path
+                    "You can visualize it with: dot -Tpng {path} -o filtered_call_graph.png"
                 );
             } else {
                 println!("\nFiltered DOT format call graph:\n");
-                println!("{}", dot_content);
+                println!("{dot_content}");
             }
         }
         "help" | _ => {

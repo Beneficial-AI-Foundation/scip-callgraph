@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output_path = &args[2];
     let file_paths = &args[3..];
 
-    println!("Parsing SCIP JSON from {}...", input_path);
+    println!("Parsing SCIP JSON from {input_path}...");
     let scip_data = parse_scip_json(input_path)?;
 
     println!("Building call graph...");
@@ -42,12 +42,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(_) => {
             println!("Files subgraph DOT file generated successfully!");
             println!(
-                "To generate SVG, run: dot -Tsvg {} -o files_subgraph.svg",
-                output_path
+                "To generate SVG, run: dot -Tsvg {output_path} -o files_subgraph.svg"
             );
         }
         Err(e) => {
-            eprintln!("Failed to generate files subgraph: {}", e);
+            eprintln!("Failed to generate files subgraph: {e}");
             std::process::exit(1);
         }
     }

@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    println!("Parsing SCIP JSON from {}...", input_path);
+    println!("Parsing SCIP JSON from {input_path}...");
     let scip_data = parse_scip_json(input_path)?;
 
     println!("Building call graph...");
@@ -77,9 +77,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         function_names.len(),
         output_path
     );
-    println!("Include callers: {}", include_callers);
+    println!("Include callers: {include_callers}");
     if let Some(d) = depth {
-        println!("Depth limit for callers: {}", d);
+        println!("Depth limit for callers: {d}");
     } else {
         println!("No depth limit for callers");
     }
@@ -97,7 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Function subgraph DOT and SVG files generated successfully!");
         }
         Err(e) => {
-            eprintln!("Failed to generate function subgraph: {}", e);
+            eprintln!("Failed to generate function subgraph: {e}");
             std::process::exit(1);
         }
     }

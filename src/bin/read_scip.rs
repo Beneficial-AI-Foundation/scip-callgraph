@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if file exists
     if !Path::new(scip_path).exists() {
-        eprintln!("Error: File not found: {}", scip_path);
+        eprintln!("Error: File not found: {scip_path}");
         std::process::exit(1);
     }
 

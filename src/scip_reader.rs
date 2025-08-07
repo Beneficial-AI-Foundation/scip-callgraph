@@ -61,15 +61,15 @@ pub fn is_valid_scip_file(data: &[u8]) -> bool {
 
     // Check for some protobuf-like patterns at the beginning
     let first_byte = data[0];
-    let potential_field_tag = first_byte == 10 || first_byte == 8;
+    
 
-    potential_field_tag
+    first_byte == 10 || first_byte == 8
 }
 
 /// Function that parses a SCIP file (limited implementation)
 /// For a complete implementation, a proper Protocol Buffers parser would be needed
 pub fn parse_scip_file(file_path: &str) -> Result<ScipIndex, Box<dyn std::error::Error>> {
-    println!("Reading SCIP file: {}", file_path);
+    println!("Reading SCIP file: {file_path}");
 
     // Read the file
     let data = read_scip_file(file_path)?;
@@ -122,7 +122,7 @@ pub fn extract_basic_info(data: &[u8]) -> Vec<String> {
     // This is a naive approach but might give some insight into the file
     let mut current_string = Vec::new();
     for &byte in data {
-        if byte >= 32 && byte <= 126 {
+        if (32..=126).contains(&byte) {
             // printable ASCII
             current_string.push(byte);
         } else if !current_string.is_empty() {
@@ -147,7 +147,7 @@ pub fn print_scip_file_summary(file_path: &str) -> Result<(), Box<dyn std::error
     // Read the raw data
     let data = read_scip_file(file_path)?;
 
-    println!("SCIP File: {}", file_path);
+    println!("SCIP File: {file_path}");
     println!("Size: {} bytes", data.len());
 
     // Try to extract strings that might give us some insight

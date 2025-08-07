@@ -14,14 +14,14 @@ fn main() {
     let scip_index = match parse_scip_json(input_path) {
         Ok(idx) => idx,
         Err(e) => {
-            eprintln!("Failed to parse SCIP JSON: {}", e);
+            eprintln!("Failed to parse SCIP JSON: {e}");
             std::process::exit(1);
         }
     };
     let call_graph = build_call_graph(&scip_index);
     if let Err(e) = write_call_graph_as_atoms_json(&call_graph, output_path) {
-        eprintln!("Failed to write atoms JSON: {}", e);
+        eprintln!("Failed to write atoms JSON: {e}");
         std::process::exit(1);
     }
-    println!("Atoms JSON written to {}", output_path);
+    println!("Atoms JSON written to {output_path}");
 }
