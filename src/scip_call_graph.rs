@@ -190,7 +190,7 @@ pub fn generate_call_graph_dot(call_graph: &HashMap<String, FunctionNode>) -> St
         // So, for now, just use "Unknown" unless you extend FunctionNode to store kind.
         symbol_to_kind.insert(&node.symbol, 17);
     }
-    println!("Symbol to kind map: {:?}", symbol_to_kind);
+    println!("Symbol to kind map: {symbol_to_kind:?}");
     let mut dot = String::new();
     dot.push_str("digraph CallGraph {\n");
     dot.push_str("  node [shape=box, style=filled, fillcolor=lightblue];\n");
@@ -219,7 +219,7 @@ pub fn generate_call_graph_dot(call_graph: &HashMap<String, FunctionNode>) -> St
     // Add edges
     for (symbol, node) in call_graph {
         for callee in &node.callees {
-            dot.push_str(&format!("  \"{}\" -> \"{}\";\n", symbol, callee));
+            dot.push_str(&format!("  \"{symbol}\" -> \"{callee}\";\n"));
         }
     }
 
@@ -262,7 +262,7 @@ fn traverse_graph(
     max_depth: Option<usize>,
 ) {
     // Check if we've reached max depth or already visited this node
-    if max_depth.map_or(false, |max| depth >= max) || visited.contains(&current_node.symbol) {
+    if max_depth.is_some_and(|max| depth >= max) || visited.contains(&current_node.symbol) {
         return;
     }
 
@@ -311,7 +311,7 @@ pub fn print_call_graph_summary(call_graph: &HashMap<String, FunctionNode>) {
     let mut leaf_functions = 0;
     let mut internal_functions = 0;
 
-    for (_, node) in call_graph {
+    for node in call_graph.values() {
         if node.callers.is_empty() && !node.callees.is_empty() {
             entry_points += 1;
         } else if !node.callers.is_empty() && node.callees.is_empty() {
@@ -322,14 +322,12 @@ pub fn print_call_graph_summary(call_graph: &HashMap<String, FunctionNode>) {
     }
 
     println!(
-        "Entry points (functions not called by others): {}",
-        entry_points
+        "Entry points (functions not called by others): {entry_points}"
     );
     println!(
-        "Leaf functions (functions that don't call others): {}",
-        leaf_functions
+        "Leaf functions (functions that don't call others): {leaf_functions}"
     );
-    println!("Internal functions: {}", internal_functions);
+    println!("Internal functions: {internal_functions}");
 
     // Find the most called functions
     let mut functions_by_caller_count: Vec<_> = call_graph.values().collect();
@@ -374,7 +372,7 @@ pub fn generate_call_graph(
     scip_json_file: &str,
     output_file: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Generating call graph from {}", scip_json_file);
+    println!("Generating call graph from {scip_json_file}");
 
     // Read the SCIP JSON file
     let file = File::open(scip_json_file)?;
@@ -409,7 +407,7 @@ pub fn generate_call_graph(
                     } else {
                         symbol_str
                             .split('#')
-                            .last()
+                            .next_back()
                             .unwrap_or(symbol_str)
                             .to_string()
                     };
@@ -443,7 +441,7 @@ pub fn generate_call_graph(
     // Generate dot file
     generate_dot_file(output_file, &symbols, &relationships)?;
 
-    println!("Call graph generated and saved to {}", output_file);
+    println!("Call graph generated and saved to {output_file}");
     Ok(())
 }
 
@@ -499,7 +497,7 @@ fn generate_dot_file(
     )?;
 
     // Process nodes (symbols)
-    for (_, symbol) in symbols {
+    for symbol in symbols.values() {
         println!("Processing symbol: {:?}", symbol.display_name);
         let label = format!(
             "{}: {}",
@@ -507,7 +505,7 @@ fn generate_dot_file(
             symbol.display_name.as_deref().unwrap_or("unknown")
         );
         let node_id = get_node_id(&symbol.symbol);
-        writeln!(file, "  {} [label=\"{}\"];", node_id, label)?;
+        writeln!(file, "  {node_id} [label=\"{label}\"];")?;
     }
 
     // Process edges (relationships)
@@ -516,9 +514,9 @@ fn generate_dot_file(
         let from_id = get_node_id(from);
         let to_id = get_node_id(to);
 
-        let edge_key = format!("{}->{}", from_id, to_id);
+        let edge_key = format!("{from_id}->{to_id}");
         if !added_edges.contains(&edge_key) {
-            writeln!(file, "  {} -> {};", from_id, to_id)?;
+            writeln!(file, "  {from_id} -> {to_id};")?;
             added_edges.insert(edge_key);
         }
     }
@@ -540,9 +538,9 @@ fn get_node_id(symbol: &str) -> String {
     if clean_symbol
         .chars()
         .next()
-        .map_or(true, |c| !c.is_alphabetic())
+        .is_none_or(|c| !c.is_alphabetic())
     {
-        format!("n_{}", clean_symbol)
+        format!("n_{clean_symbol}")
     } else {
         clean_symbol
     }
@@ -550,7 +548,7 @@ fn get_node_id(symbol: &str) -> String {
 
 /// Convert a symbol kind to a display string
 fn symbol_kind_to_string(kind: SymbolKind) -> &'static str {
-    println!("Symbol kind: {:?}", kind);
+    println!("Symbol kind: {kind:?}");
     match kind {
         SymbolKind::Function => "Function",
         SymbolKind::Method => "Method",
@@ -646,8 +644,8 @@ fn parse_scip_symbol_ranges(
                         if let Some(occurrences) = doc.get("occurrences").and_then(|o| o.as_array())
                         {
                             for occ in occurrences {
-                                if occ.get("symbol").and_then(|s| s.as_str()) == Some(symbol) {
-                                    if occ.get("symbol_roles").and_then(|r| r.as_i64()) == Some(1) {
+                                if occ.get("symbol").and_then(|s| s.as_str()) == Some(symbol)
+                                    && occ.get("symbol_roles").and_then(|r| r.as_i64()) == Some(1) {
                                         if let Some(range) =
                                             occ.get("range").and_then(|r| r.as_array())
                                         {
@@ -662,7 +660,6 @@ fn parse_scip_symbol_ranges(
                                             break;
                                         }
                                     }
-                                }
                             }
                         }
                     }
@@ -763,9 +760,7 @@ pub fn dot_to_atoms_json_with_body(
         deps_map.entry(node.clone()).or_default();
     }
     // Build atoms
-    let atoms: Vec<Atom> = nodes
-        .iter()
-        .map(|(id, _label)| {
+    let atoms: Vec<Atom> = nodes.keys().map(|id| {
             // Find the best matching symbol for this node id
             let mut statement_type = "unknown";
             let mut body = String::new();

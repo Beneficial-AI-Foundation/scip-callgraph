@@ -114,7 +114,7 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                 // Create absolute path to the file
                 let project_root = &scip_data.metadata.project_root;
                 let rel_path = doc.relative_path.trim_start_matches('/');
-                let abs_path = format!("{}/{}", project_root, rel_path);
+                let abs_path = format!("{project_root}/{rel_path}");
 
                 symbol_to_file.insert(symbol.symbol.clone(), abs_path.clone());
                 symbol_to_kind.insert(symbol.symbol.clone(), symbol.kind);
@@ -198,16 +198,18 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
             };
 
             let abs_path = Path::new(clean_path);
-            println!("Trying to read file: {}", clean_path);
+            println!("Trying to read file: {clean_path}");
 
             if let Ok(contents) = fs::read_to_string(abs_path) {
                 let lines: Vec<&str> = contents.lines().collect();
 
                 // Debug the range
-                println!("Function: {}, Range: {:?}", node.display_name, node.range);
+                let display_name = &node.display_name;
+                let range = &node.range;
+                println!("Function: {display_name}, Range: {range:?}");
 
                 // Check if range is valid - convert safely using saturating_sub
-                if node.range.len() >= 1 {
+                if !node.range.is_empty() {
                     // Safely handle line numbers - SCIP line numbers are 0-based
                     let start_line = node.range[0] as usize;
 
@@ -220,8 +222,7 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                         body_lines.push(lines[start_line]);
 
                         // Look for the opening brace and collect all code until matching closing brace
-                        for line_idx in start_line..lines.len() {
-                            let line = lines[line_idx];
+                        for (line_idx, line) in lines.iter().enumerate().skip(start_line) {
 
                             // Skip the first line as we've already added it
                             if line_idx == start_line {
@@ -250,7 +251,7 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                                 // Safely handle potential overflow
                                 open_braces = open_braces.saturating_sub(line.matches('}').count());
                                 body_lines.push(line);
-                                if open_braces <= 0 {
+                                if open_braces == 0 {
                                     break;
                                 }
                             }
@@ -260,14 +261,12 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                         let full_body = body_lines.join("\n");
                         let body_len = full_body.len();
                         node.body = Some(full_body);
-                        println!(
-                            "Extracted body for {}, length: {}",
-                            node.display_name, body_len
-                        );
+                        let display_name = &node.display_name;
+                        println!("Extracted body for {display_name}, length: {body_len}");
                     }
                 }
             } else {
-                println!("Failed to read file: {}", clean_path);
+                println!("Failed to read file: {clean_path}");
             }
         }
     }
@@ -289,7 +288,7 @@ pub fn symbol_to_path(symbol: &str, display_name: &str) -> String {
     }
 
     // Skip version part if present (e.g., "0.1.0 ")
-    if let Some(pos) = s.find(|c: char| c.is_digit(10)) {
+    if let Some(pos) = s.find(|c: char| c.is_ascii_digit()) {
         if let Some(space_pos) = s[pos..].find(' ') {
             s = s[(pos + space_pos + 1)..].trim();
         }
@@ -304,9 +303,7 @@ pub fn symbol_to_path(symbol: &str, display_name: &str) -> String {
     let mut clean_path = s
         .trim_end_matches('.')
         .replace('-', "_")
-        .replace('[', "/")
-        .replace(']', "/")
-        .replace('#', "/")
+        .replace(['[', ']', '#'], "/")
         .trim_end_matches('/')
         .replace(&['`', '(', ')', '[', ']'][..], "")
         .replace("//", "/");
@@ -317,14 +314,11 @@ pub fn symbol_to_path(symbol: &str, display_name: &str) -> String {
     clean_path = re.replace_all(&clean_path, "").to_string();
     // Only append display_name if it's not already in the path
     if !clean_path.ends_with(display_name) {
-        clean_path = format!("{}/{}", clean_path, display_name)
+        clean_path = format!("{clean_path}/{display_name}")
     }
     if clean_path.len() > 128 {
-        println!(
-            "Warning: Path longer ({}) than 128 chars: {}. Truncating it to 128 chars.",
-            clean_path.len(),
-            clean_path
-        );
+        let path_len = clean_path.len();
+        println!("Warning: Path longer ({path_len}) than 128 chars: {clean_path}. Truncating it to 128 chars.");
         clean_path.truncate(128);
     }
     clean_path
@@ -339,14 +333,12 @@ pub fn write_call_graph_as_atoms_json<P: AsRef<std::path::Path>>(
         .values()
         .map(|node| {
             // Make sure to unwrap the body or provide a meaningful default
-            let body_content = node.body.clone().unwrap_or_else(|| "".to_string());
+            let body_content = node.body.clone().unwrap_or_default();
 
             // Debug print to see what's happening
-            println!(
-                "Function: {}, Body length: {}",
-                node.display_name,
-                body_content.len()
-            );
+            let display_name = &node.display_name;
+            let body_len = body_content.len();
+            println!("Function: {display_name}, Body length: {body_len}");
 
             // Get just the folder name instead of the whole path
             let parent_folder = Path::new(&node.file_path)
@@ -426,34 +418,32 @@ pub fn generate_call_graph_dot(
         module_groups.entry(module).or_default().push(*node);
     }
 
-    let mut cluster_id = 0;
-    for (module, nodes) in &module_groups {
-        dot.push_str(&format!("  subgraph cluster_{} {{\n    label = \"{}\";\n    style=filled;\n    color=lightgrey;\n    fontname=Helvetica;\n", cluster_id, module));
+    for (cluster_id, (module, nodes)) in module_groups.iter().enumerate() {
+        dot.push_str(&format!("  subgraph cluster_{cluster_id} {{\n    label = \"{module}\";\n    style=filled;\n    color=lightgrey;\n    fontname=Helvetica;\n"));
         for node in nodes {
             let label = node.display_name.clone();
             let tooltip = if let Some(body) = &node.body {
                 let plain = body
-                    .replace('\n', " ")
-                    .replace('\r', " ")
+                    .replace(['\n', '\r'], " ")
                     .replace('"', "' ");
                 if plain.len() > 200 {
-                    format!("{}...", &plain[..200])
+                    let truncated = &plain[..200];
+                    format!("{truncated}...")
                 } else {
                     plain
                 }
             } else {
                 "".to_string()
             };
+            let symbol = &node.symbol;
             dot.push_str(&format!(
-                "    \"{}\" [label=\"{}\", tooltip=\"{}\"]\n",
-                node.symbol, label, tooltip
+                "    \"{symbol}\" [label=\"{label}\", tooltip=\"{tooltip}\"]\n"
             ));
         }
         dot.push_str("  }\n");
-        cluster_id += 1;
     }
 
-    dot.push_str("\n");
+    dot.push('\n');
 
     // Add edges, but only for filtered nodes
     let filtered_symbols: std::collections::HashSet<_> =
@@ -461,7 +451,8 @@ pub fn generate_call_graph_dot(
     for node in &filtered_nodes {
         for callee in &node.callees {
             if filtered_symbols.contains(callee) {
-                dot.push_str(&format!("  \"{}\" -> \"{}\"\n", node.symbol, callee));
+                let symbol = &node.symbol;
+                dot.push_str(&format!("  \"{symbol}\" -> \"{callee}\"\n"));
             }
         }
     }
@@ -470,18 +461,17 @@ pub fn generate_call_graph_dot(
     // Write the DOT file
     std::fs::write(output_path, &dot)?;
     // Generate SVG using Graphviz
-    let svg_path = if output_path.ends_with(".dot") {
-        format!("{}.svg", &output_path[..output_path.len() - 4])
+    let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
+        format!("{stripped}.svg")
     } else {
-        format!("{}.svg", output_path)
+        format!("{output_path}.svg")
     };
     let status = Command::new("dot")
-        .args(&["-Tsvg", output_path, "-o", &svg_path])
+        .args(["-Tsvg", output_path, "-o", &svg_path])
         .status()?;
     if !status.success() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to generate SVG: dot exited with {}", status),
+        return Err(std::io::Error::other(
+            format!("Failed to generate SVG: dot exited with {status}"),
         ));
     }
     Ok(())
@@ -493,7 +483,7 @@ pub fn generate_file_subgraph_dot(
     file_path: &str,
     output_path: &str,
 ) -> std::io::Result<()> {
-    use std::collections::{BTreeMap, HashSet};
+    use std::collections::HashSet;
     let mut dot = String::from("digraph file_subgraph {\n");
     dot.push_str("  rankdir=LR;\n");
     dot.push_str("  node [shape=box, style=filled, fontname=Helvetica];\n");
@@ -525,18 +515,17 @@ pub fn generate_file_subgraph_dot(
 
         if !matching_paths.is_empty() {
             let mut message = format!(
-                "No exact match for file path: {}\n\nHere are some similar paths:\n",
-                file_path
+                "No exact match for file path: {file_path}\n\nHere are some similar paths:\n"
             );
             for path in matching_paths {
-                message.push_str(&format!("  {}\n", path));
+                message.push_str(&format!("  {path}\n"));
             }
             return Err(std::io::Error::new(std::io::ErrorKind::NotFound, message));
         }
 
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("No functions found in file path: {}", file_path),
+            format!("No functions found in file path: {file_path}"),
         ));
     }
 
@@ -566,8 +555,7 @@ pub fn generate_file_subgraph_dot(
         let label = node.display_name.clone();
         let tooltip = if let Some(body) = &node.body {
             let plain = body
-                .replace('\n', " ")
-                .replace('\r', " ")
+                .replace(['\n', '\r'], " ")
                 .replace('"', "' ");
             if plain.len() > 200 {
                 format!("{}...", &plain[..200])
@@ -596,7 +584,7 @@ pub fn generate_file_subgraph_dot(
         }
     }
 
-    dot.push_str("\n");
+    dot.push('\n');
 
     // Draw edges from file nodes to their callees
     for node in &file_nodes {
@@ -670,18 +658,17 @@ pub fn generate_files_subgraph_dot(
 
         if !matching_paths.is_empty() {
             let mut message = format!(
-                "No exact matches for file paths: {:?}\n\nHere are some similar paths:\n",
-                file_paths
+                "No exact matches for file paths: {file_paths:?}\n\nHere are some similar paths:\n"
             );
             for path in matching_paths {
-                message.push_str(&format!("  {}\n", path));
+                message.push_str(&format!("  {path}\n"));
             }
             return Err(std::io::Error::new(std::io::ErrorKind::NotFound, message));
         }
 
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("No functions found in file paths: {:?}", file_paths),
+            format!("No functions found in file paths: {file_paths:?}"),
         ));
     }
 
@@ -716,15 +703,14 @@ pub fn generate_files_subgraph_dot(
     }
 
     // Draw clusters for each file with blue background nodes
-    let mut cluster_id = 0;
-    for (file_path, nodes) in &file_groups {
+    for (cluster_id, (file_path, nodes)) in file_groups.iter().enumerate() {
         let file_label = Path::new(file_path)
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown");
 
-        dot.push_str(&format!("  subgraph cluster_{} {{\n", cluster_id));
-        dot.push_str(&format!("    label = \"{}\";\n", file_label));
+        dot.push_str(&format!("  subgraph cluster_{cluster_id} {{\n"));
+        dot.push_str(&format!("    label = \"{file_label}\";\n"));
         dot.push_str("    style=filled;\n");
         dot.push_str("    color=lightblue;\n");
         dot.push_str("    fontname=Helvetica;\n");
@@ -733,8 +719,7 @@ pub fn generate_files_subgraph_dot(
             let label = node.display_name.clone();
             let tooltip = if let Some(body) = &node.body {
                 let plain = body
-                    .replace('\n', " ")
-                    .replace('\r', " ")
+                    .replace(['\n', '\r'], " ")
                     .replace('"', "' ");
                 if plain.len() > 200 {
                     format!("{}...", &plain[..200])
@@ -751,7 +736,6 @@ pub fn generate_files_subgraph_dot(
         }
 
         dot.push_str("  }\n");
-        cluster_id += 1;
     }
 
     // Draw connected nodes with light gray background
@@ -767,7 +751,7 @@ pub fn generate_files_subgraph_dot(
         }
     }
 
-    dot.push_str("\n");
+    dot.push('\n');
 
     // Draw edges
     // From file nodes to their callees
@@ -833,8 +817,7 @@ pub fn generate_function_subgraph_dot(
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             format!(
-                "No functions found matching the provided names: {:?}",
-                function_names
+                "No functions found matching the provided names: {function_names:?}"
             ),
         ));
     }
@@ -1005,15 +988,14 @@ pub fn generate_function_subgraph_dot(
     }
 
     // Create clusters for each file
-    let mut cluster_id = 0;
-    for (file_path, symbols) in &file_groups {
+    for (cluster_id, (file_path, symbols)) in file_groups.iter().enumerate() {
         let file_label = Path::new(file_path)
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown");
 
-        dot.push_str(&format!("  subgraph cluster_{} {{\n", cluster_id));
-        dot.push_str(&format!("    label = \"{}\";\n", file_label));
+        dot.push_str(&format!("  subgraph cluster_{cluster_id} {{\n"));
+        dot.push_str(&format!("    label = \"{file_label}\";\n"));
         dot.push_str("    style=filled;\n");
 
         // Different cluster styling for libsignal vs non-libsignal
@@ -1039,8 +1021,7 @@ pub fn generate_function_subgraph_dot(
             }
         });
         println!(
-            "Processing file cluster: {} (libsignal: {})",
-            file_path, is_libsignal_cluster
+            "Processing file cluster: {file_path} (libsignal: {is_libsignal_cluster})"
         );
         if is_libsignal_cluster {
             dot.push_str("    color=lightblue;\n");
@@ -1055,8 +1036,7 @@ pub fn generate_function_subgraph_dot(
                 let label = node.display_name.clone();
                 let tooltip = if let Some(body) = &node.body {
                     let plain = body
-                        .replace('\n', " ")
-                        .replace('\r', " ")
+                        .replace(['\n', '\r'], " ")
                         .replace('"', "' ");
                     if plain.len() > 200 {
                         format!("{}...", &plain[..200])
@@ -1088,10 +1068,9 @@ pub fn generate_function_subgraph_dot(
         }
 
         dot.push_str("  }\n");
-        cluster_id += 1;
     }
 
-    dot.push_str("\n");
+    dot.push('\n');
 
     // Draw edges between all included nodes with different styles for libsignal vs non-libsignal
     for symbol in &final_included_symbols {
@@ -1103,8 +1082,7 @@ pub fn generate_function_subgraph_dot(
                     let callee_is_libsignal = libsignal_symbols.contains(callee);
 
                     println!(
-                        "Processing edge: {} -> {} (libsignal: {}, {})",
-                        symbol, callee, caller_is_libsignal, callee_is_libsignal
+                        "Processing edge: {symbol} -> {callee} (libsignal: {caller_is_libsignal}, {callee_is_libsignal})"
                     );
 
                     let edge_style = if caller_is_libsignal && callee_is_libsignal {
@@ -1134,18 +1112,17 @@ pub fn generate_function_subgraph_dot(
     // Write the DOT file
     std::fs::write(output_path, &dot)?;
     // Generate SVG using Graphviz
-    let svg_path = if output_path.ends_with(".dot") {
-        format!("{}.svg", &output_path[..output_path.len() - 4])
+    let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
+        format!("{stripped}.svg")
     } else {
-        format!("{}.svg", output_path)
+        format!("{output_path}.svg")
     };
     let status = Command::new("dot")
-        .args(&["-Tsvg", output_path, "-o", &svg_path])
+        .args(["-Tsvg", output_path, "-o", &svg_path])
         .status()?;
     if !status.success() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to generate SVG: dot exited with {}", status),
+        return Err(std::io::Error::other(
+            format!("Failed to generate SVG: dot exited with {status}"),
         ));
     }
     Ok(())
@@ -1159,15 +1136,12 @@ pub fn generate_call_graph_svg(
     let width = 1200;
     let height = 800;
     let mut svg = format!(
-        r#"<svg xmlns='http://www.w3.org/2000/svg' width='{w}' height='{h}' style='background:#fff;font-family:sans-serif'>\n"#,
-        w = width,
-        h = height
+        r#"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' style='background:#fff;font-family:sans-serif'>\n"#
     );
 
     // Use a force-directed layout instead of circular
     // This is a simple implementation - for complex graphs, use a dot file with Graphviz
-    let mut nodes: Vec<_> = call_graph.values().collect();
-    let n = nodes.len();
+    let nodes: Vec<_> = call_graph.values().collect();
 
     // Initial random positions
     let mut positions = HashMap::new();
@@ -1190,8 +1164,7 @@ pub fn generate_call_graph_svg(
         for callee in &node.callees {
             if let Some(&(x2, y2)) = positions.get(callee) {
                 svg.push_str(&format!(
-                    "<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' stroke='#888' stroke-width='2' marker-end='url(#arrow)'/>\n",
-                    x1=x1, y1=y1, x2=x2, y2=y2
+                    "<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' stroke='#888' stroke-width='2' marker-end='url(#arrow)'/>\n"
                 ));
             }
         }

@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file_path = &args[2];
     let output_path = &args[3];
 
-    println!("Parsing SCIP JSON from {}...", input_path);
+    println!("Parsing SCIP JSON from {input_path}...");
     let scip_data = parse_scip_json(input_path)?;
 
     println!("Building call graph...");
@@ -26,22 +26,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Call graph contains {} functions", call_graph.len());
 
     println!(
-        "Generating file subgraph DOT file for {} at {}...",
-        file_path, output_path
+        "Generating file subgraph DOT file for {file_path} at {output_path}..."
     );
     match generate_file_subgraph_dot(&call_graph, file_path, output_path) {
         Ok(_) => {
             println!("File subgraph DOT file generated successfully!");
             println!(
-                "To generate SVG, run: dot -Tsvg {} -o file_subgraph.svg",
-                output_path
+                "To generate SVG, run: dot -Tsvg {output_path} -o file_subgraph.svg"
             );
         }
         Err(e) => {
-            eprintln!("Failed to generate file subgraph: {}", e);
+            eprintln!("Failed to generate file subgraph: {e}");
             println!(
-                "Make sure the file path '{}' exists in the call graph",
-                file_path
+                "Make sure the file path '{file_path}' exists in the call graph"
             );
 
             // Optionally list some available file paths to help the user
@@ -49,8 +46,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut file_paths: Vec<_> = call_graph.values().map(|node| &node.file_path).collect();
             file_paths.sort();
             file_paths.dedup();
-            for (i, path) in file_paths.iter().enumerate().take(10) {
-                println!("  {}", path);
+            for path in file_paths.iter().take(10) {
+                println!("  {path}");
             }
             if file_paths.len() > 10 {
                 println!("  ... and {} more", file_paths.len() - 10);

@@ -9,7 +9,7 @@ fn main() {
 
     // Call a function with multiple dependencies
     let result = calculate_value(5, 10);
-    println!("Calculated value: {}", result);
+    println!("Calculated value: {result}");
 
     // Call a function that calls other functions
     process_data();
@@ -30,5 +30,5 @@ fn process_data() {
     let processed = helper::data::transform_data(&data);
     let result = helper::data::analyze_data(&processed);
 
-    println!("Processing result: {}", result);
+    println!("Processing result: {result}");
 }

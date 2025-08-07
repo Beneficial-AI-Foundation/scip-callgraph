@@ -13,19 +13,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input_path = &args[1];
     let output_path = &args[2];
 
-    println!("Parsing SCIP JSON from {}...", input_path);
+    println!("Parsing SCIP JSON from {input_path}...");
     let scip_data = parse_scip_json(input_path)?;
 
     println!("Building call graph...");
     let call_graph = build_call_graph(&scip_data);
     println!("Call graph contains {} functions", call_graph.len());
 
-    println!("Generating DOT file at {}...", output_path);
+    println!("Generating DOT file at {output_path}...");
     generate_call_graph_dot(&call_graph, output_path)?;
     println!("DOT file generated successfully!");
     println!(
-        "To generate SVG, run: dot -Tsvg {} -o graph.svg",
-        output_path
+        "To generate SVG, run: dot -Tsvg {output_path} -o graph.svg"
     );
 
     Ok(())
