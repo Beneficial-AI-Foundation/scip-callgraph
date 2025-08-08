@@ -1,64 +1,15 @@
 ## Prerequirements
 
-If you want to use your own json file., you need to install:
+If you want to use your own json file, you need to install:
 
 - [rust-analyzer](https://rust-analyzer.github.io/book/installation.html) it is used to generate a scip output file
 - [scip](https://github.com/sourcegraph/scip) it is used to generate a JSON from the scip output file
 
+### Note
+You can use [these scripts](https://github.com/Beneficial-AI-Foundation/installers_for_various_tools) to install the tools and to generate the json.
+
 If you just want to get info about `libsignal`, simply replace `scip_data.json` by `index_scip_libsignal_deps.json` in the commands below. (If you want to format it so you can see its structure, you can use the command `jq '.' index_scip_libsignal_deps.json > formatted_index_scip_libsignal_deps
 .json`.)
-
-## Building a Release
-
-### Local Build
-
-To build an optimized release version of the `generate_function_subgraph_dot` tool locally:
-
-```bash
-# Option 1: Use the build script
-./build_release.sh
-
-# Option 2: Build manually
-cargo build --release --bin generate_function_subgraph_dot
-```
-
-The release binary will be located at `target/release/generate_function_subgraph_dot` and can be distributed as a standalone executable.
-
-### GitHub Actions Automated Builds
-
-This repository includes GitHub Actions workflows for automated building and releasing:
-
-#### Continuous Integration
-
-- **Workflow**: `.github/workflows/build.yml`
-- **Triggers**: Every push to `master`/`main` branch and pull requests
-- **Platforms**: Linux, Windows, macOS
-- **Actions**: Format check, linting, debug and release builds, basic functionality testing
-
-#### Release Builds
-
-- **Workflow**: `.github/workflows/release.yml`
-- **Triggers**:
-  - Git tags matching `v*` (e.g., `v1.0.0`, `v1.2.3`)
-  - Manual workflow dispatch
-- **Platforms**: Linux x86_64, Windows x86_64, macOS x86_64, macOS ARM64
-- **Output**: Creates GitHub releases with downloadable binaries for each platform
-
-#### Creating a Release
-
-To create a new release with automated builds:
-
-```bash
-# Tag your release
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-This will automatically:
-
-1. Build binaries for all supported platforms
-2. Create archives with documentation
-3. Create a GitHub release with all binaries attached
 
 ## How to use
 
@@ -112,3 +63,55 @@ Example:
 ```bash
 cargo run --bin generate_function_subgraph_dot index_scip_libsignal_deps.json reduce3.dot "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()" --include-callers --depth 3
 ```
+
+## Building a Release
+
+### Local Build
+
+To build an optimized release version of the `generate_function_subgraph_dot` tool locally:
+
+```bash
+# Option 1: Use the build script
+./build_release.sh
+
+# Option 2: Build manually
+cargo build --release --bin generate_function_subgraph_dot
+```
+
+The release binary will be located at `target/release/generate_function_subgraph_dot` and can be distributed as a standalone executable.
+
+### GitHub Actions Automated Builds
+
+This repository includes GitHub Actions workflows for automated building and releasing:
+
+#### Continuous Integration
+
+- **Workflow**: `.github/workflows/build.yml`
+- **Triggers**: Every push to `master`/`main` branch and pull requests
+- **Platforms**: Linux, Windows, macOS
+- **Actions**: Format check, linting, debug and release builds, basic functionality testing
+
+#### Release Builds
+
+- **Workflow**: `.github/workflows/release.yml`
+- **Triggers**:
+  - Git tags matching `v*` (e.g., `v1.0.0`, `v1.2.3`)
+  - Manual workflow dispatch
+- **Platforms**: Linux x86_64, Windows x86_64, macOS x86_64, macOS ARM64
+- **Output**: Creates GitHub releases with downloadable binaries for each platform
+
+#### Creating a Release
+
+To create a new release with automated builds:
+
+```bash
+# Tag your release
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This will automatically:
+
+1. Build binaries for all supported platforms
+2. Create archives with documentation
+3. Create a GitHub release with all binaries attached
