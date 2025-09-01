@@ -1,14 +1,16 @@
+This tool can be used to generate a graph of callers/callees for a given rust project from the json obtained after running `rust-analyzer` and `scip`. 
+
 ## Prerequirements
 
 If you want to use your own json file, you need to install:
 
-- [rust-analyzer](https://rust-analyzer.github.io/book/installation.html) it is used to generate a scip output file
-- [scip](https://github.com/sourcegraph/scip) it is used to generate a JSON from the scip output file
+- [rust-analyzer](https://rust-analyzer.github.io/book/installation.html) it is used to generate a scip output file: one needs to run `rust-analyzer scip .` from the command line within a rust project; this will generate `index.scip` within the rust project; 
+- [scip](https://github.com/sourcegraph/scip) it is used to generate a JSON from the scip output file: one needs to run `scip print --json index.scip > index_scip.json` to obtain `index_scip.json` which is then given as input to obtian the call graphs.
 
 ### Note
 You can use [these scripts](https://github.com/Beneficial-AI-Foundation/installers_for_various_tools) to install the tools and to generate the json.
 
-If you just want to get info about `libsignal`, simply replace `scip_data.json` by `index_scip_libsignal_deps.json` in the commands below. (If you want to format it so you can see its structure, you can use the command `jq '.' index_scip_libsignal_deps.json > formatted_index_scip_libsignal_deps
+If you just want to get info about `libsignal`, simply replace `index_scip.json` by `index_scip_libsignal_deps.json` in the commands below. (If you want to format it so you can see its structure, you can use the command `jq '.' index_scip_libsignal_deps.json > formatted_index_scip_libsignal_deps
 .json`.)
 
 ## How to use
