@@ -41,7 +41,7 @@ cargo run --bin generate_files_subgraph_dot <input-scip-json> <output-dot-file> 
 Example:
 
 ```bash
-cargo run --bin generate_files_subgraph_dot scip_data.json files_subgraph.dot src/lib.rs src/main.rs
+cargo run --bin generate_files_subgraph_dot index_scip.json files_subgraph.dot src/lib.rs src/main.rs
 dot -Tsvg files_subgraph.dot -o files_subgraph.svg
 ```
 
