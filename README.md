@@ -8,7 +8,7 @@ If you want to use your own json file, you need to install:
 - [scip](https://github.com/sourcegraph/scip) it is used to generate a JSON from the scip output file: one needs to run `scip print --json index.scip > index_scip.json` to obtain `index_scip.json` which is then given as input to obtian the call graphs.
 
 ### Note
-You can use [these scripts](https://github.com/Beneficial-AI-Foundation/installers_for_various_tools) to install the tools and to generate the json.
+You can use [these scripts](https://github.com/Beneficial-AI-Foundation/installers_for_various_tools) to install the tools and to [generate the json](https://github.com/Beneficial-AI-Foundation/installers_for_various_tools?tab=readme-ov-file#generate-scip-index).
 
 If you just want to get info about `libsignal`, simply replace `index_scip.json` by `index_scip_libsignal_deps.json` in the commands below. (If you want to format it so you can see its structure, you can use the command `jq '.' index_scip_libsignal_deps.json > formatted_index_scip_libsignal_deps
 .json`.)
