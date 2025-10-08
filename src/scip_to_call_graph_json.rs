@@ -2,9 +2,10 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::{HashMap, HashSet};
-use std::fs;
+use std::fs::{self};
 use std::path::Path;
 use std::process::Command;
+use log::{debug, warn};
 
 // Re-using the SCIP data structures from our JSON parser
 #[derive(Debug, Serialize, Deserialize)]
@@ -198,7 +199,7 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
             };
 
             let abs_path = Path::new(clean_path);
-            println!("Trying to read file: {clean_path}");
+            debug!("Trying to read file: {clean_path}");
 
             if let Ok(contents) = fs::read_to_string(abs_path) {
                 let lines: Vec<&str> = contents.lines().collect();
@@ -206,7 +207,7 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                 // Debug the range
                 let display_name = &node.display_name;
                 let range = &node.range;
-                println!("Function: {display_name}, Range: {range:?}");
+                debug!("Function: {display_name}, Range: {range:?}");
 
                 // Check if range is valid - convert safely using saturating_sub
                 if !node.range.is_empty() {
@@ -262,11 +263,11 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                         let body_len = full_body.len();
                         node.body = Some(full_body);
                         let display_name = &node.display_name;
-                        println!("Extracted body for {display_name}, length: {body_len}");
+                        debug!("Extracted body for {display_name}, length: {body_len}");
                     }
                 }
             } else {
-                println!("Failed to read file: {clean_path}");
+                debug!("Failed to read file: {clean_path}");
             }
         }
     }
@@ -318,7 +319,7 @@ pub fn symbol_to_path(symbol: &str, display_name: &str) -> String {
     }
     if clean_path.len() > 128 {
         let path_len = clean_path.len();
-        println!("Warning: Path longer ({path_len}) than 128 chars: {clean_path}. Truncating it to 128 chars.");
+        warn!("Warning: Path longer ({path_len}) than 128 chars: {clean_path}. Truncating it to 128 chars.");
         clean_path.truncate(128);
     }
     clean_path
@@ -338,7 +339,7 @@ pub fn write_call_graph_as_atoms_json<P: AsRef<std::path::Path>>(
             // Debug print to see what's happening
             let display_name = &node.display_name;
             let body_len = body_content.len();
-            println!("Function: {display_name}, Body length: {body_len}");
+            debug!("Function: {display_name}, Body length: {body_len}");
 
             // Get just the folder name instead of the whole path
             let parent_folder = Path::new(&node.file_path)
@@ -529,9 +530,9 @@ pub fn generate_file_subgraph_dot(
         ));
     }
 
-    println!("Found {} functions in file {}", file_nodes.len(), file_path);
+    debug!("Found {} functions in file {}", file_nodes.len(), file_path);
     for node in &file_nodes {
-        println!("  - {} ({})", node.display_name, node.symbol);
+        debug!("  - {} ({})", node.display_name, node.symbol);
     }
 
     // Get the symbols of nodes in the file
@@ -672,7 +673,7 @@ pub fn generate_files_subgraph_dot(
         ));
     }
 
-    println!(
+    debug!(
         "Found {} functions in the specified files",
         file_nodes.len()
     );
@@ -822,12 +823,12 @@ pub fn generate_function_subgraph_dot(
         ));
     }
 
-    println!(
+    debug!(
         "Found {} functions matching the provided names",
         matched_nodes.len()
     );
     for node in &matched_nodes {
-        println!("  - {} ({})", node.display_name, node.symbol);
+        debug!("  - {} ({})", node.display_name, node.symbol);
     }
 
     // Helper function to determine if a node is from libsignal
@@ -953,7 +954,7 @@ pub fn generate_function_subgraph_dot(
             }
         }
 
-        println!("Filtered to {} nodes reachable from {} libsignal source nodes (from original {} nodes)", 
+        debug!("Filtered to {} nodes reachable from {} libsignal source nodes (from original {} nodes)", 
                  filtered_symbols.len(), libsignal_sources.len(), included_symbols.len());
 
         filtered_symbols
@@ -1020,7 +1021,7 @@ pub fn generate_function_subgraph_dot(
                 false
             }
         });
-        println!(
+        debug!(
             "Processing file cluster: {file_path} (libsignal: {is_libsignal_cluster})"
         );
         if is_libsignal_cluster {
@@ -1081,7 +1082,7 @@ pub fn generate_function_subgraph_dot(
                     let caller_is_libsignal = libsignal_symbols.contains(symbol);
                     let callee_is_libsignal = libsignal_symbols.contains(callee);
 
-                    println!(
+                    debug!(
                         "Processing edge: {symbol} -> {callee} (libsignal: {caller_is_libsignal}, {callee_is_libsignal})"
                     );
 
