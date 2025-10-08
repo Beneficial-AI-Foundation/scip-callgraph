@@ -1,0 +1,52 @@
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# Generated outputs
+*.dot
+*.svg
+*.png
+*.json
+*.scip
+!Cargo.toml
+!Cargo.lock
+
+# But keep example data
+!examples/**/*.json
+!examples/**/*.scip
+
+# Test outputs directory
+/test_outputs/
+
+# Archive directory (old versions - keep locally but don't commit)
+# Remove this line if you want to commit archived files
+/archive/
+
+# Temporary files
+*.tmp
+*.bak
+/tmp/
+
+# Generated documentation
+/mir_dump/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Binary executables
+filter_dot
+rust_analyzer_ex2
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+

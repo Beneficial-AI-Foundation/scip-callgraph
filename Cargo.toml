@@ -1,9 +1,9 @@
 [package]
-name = "rust-analyzer-test"
+name = "scip-callgraph"
 version = "0.1.0"
 edition = "2021"
-description = "Function subgraph analyzer for Rust codebases using SCIP data"
-repository = "https://github.com/Beneficial-AI-Foundation/rust-analyzer-test"
+description = "Call graph generator and visualizer for Rust projects using rust-analyzer and SCIP"
+repository = "https://github.com/Beneficial-AI-Foundation/scip-callgraph"
 license = "MIT OR Apache-2.0"
 keywords = ["rust", "analyzer", "call-graph", "scip", "visualization"]
 categories = ["development-tools", "visualization"]
@@ -22,10 +22,13 @@ prost = "0.13.5"
 protobuf = "4.31.0-beta1"
 html-escape = "0.2.13"
 quick-xml = "0.31"
+log = "0.4"
+env_logger = "0.11"
 
 [dev-dependencies]
 tempfile = "3.5.0"
 
+# Main command-line tools
 [[bin]]
 name = "generate_function_subgraph_dot"
 path = "src/bin/generate_function_subgraph_dot.rs"
@@ -37,11 +40,3 @@ path = "src/bin/generate_call_graph_dot.rs"
 [[bin]]
 name = "generate_files_subgraph_dot"
 path = "src/bin/generate_files_subgraph_dot.rs"
-
-[[bin]]
-name = "stats_unit_graph"
-path = "stats_unit_graph.rs"
-
-[[bin]]
-name = "generate_dot_from_unit_graph"
-path = "generate_dot_from_unit_graph.rs"

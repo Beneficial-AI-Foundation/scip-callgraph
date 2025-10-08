@@ -1,4 +1,4 @@
-use rust_analyzer_test::scip_call_graph;
+use scip_callgraph::scip_call_graph;
 use std::env;
 use std::fs::File;
 use std::io::Write;

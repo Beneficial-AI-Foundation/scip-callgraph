@@ -1,3 +1,7 @@
+# scip-callgraph
+
+A call graph generator and visualizer for Rust projects using rust-analyzer and SCIP.
+
 This tool can be used to generate a graph of callers/callees for a given rust project from the json obtained after running `rust-analyzer` and `scip`. 
 
 ## Prerequirements
@@ -12,8 +16,7 @@ You can use [these scripts](https://github.com/Beneficial-AI-Foundation/installe
 - `rust-analyzer scip .` from the command line within a rust project; this will generate `index.scip` within the rust project;
 - `scip print --json index.scip > index_scip.json` to obtain `index_scip.json` which is then given as input to obtain the call graphs.
 
-If you just want to get info about `libsignal`, simply replace `index_scip.json` by `index_scip_libsignal_deps.json` in the commands below. (If you want to format it so you can see its structure, you can use the command `jq '.' index_scip_libsignal_deps.json > formatted_index_scip_libsignal_deps
-.json`.)
+If you just want to get info about `libsignal`, simply replace `index_scip.json` by `examples/example_data/index_scip_libsignal_deps.json` in the commands below. Example SCIP data files are provided in the `examples/example_data/` directory.
 
 ## How to use
 
@@ -65,7 +68,18 @@ Flags:
 Example:
 
 ```bash
-cargo run --bin generate_function_subgraph_dot index_scip_libsignal_deps.json reduce3.dot "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()" --include-callers --depth 3
+cargo run --bin generate_function_subgraph_dot examples/example_data/index_scip_libsignal_deps.json reduce3.dot "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()" --include-callers --depth 3
+```
+
+## Project Structure
+
+```
+scip-callgraph/
+├── src/              # Core library and binaries
+├── examples/         # Example code and test projects
+├── scripts/          # Build and utility scripts
+├── docs/             # Detailed documentation
+└── test_outputs/     # Generated graphs and outputs (gitignored)
 ```
 
 ## Building a Release
@@ -76,7 +90,7 @@ To build an optimized release version of the `generate_function_subgraph_dot` to
 
 ```bash
 # Option 1: Use the build script
-./build_release.sh
+./scripts/build_release.sh
 
 # Option 2: Build manually
 cargo build --release --bin generate_function_subgraph_dot
@@ -119,3 +133,9 @@ This will automatically:
 1. Build binaries for all supported platforms
 2. Create archives with documentation
 3. Create a GitHub release with all binaries attached
+
+## Documentation
+
+- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) - Detailed deployment instructions
+- [GitHub Actions](docs/GITHUB_ACTIONS.md) - CI/CD workflow documentation
+- [Release Notes](docs/RELEASE_NOTES.md) - Version history and changes

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
+use log::{debug, info};
 
 // Re-using the SCIP data structures from our JSON parser
 #[derive(Debug, Serialize, Deserialize)]
@@ -190,7 +191,7 @@ pub fn generate_call_graph_dot(call_graph: &HashMap<String, FunctionNode>) -> St
         // So, for now, just use "Unknown" unless you extend FunctionNode to store kind.
         symbol_to_kind.insert(&node.symbol, 17);
     }
-    println!("Symbol to kind map: {symbol_to_kind:?}");
+    debug!("Symbol to kind map: {symbol_to_kind:?}");
     let mut dot = String::new();
     dot.push_str("digraph CallGraph {\n");
     dot.push_str("  node [shape=box, style=filled, fillcolor=lightblue];\n");
@@ -303,9 +304,9 @@ fn traverse_graph(
 
 /// Generate a human-readable call graph summary
 pub fn print_call_graph_summary(call_graph: &HashMap<String, FunctionNode>) {
-    println!("Call Graph Summary");
-    println!("=================");
-    println!("Total functions: {}", call_graph.len());
+    info!("Call Graph Summary");
+    info!("=================");
+    info!("Total functions: {}", call_graph.len());
 
     let mut entry_points = 0;
     let mut leaf_functions = 0;
@@ -321,22 +322,22 @@ pub fn print_call_graph_summary(call_graph: &HashMap<String, FunctionNode>) {
         }
     }
 
-    println!(
+    info!(
         "Entry points (functions not called by others): {entry_points}"
     );
-    println!(
+    info!(
         "Leaf functions (functions that don't call others): {leaf_functions}"
     );
-    println!("Internal functions: {internal_functions}");
+    info!("Internal functions: {internal_functions}");
 
     // Find the most called functions
     let mut functions_by_caller_count: Vec<_> = call_graph.values().collect();
     functions_by_caller_count.sort_by(|a, b| b.callers.len().cmp(&a.callers.len()));
 
-    println!("\nMost called functions:");
+    info!("\nMost called functions:");
     for node in functions_by_caller_count.iter().take(5) {
         if !node.callers.is_empty() {
-            println!(
+            info!(
                 "  {} (called by {} functions)",
                 node.display_name,
                 node.callers.len()
@@ -348,10 +349,10 @@ pub fn print_call_graph_summary(call_graph: &HashMap<String, FunctionNode>) {
     let mut functions_by_callee_count: Vec<_> = call_graph.values().collect();
     functions_by_callee_count.sort_by(|a, b| b.callees.len().cmp(&a.callees.len()));
 
-    println!("\nFunctions calling the most other functions:");
+    info!("\nFunctions calling the most other functions:");
     for node in functions_by_callee_count.iter().take(5) {
         if !node.callees.is_empty() {
-            println!(
+            info!(
                 "  {} (calls {} functions)",
                 node.display_name,
                 node.callees.len()
@@ -372,7 +373,7 @@ pub fn generate_call_graph(
     scip_json_file: &str,
     output_file: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Generating call graph from {scip_json_file}");
+    debug!("Generating call graph from {scip_json_file}");
 
     // Read the SCIP JSON file
     let file = File::open(scip_json_file)?;
@@ -441,7 +442,7 @@ pub fn generate_call_graph(
     // Generate dot file
     generate_dot_file(output_file, &symbols, &relationships)?;
 
-    println!("Call graph generated and saved to {output_file}");
+    info!("Call graph generated and saved to {output_file}");
     Ok(())
 }
 
@@ -498,7 +499,7 @@ fn generate_dot_file(
 
     // Process nodes (symbols)
     for symbol in symbols.values() {
-        println!("Processing symbol: {:?}", symbol.display_name);
+        debug!("Processing symbol: {:?}", symbol.display_name);
         let label = format!(
             "{}: {}",
             symbol_kind_to_string(symbol.kind),
@@ -548,7 +549,7 @@ fn get_node_id(symbol: &str) -> String {
 
 /// Convert a symbol kind to a display string
 fn symbol_kind_to_string(kind: SymbolKind) -> &'static str {
-    println!("Symbol kind: {kind:?}");
+    debug!("Symbol kind: {kind:?}");
     match kind {
         SymbolKind::Function => "Function",
         SymbolKind::Method => "Method",
