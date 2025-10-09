@@ -1,8 +1,8 @@
 # scip-callgraph
 
-A call graph generator and visualizer for Rust projects using rust-analyzer and SCIP.
+A call graph generator and visualizer for Rust projects using rust-analyzer (or verus-analyzer) and SCIP.
 
-This tool can be used to generate a graph of callers/callees for a given rust project from the json obtained after running `rust-analyzer` and `scip`. 
+This tool can be used to generate a graph of callers/callees for a given rust project from the json obtained after running `rust-analyzer` (or `verus-analyzer`) and `scip`. 
 
 ## Prerequirements
 
@@ -133,9 +133,3 @@ This will automatically:
 1. Build binaries for all supported platforms
 2. Create archives with documentation
 3. Create a GitHub release with all binaries attached
-
-## Documentation
-
-- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) - Detailed deployment instructions
-- [GitHub Actions](docs/GITHUB_ACTIONS.md) - CI/CD workflow documentation
-- [Release Notes](docs/RELEASE_NOTES.md) - Version history and changes
