@@ -28,10 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Generating DOT file at {output_path}...");
     generate_call_graph_dot(&call_graph, output_path)?;
-    info!("DOT file generated successfully!");
-    info!(
-        "To generate SVG, run: dot -Tsvg {output_path} -o graph.svg"
-    );
+    info!("DOT and SVG files generated successfully!");
 
     Ok(())
 }

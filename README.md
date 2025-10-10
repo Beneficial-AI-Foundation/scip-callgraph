@@ -98,6 +98,29 @@ cargo build --release --bin generate_function_subgraph_dot
 
 The release binary will be located at `target/release/generate_function_subgraph_dot` and can be distributed as a standalone executable.
 
+### Using the Release Binary from Other Projects
+
+Once built, you can use the binary from any directory in several ways:
+
+#### Option 1: Full Path
+```bash
+/path/to/scip-callgraph/target/release/generate_function_subgraph_dot input.json output.dot function_name --depth 10
+```
+
+#### Option 2: Add to PATH (Recommended)
+Add the release directory to your PATH for convenient access from anywhere:
+
+```bash
+# Add to your ~/.bashrc or ~/.zshrc:
+export PATH="$PATH:/path/to/scip-callgraph/target/release"
+
+# Reload your shell:
+source ~/.bashrc
+
+# Now you can run from any directory:
+generate_function_subgraph_dot input.json output.dot function_name --depth 10
+```
+
 ### GitHub Actions Automated Builds
 
 This repository includes GitHub Actions workflows for automated building and releasing:
