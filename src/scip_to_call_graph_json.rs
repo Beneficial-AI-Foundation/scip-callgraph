@@ -606,7 +606,23 @@ pub fn generate_file_subgraph_dot(
     }
 
     dot.push_str("}\n");
-    std::fs::write(output_path, dot)
+    // Write the DOT file
+    std::fs::write(output_path, &dot)?;
+    // Generate SVG using Graphviz
+    let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
+        format!("{stripped}.svg")
+    } else {
+        format!("{output_path}.svg")
+    };
+    let status = Command::new("dot")
+        .args(["-Tsvg", output_path, "-o", &svg_path])
+        .status()?;
+    if !status.success() {
+        return Err(std::io::Error::other(
+            format!("Failed to generate SVG: dot exited with {status}"),
+        ));
+    }
+    Ok(())
 }
 
 /// Generate a DOT file format for a subgraph of the call graph containing only nodes from a specific set of file paths
@@ -774,7 +790,23 @@ pub fn generate_files_subgraph_dot(
     }
 
     dot.push_str("}\n");
-    std::fs::write(output_path, dot)
+    // Write the DOT file
+    std::fs::write(output_path, &dot)?;
+    // Generate SVG using Graphviz
+    let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
+        format!("{stripped}.svg")
+    } else {
+        format!("{output_path}.svg")
+    };
+    let status = Command::new("dot")
+        .args(["-Tsvg", output_path, "-o", &svg_path])
+        .status()?;
+    if !status.success() {
+        return Err(std::io::Error::other(
+            format!("Failed to generate SVG: dot exited with {status}"),
+        ));
+    }
+    Ok(())
 }
 
 /// Generate a DOT file format for a subgraph of the call graph containing only specified functions and their transitive dependencies
@@ -802,9 +834,56 @@ pub fn generate_function_subgraph_dot(
         let matches: Vec<_> = call_graph
             .values()
             .filter(|node| {
-                node.display_name == *function_name
-                    || node.symbol.contains(function_name)
-                    || symbol_to_path(&node.symbol, &node.display_name).contains(function_name)
+                // Match by exact symbol (full or normalized)
+                if node.symbol == *function_name {
+                    return true;
+                }
+                // Also try without trailing period
+                let normalized_symbol_query = function_name.trim_end_matches('.');
+                if node.symbol.trim_end_matches('.') == normalized_symbol_query {
+                    return true;
+                }
+                
+                // Match by exact display name
+                if node.display_name == *function_name {
+                    return true;
+                }
+                
+                // Normalize the function_name by removing trailing () if present
+                let normalized_name = function_name.trim_end_matches("()");
+                
+                // Extract the function part from the symbol (after the last '#')
+                // Example: "...path/StructName#function_name()." -> "function_name()."
+                if let Some(func_part) = node.symbol.rsplit('#').next() {
+                    // Remove trailing "()" and "." if present
+                    let clean_func = func_part.trim_end_matches('.').trim_end_matches("()");
+                    if clean_func == normalized_name {
+                        return true;
+                    }
+                }
+                
+                // Check if the function_name contains # (e.g., "FieldElement51#to_bytes")
+                // Match against the last part of the symbol path
+                if function_name.contains('#') {
+                    // Extract the last two segments: StructName#function_name
+                    if let Some(symbol_suffix) = node.symbol.rsplit('/').next() {
+                        let clean_suffix = symbol_suffix.trim_end_matches('.').trim_end_matches("()");
+                        let clean_query = function_name.trim_end_matches('.').trim_end_matches("()");
+                        if clean_suffix.contains(clean_query) || clean_suffix.ends_with(clean_query) {
+                            return true;
+                        }
+                    }
+                }
+                
+                // Also check if symbol contains the pattern with #
+                if node.symbol.contains(&format!("#{}", normalized_name))
+                    && (node.symbol.ends_with(&format!("#{}().", normalized_name))
+                        || node.symbol.ends_with(&format!("#{}.", normalized_name))
+                        || node.symbol.contains(&format!("#{}/", normalized_name))) {
+                    return true;
+                }
+                
+                false
             })
             .collect();
 
@@ -1110,16 +1189,29 @@ pub fn generate_function_subgraph_dot(
     }
 
     dot.push_str("}\n");
+    
+    // Append depth to filename if specified
+    let final_output_path = if let Some(d) = depth {
+        if let Some(stripped) = output_path.strip_suffix(".dot") {
+            format!("{stripped}_depth_{d}.dot")
+        } else {
+            format!("{output_path}_depth_{d}")
+        }
+    } else {
+        output_path.to_string()
+    };
+    
     // Write the DOT file
-    std::fs::write(output_path, &dot)?;
+    std::fs::write(&final_output_path, &dot)?;
+    
     // Generate SVG using Graphviz
-    let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
+    let svg_path = if let Some(stripped) = final_output_path.strip_suffix(".dot") {
         format!("{stripped}.svg")
     } else {
-        format!("{output_path}.svg")
+        format!("{final_output_path}.svg")
     };
     let status = Command::new("dot")
-        .args(["-Tsvg", output_path, "-o", &svg_path])
+        .args(["-Tsvg", &final_output_path, "-o", &svg_path])
         .status()?;
     if !status.success() {
         return Err(std::io::Error::other(

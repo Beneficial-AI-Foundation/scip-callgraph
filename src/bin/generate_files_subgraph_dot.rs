@@ -46,10 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match generate_files_subgraph_dot(&call_graph, &file_paths, output_path) {
         Ok(_) => {
-            info!("Files subgraph DOT file generated successfully!");
-            info!(
-                "To generate SVG, run: dot -Tsvg {output_path} -o files_subgraph.svg"
-            );
+            info!("Files subgraph DOT and SVG files generated successfully!");
         }
         Err(e) => {
             error!("Failed to generate files subgraph: {e}");

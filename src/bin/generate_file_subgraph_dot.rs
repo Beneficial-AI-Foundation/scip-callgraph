@@ -78,10 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     match generate_file_subgraph_dot_with_verification(&call_graph, file_path, output_path, &verification_status) {
         Ok(_) => {
-            info!("File subgraph DOT file generated successfully!");
-            info!(
-                "To generate SVG, run: dot -Tsvg {output_path} -o file_subgraph.svg"
-            );
+            info!("File subgraph DOT and SVG files generated successfully!");
         }
         Err(e) => {
             error!("Failed to generate file subgraph: {e}");
@@ -274,5 +271,21 @@ fn generate_file_subgraph_dot_with_verification(
     }
 
     dot.push_str("}\n");
-    std::fs::write(output_path, dot)
+    // Write the DOT file
+    std::fs::write(output_path, &dot)?;
+    // Generate SVG using Graphviz
+    let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
+        format!("{stripped}.svg")
+    } else {
+        format!("{output_path}.svg")
+    };
+    let status = std::process::Command::new("dot")
+        .args(["-Tsvg", output_path, "-o", &svg_path])
+        .status()?;
+    if !status.success() {
+        return Err(std::io::Error::other(
+            format!("Failed to generate SVG: dot exited with {status}"),
+        ));
+    }
+    Ok(())
 }
