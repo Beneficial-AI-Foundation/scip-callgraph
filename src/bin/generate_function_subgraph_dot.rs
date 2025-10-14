@@ -49,27 +49,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Get function names (exclude flags) - now starting from args[2]
-    let function_names: Vec<String> = args[2..]
-        .iter()
-        .enumerate()
-        .filter(|(i, arg)| {
-            // Skip all flags and their values
-            if *arg == "--include-callers" 
-                || *arg == "--include-callees"
-                || *arg == "--filter-non-libsignal-sources"
-                || *arg == "--depth" 
-                || *arg == "--debug"
-                || *arg == "-d" {
-                false
-            } else if *i > 0 && args[2 + i - 1] == "--depth" {
-                // Skip the number that follows --depth
-                false
-            } else {
-                true
-            }
-        })
-        .map(|(_, s)| s.to_string())
-        .collect();
+    let args_slice = &args[2..];
+    let mut function_names = Vec::new();
+    let mut skip_next = false;
+    
+    for arg in args_slice {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        
+        // Skip all flags
+        if arg == "--include-callers" 
+            || arg == "--include-callees"
+            || arg == "--filter-non-libsignal-sources"
+            || arg == "--debug"
+            || arg == "-d" {
+            continue;
+        } else if arg == "--depth" {
+            // Skip --depth and mark to skip the next argument (the number)
+            skip_next = true;
+            continue;
+        }
+        
+        // This is a function name
+        function_names.push(arg.to_string());
+    }
 
     if function_names.is_empty() {
         error!("Error: At least one function name must be specified");
