@@ -1,9 +1,9 @@
+use clap::Parser;
+use log::{debug, error, info};
+use scip_callgraph::logging::init_logger;
 use scip_callgraph::scip_to_call_graph_json::{
     build_call_graph, generate_files_subgraph_dot, parse_scip_json,
 };
-use scip_callgraph::logging::init_logger;
-use clap::Parser;
-use log::{debug, info, error};
 
 /// Generate files subgraph DOT files from SCIP data
 #[derive(Parser, Debug)]
@@ -51,9 +51,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 format!("{}.svg", args.output_dot_file)
             };
+            let png_name = if let Some(stripped) = args.output_dot_file.strip_suffix(".dot") {
+                format!("{stripped}.png")
+            } else {
+                format!("{}.png", args.output_dot_file)
+            };
             info!("✓ Generated files:");
             info!("  • {}", args.output_dot_file);
             info!("  • {svg_name}");
+            info!("  • {png_name}");
         }
         Err(e) => {
             error!("Failed to generate files subgraph: {e}");

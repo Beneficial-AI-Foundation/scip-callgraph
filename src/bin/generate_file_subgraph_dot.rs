@@ -1,12 +1,10 @@
 // filepath: /home/lacra/git_repos/baif/scip-callgraph/src/bin/generate_file_subgraph_dot.rs
-use scip_callgraph::scip_to_call_graph_json::{
-    build_call_graph, parse_scip_json,
-};
+use log::{debug, error, info, warn};
 use scip_callgraph::logging::{init_logger, should_enable_debug};
-use std::env;
-use std::collections::{HashMap, HashSet};
+use scip_callgraph::scip_to_call_graph_json::{build_call_graph, parse_scip_json};
 use serde::{Deserialize, Serialize};
-use log::{debug, info, warn, error};
+use std::collections::{HashMap, HashSet};
+use std::env;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct VerificationReport {
@@ -40,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input_path = &args[1];
     let file_path = &args[2];
     let output_path = &args[3];
-    
+
     // Check if verification report is provided as 4th argument (before debug flags)
     let verification_report_path = if args.len() >= 5 && !args[4].starts_with("--") {
         Some(&args[4])
@@ -60,8 +58,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         debug!("Loading verification report from {report_path}...");
         match load_verification_report(report_path) {
             Ok(status) => {
-                info!("Loaded verification report: {} verified, {} failed", 
-                     status.verified_functions.len(), status.failed_functions.len());
+                info!(
+                    "Loaded verification report: {} verified, {} failed",
+                    status.verified_functions.len(),
+                    status.failed_functions.len()
+                );
                 Some(status)
             }
             Err(e) => {
@@ -73,18 +74,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
-    debug!(
-        "Generating file subgraph DOT file for {file_path} at {output_path}..."
-    );
-    match generate_file_subgraph_dot_with_verification(&call_graph, file_path, output_path, &verification_status) {
+    debug!("Generating file subgraph DOT file for {file_path} at {output_path}...");
+    match generate_file_subgraph_dot_with_verification(
+        &call_graph,
+        file_path,
+        output_path,
+        &verification_status,
+    ) {
         Ok(_) => {
             info!("File subgraph DOT and SVG files generated successfully!");
         }
         Err(e) => {
             error!("Failed to generate file subgraph: {e}");
-            warn!(
-                "Make sure the file path '{file_path}' exists in the call graph"
-            );
+            warn!("Make sure the file path '{file_path}' exists in the call graph");
 
             // Optionally list some available file paths to help the user
             debug!("Available file paths in the call graph:");
@@ -118,7 +120,7 @@ fn generate_file_subgraph_dot_with_verification(
     verification_status: &Option<VerificationResult>,
 ) -> std::io::Result<()> {
     use std::path::Path;
-    
+
     let mut dot = String::from("digraph file_subgraph {\n");
     dot.push_str("  rankdir=LR;\n");
     dot.push_str("  node [shape=box, style=filled, fontname=Helvetica];\n");
@@ -129,7 +131,7 @@ fn generate_file_subgraph_dot_with_verification(
         .as_ref()
         .map(|v| v.verified_functions.iter().cloned().collect())
         .unwrap_or_default();
-    
+
     let failed_functions: HashSet<String> = verification_status
         .as_ref()
         .map(|v| v.failed_functions.iter().cloned().collect())
@@ -200,9 +202,7 @@ fn generate_file_subgraph_dot_with_verification(
     for node in &file_nodes {
         let label = node.display_name.clone();
         let tooltip = if let Some(body) = &node.body {
-            let plain = body
-                .replace(['\n', '\r'], " ")
-                .replace('"', "' ");
+            let plain = body.replace(['\n', '\r'], " ").replace('"', "' ");
             if plain.len() > 200 {
                 format!("{}...", &plain[..200])
             } else {
@@ -214,11 +214,11 @@ fn generate_file_subgraph_dot_with_verification(
 
         // Determine color based on verification status
         let fillcolor = if verified_functions.contains(&node.display_name) {
-            "lightgreen"  // Verified functions in light green
+            "lightgreen" // Verified functions in light green
         } else if failed_functions.contains(&node.display_name) {
-            "lightcoral"  // Failed functions in light red
+            "lightcoral" // Failed functions in light red
         } else {
-            "lightblue"   // Default color for functions not in verification report
+            "lightblue" // Default color for functions not in verification report
         };
 
         dot.push_str(&format!(
@@ -232,16 +232,16 @@ fn generate_file_subgraph_dot_with_verification(
         if !file_symbols.contains(symbol) {
             if let Some(node) = call_graph.get(symbol) {
                 let label = node.display_name.clone();
-                
+
                 // Determine color for connected nodes based on verification status
                 let fillcolor = if verified_functions.contains(&node.display_name) {
-                    "lightgreen"  // Verified functions in light green
+                    "lightgreen" // Verified functions in light green
                 } else if failed_functions.contains(&node.display_name) {
-                    "lightcoral"  // Failed functions in light red
+                    "lightcoral" // Failed functions in light red
                 } else {
-                    "lightgray"   // Default color for connected nodes
+                    "lightgray" // Default color for connected nodes
                 };
-                
+
                 dot.push_str(&format!(
                     "  \"{}\" [label=\"{}\", fillcolor={}]\n",
                     node.symbol, label, fillcolor
@@ -273,19 +273,36 @@ fn generate_file_subgraph_dot_with_verification(
     dot.push_str("}\n");
     // Write the DOT file
     std::fs::write(output_path, &dot)?;
-    // Generate SVG using Graphviz
+    // Generate SVG and PNG using Graphviz
     let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
         format!("{stripped}.svg")
     } else {
         format!("{output_path}.svg")
     };
-    let status = std::process::Command::new("dot")
+    let png_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
+        format!("{stripped}.png")
+    } else {
+        format!("{output_path}.png")
+    };
+
+    // Generate SVG
+    let svg_status = std::process::Command::new("dot")
         .args(["-Tsvg", output_path, "-o", &svg_path])
         .status()?;
-    if !status.success() {
-        return Err(std::io::Error::other(
-            format!("Failed to generate SVG: dot exited with {status}"),
-        ));
+    if !svg_status.success() {
+        return Err(std::io::Error::other(format!(
+            "Failed to generate SVG: dot exited with {svg_status}"
+        )));
+    }
+
+    // Generate PNG
+    let png_status = std::process::Command::new("dot")
+        .args(["-Tpng", output_path, "-o", &png_path])
+        .status()?;
+    if !png_status.success() {
+        return Err(std::io::Error::other(format!(
+            "Failed to generate PNG: dot exited with {png_status}"
+        )));
     }
     Ok(())
 }

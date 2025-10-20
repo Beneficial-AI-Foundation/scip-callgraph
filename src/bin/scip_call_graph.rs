@@ -1,5 +1,5 @@
-use scip_callgraph::scip_call_graph;
 use clap::{Parser, Subcommand};
+use scip_callgraph::scip_call_graph;
 use std::fs::File;
 use std::io::Write;
 
@@ -91,9 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // If we have multiple matches, show them and let user be more specific
             if matching_entries.len() > 1 {
-                println!(
-                    "Multiple functions match '{function_name}'. Please be more specific:"
-                );
+                println!("Multiple functions match '{function_name}'. Please be more specific:");
                 for (i, symbol) in matching_entries.iter().enumerate() {
                     if let Some(node) = full_graph.get(symbol) {
                         println!("  {}. {} ({})", i + 1, node.display_name, symbol);

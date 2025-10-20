@@ -1,13 +1,16 @@
+use log::{error, info};
+use scip_callgraph::logging::{init_logger, should_enable_debug};
 use scip_callgraph::scip_to_call_graph_json::{
     build_call_graph, generate_call_graph_svg, parse_scip_json,
 };
-use scip_callgraph::logging::{init_logger, should_enable_debug};
-use log::{error, info};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
-        eprintln!("Usage: {} <input_scip_json> <output_atoms_json> [--debug|-d]", args[0]);
+        eprintln!(
+            "Usage: {} <input_scip_json> <output_atoms_json> [--debug|-d]",
+            args[0]
+        );
         std::process::exit(1);
     }
 

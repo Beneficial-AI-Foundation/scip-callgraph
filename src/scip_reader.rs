@@ -61,7 +61,6 @@ pub fn is_valid_scip_file(data: &[u8]) -> bool {
 
     // Check for some protobuf-like patterns at the beginning
     let first_byte = data[0];
-    
 
     first_byte == 10 || first_byte == 8
 }

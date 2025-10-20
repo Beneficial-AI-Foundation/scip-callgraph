@@ -8,8 +8,8 @@ pub mod scip_to_call_graph_json;
 
 /// Logging utilities
 pub mod logging {
-    use std::env;
     use log::LevelFilter;
+    use std::env;
 
     /// Initialize logger based on debug flag or environment variable
     pub fn init_logger(debug: bool) {
@@ -23,9 +23,7 @@ pub mod logging {
             LevelFilter::Warn
         };
 
-        env_logger::Builder::new()
-            .filter_level(log_level)
-            .init();
+        env_logger::Builder::new().filter_level(log_level).init();
     }
 
     /// Check if debug logging should be enabled from command line args
