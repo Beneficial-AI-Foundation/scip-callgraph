@@ -72,12 +72,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     };
 
-    // Add depth to filename if specified
-    let output_dot_file = if let Some(d) = args.depth {
-        format!("{base_name}_depth_{d}.dot")
-    } else {
-        format!("{base_name}.dot")
-    };
+    // Library function will add depth to filename automatically
+    let output_dot_file = format!("{base_name}.dot");
 
     debug!("Parsing SCIP JSON from {}...", args.input_scip_json);
     let scip_data = parse_scip_json(&args.input_scip_json)?;
