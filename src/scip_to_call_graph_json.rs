@@ -431,7 +431,7 @@ pub fn generate_call_graph_dot(
     let mut dot = String::from("digraph call_graph {\n");
     dot.push_str("  rankdir=LR;\n");
     dot.push_str("  node [shape=box, style=filled, fillcolor=lightblue, fontname=Helvetica];\n");
-    dot.push_str("  edge [color=gray];\n\n");
+    dot.push_str("  edge [color=black];\n\n");
 
     // Filter out unwanted paths
     let skip_paths = [
@@ -510,7 +510,7 @@ pub fn generate_file_subgraph_dot(
     let mut dot = String::from("digraph file_subgraph {\n");
     dot.push_str("  rankdir=LR;\n");
     dot.push_str("  node [shape=box, style=filled, fontname=Helvetica];\n");
-    dot.push_str("  edge [color=gray];\n\n");
+    dot.push_str("  edge [color=black];\n\n");
 
     // Find nodes that belong to the specified file - more flexible path matching
     let file_nodes: Vec<&FunctionNode> = call_graph
@@ -643,7 +643,7 @@ pub fn generate_files_subgraph_dot(
     let mut dot = String::from("digraph files_subgraph {\n");
     dot.push_str("  rankdir=LR;\n");
     dot.push_str("  node [shape=box, style=filled, fontname=Helvetica];\n");
-    dot.push_str("  edge [color=gray];\n\n");
+    dot.push_str("  edge [color=black];\n\n");
 
     // Helper function for file path matching
     fn is_file_match(node_path: &str, requested_paths: &[String]) -> bool {
@@ -817,7 +817,7 @@ pub fn generate_function_subgraph_dot(
     let mut dot = String::from("digraph function_subgraph {\n");
     dot.push_str("  rankdir=LR;\n");
     dot.push_str("  node [shape=box, style=filled, fontname=Helvetica];\n");
-    dot.push_str("  edge [color=gray];\n\n");
+    dot.push_str("  edge [color=black];\n\n");
 
     // Find nodes that match the specified function names
     let mut matched_nodes = Vec::new();
@@ -1168,7 +1168,7 @@ pub fn generate_function_subgraph_dot(
                         "color=orange, style=dashed"
                     } else {
                         // Both non-libsignal - dotted edge
-                        "color=gray, style=dashed"
+                        "color=black, style=dashed"
                     };
 
                     dot.push_str(&format!(
