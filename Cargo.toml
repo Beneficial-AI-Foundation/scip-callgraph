@@ -1,6 +1,6 @@
 [package]
 name = "scip-callgraph"
-version = "0.1.0"
+version = "3.0.2"
 edition = "2021"
 description = "Call graph generator and visualizer for Rust projects using rust-analyzer and SCIP"
 repository = "https://github.com/Beneficial-AI-Foundation/scip-callgraph"
@@ -24,6 +24,7 @@ html-escape = "0.2.13"
 quick-xml = "0.31"
 log = "0.4"
 env_logger = "0.11"
+clap = { version = "4.5", features = ["derive"] }
 
 [dev-dependencies]
 tempfile = "3.5.0"

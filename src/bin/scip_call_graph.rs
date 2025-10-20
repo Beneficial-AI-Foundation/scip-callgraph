@@ -1,80 +1,77 @@
 use scip_callgraph::scip_call_graph;
-use std::env;
+use clap::{Parser, Subcommand};
 use std::fs::File;
 use std::io::Write;
 
+/// SCIP Call Graph Generator
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Generate a call graph from SCIP JSON data
+    Generate {
+        /// Input SCIP JSON file path
+        scip_json_file: String,
+        /// Output DOT file path (optional, prints to stdout if not provided)
+        output_dot_file: Option<String>,
+    },
+    /// Generate a filtered call graph starting from a specific function
+    Filter {
+        /// Input SCIP JSON file path
+        scip_json_file: String,
+        /// Function name to start filtering from
+        function_name: String,
+        /// Output DOT file path (optional, prints to stdout if not provided)
+        output_dot_file: Option<String>,
+        /// Maximum depth for traversal
+        max_depth: Option<usize>,
+    },
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
+    let args = Args::parse();
 
-    if args.len() < 2 {
-        print_usage();
-        return Ok(());
-    }
-
-    let command = &args[1];
-
-    match command.as_str() {
-        "generate" => {
-            if args.len() < 3 {
-                println!("Error: Missing SCIP JSON file path");
-                print_usage();
-                return Ok(());
-            }
-            let scip_path = &args[2];
-            let output_path = if args.len() >= 4 {
-                Some(&args[3])
-            } else {
-                None
-            };
-
+    match args.command {
+        Commands::Generate {
+            scip_json_file,
+            output_dot_file,
+        } => {
             // Parse SCIP JSON data
-            let scip_data = scip_call_graph::parse_scip_json(scip_path)?;
+            let scip_data = scip_call_graph::parse_scip_json(&scip_json_file)?;
 
             // Build the call graph
             let call_graph = scip_call_graph::build_call_graph(&scip_data);
 
             // Print summary
-            println!("Call graph generated from {scip_path}");
+            println!("Call graph generated from {scip_json_file}");
             scip_call_graph::print_call_graph_summary(&call_graph);
 
             // Generate DOT file
             let dot_content = scip_call_graph::generate_call_graph_dot(&call_graph);
 
-            if let Some(path) = output_path {
-                let mut file = File::create(path)?;
+            if let Some(path) = output_dot_file {
+                let mut file = File::create(&path)?;
                 file.write_all(dot_content.as_bytes())?;
                 println!("\nDOT file written to: {path}");
-                println!(
-                    "You can visualize it with: dot -Tpng {path} -o call_graph.png"
-                );
+                println!("You can visualize it with: dot -Tpng {path} -o call_graph.png");
             } else {
                 println!("\nDOT format call graph:\n");
                 println!("{dot_content}");
             }
         }
-        "filter" => {
-            if args.len() < 4 {
-                println!("Error: Missing required arguments");
-                print_usage();
-                return Ok(());
-            }
-
-            let scip_path = &args[2];
-            let entry_point = &args[3];
-            let output_path = if args.len() >= 5 {
-                Some(&args[4])
-            } else {
-                None
-            };
-
-            let max_depth = if args.len() >= 6 {
-                args[5].parse::<usize>().ok()
-            } else {
-                None
-            };
-
+        Commands::Filter {
+            scip_json_file,
+            function_name,
+            output_dot_file,
+            max_depth,
+        } => {
             // Parse SCIP JSON data
-            let scip_data = scip_call_graph::parse_scip_json(scip_path)?;
+            let scip_data = scip_call_graph::parse_scip_json(&scip_json_file)?;
 
             // Build the full call graph
             let full_graph = scip_call_graph::build_call_graph(&scip_data);
@@ -82,20 +79,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Find possible matches for the entry point
             let mut matching_entries = Vec::new();
             for (symbol, node) in &full_graph {
-                if symbol.contains(entry_point) || node.display_name.contains(entry_point) {
+                if symbol.contains(&function_name) || node.display_name.contains(&function_name) {
                     matching_entries.push(symbol.clone());
                 }
             }
 
             if matching_entries.is_empty() {
-                println!("Error: No functions matching '{entry_point}' found.");
+                println!("Error: No functions matching '{function_name}' found.");
                 return Ok(());
             }
 
             // If we have multiple matches, show them and let user be more specific
             if matching_entries.len() > 1 {
                 println!(
-                    "Multiple functions match '{entry_point}'. Please be more specific:"
+                    "Multiple functions match '{function_name}'. Please be more specific:"
                 );
                 for (i, symbol) in matching_entries.iter().enumerate() {
                     if let Some(node) = full_graph.get(symbol) {
@@ -113,7 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
 
             // Print summary
-            println!("Filtered call graph starting from '{entry_point}'");
+            println!("Filtered call graph starting from '{function_name}'");
             if let Some(depth) = max_depth {
                 println!("(limited to depth {depth})");
             }
@@ -122,38 +119,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Generate DOT file
             let dot_content = scip_call_graph::generate_call_graph_dot(&filtered_graph);
 
-            if let Some(path) = output_path {
-                let mut file = File::create(path)?;
+            if let Some(path) = output_dot_file {
+                let mut file = File::create(&path)?;
                 file.write_all(dot_content.as_bytes())?;
                 println!("\nFiltered DOT file written to: {path}");
-                println!(
-                    "You can visualize it with: dot -Tpng {path} -o filtered_call_graph.png"
-                );
+                println!("You can visualize it with: dot -Tpng {path} -o filtered_call_graph.png");
             } else {
                 println!("\nFiltered DOT format call graph:\n");
                 println!("{dot_content}");
             }
         }
-        "help" | _ => {
-            print_usage();
-        }
     }
 
     Ok(())
-}
-
-fn print_usage() {
-    println!("SCIP Call Graph Generator");
-    println!("\nUsage:");
-    println!("  scip_call_graph <command> [arguments]");
-    println!("\nCommands:");
-    println!("  generate <scip_json_file> [output_dot_file]");
-    println!("    Generate a call graph from SCIP JSON data");
-    println!("\n  filter <scip_json_file> <function_name> [output_dot_file] [max_depth]");
-    println!("    Generate a filtered call graph starting from a specific function");
-    println!("\n  help");
-    println!("    Show this help message");
-    println!("\nExample:");
-    println!("  scip_call_graph generate index_scip.json call_graph.dot");
-    println!("  scip_call_graph filter index_scip.json main call_graph_main.dot 3");
 }

@@ -1,35 +1,37 @@
-// filepath: /home/lacra/git_repos/baif/scip-callgraph/src/bin/generate_files_subgraph_dot.rs
 use scip_callgraph::scip_to_call_graph_json::{
     build_call_graph, generate_files_subgraph_dot, parse_scip_json,
 };
-use scip_callgraph::logging::{init_logger, should_enable_debug};
-use std::env;
+use scip_callgraph::logging::init_logger;
+use clap::Parser;
 use log::{debug, info, error};
 
+/// Generate files subgraph DOT files from SCIP data
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Input SCIP JSON file
+    input_scip_json: String,
+
+    /// Output DOT file path
+    output_dot_file: String,
+
+    /// File paths to include in the subgraph
+    #[arg(required = true)]
+    file_paths: Vec<String>,
+
+    /// Enable debug logging
+    #[arg(short, long)]
+    debug: bool,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 4 {
-        eprintln!(
-            "Usage: {} <input-scip-json> <output-dot-file> <file-path1> [<file-path2> ...] [--debug|-d]",
-            args[0]
-        );
-        eprintln!(
-            "Example: {} scip_data.json output.dot src/file1.rs src/file2.rs",
-            args[0]
-        );
-        std::process::exit(1);
-    }
+    let args = Args::parse();
 
     // Initialize logger based on debug flag
-    let debug = should_enable_debug(&args);
-    init_logger(debug);
+    init_logger(args.debug);
 
-    let input_path = &args[1];
-    let output_path = &args[2];
-    let file_paths = &args[3..];
-
-    debug!("Parsing SCIP JSON from {input_path}...");
-    let scip_data = parse_scip_json(input_path)?;
+    debug!("Parsing SCIP JSON from {}...", args.input_scip_json);
+    let scip_data = parse_scip_json(&args.input_scip_json)?;
 
     debug!("Building call graph...");
     let call_graph = build_call_graph(&scip_data);
@@ -37,16 +39,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!(
         "Generating subgraph DOT file for {} files at {}...",
-        file_paths.len(),
-        output_path
+        args.file_paths.len(),
+        args.output_dot_file
     );
 
-    // Convert file paths to owned Strings
-    let file_paths: Vec<String> = file_paths.iter().map(|s| s.to_string()).collect();
-
-    match generate_files_subgraph_dot(&call_graph, &file_paths, output_path) {
+    match generate_files_subgraph_dot(&call_graph, &args.file_paths, &args.output_dot_file) {
         Ok(_) => {
-            info!("Files subgraph DOT and SVG files generated successfully!");
+            // Show the actual filenames that were created
+            let svg_name = if let Some(stripped) = args.output_dot_file.strip_suffix(".dot") {
+                format!("{stripped}.svg")
+            } else {
+                format!("{}.svg", args.output_dot_file)
+            };
+            info!("✓ Generated files:");
+            info!("  • {}", args.output_dot_file);
+            info!("  • {svg_name}");
         }
         Err(e) => {
             error!("Failed to generate files subgraph: {e}");
