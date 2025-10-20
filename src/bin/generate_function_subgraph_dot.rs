@@ -1,9 +1,9 @@
+use clap::Parser;
+use log::{debug, error, info};
+use scip_callgraph::logging::init_logger;
 use scip_callgraph::scip_to_call_graph_json::{
     build_call_graph, generate_function_subgraph_dot, parse_scip_json,
 };
-use scip_callgraph::logging::init_logger;
-use clap::Parser;
-use log::{debug, info, error};
 
 /// Generate function subgraph DOT files from SCIP data
 #[derive(Parser, Debug)]
@@ -45,7 +45,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Generate output filename from function names and depth
     // Sanitize function names for use in filename
-    let sanitized_names: Vec<String> = args.function_names
+    let sanitized_names: Vec<String> = args
+        .function_names
         .iter()
         .map(|name| {
             name.replace(' ', "_")
@@ -57,16 +58,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .replace('.', "_")
         })
         .collect();
-    
+
     // Use first function name or combine multiple with underscores (limit to 3 for readability)
     let base_name = if sanitized_names.len() == 1 {
         sanitized_names[0].clone()
     } else if sanitized_names.len() <= 3 {
         sanitized_names.join("_and_")
     } else {
-        format!("{}_and_{}_others", sanitized_names[0], sanitized_names.len() - 1)
+        format!(
+            "{}_and_{}_others",
+            sanitized_names[0],
+            sanitized_names.len() - 1
+        )
     };
-    
+
     // Add depth to filename if specified
     let output_dot_file = if let Some(d) = args.depth {
         format!("{base_name}_depth_{d}.dot")
@@ -110,9 +115,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 format!("{output_dot_file}.svg")
             };
+            let png_name = if let Some(stripped) = output_dot_file.strip_suffix(".dot") {
+                format!("{stripped}.png")
+            } else {
+                format!("{output_dot_file}.png")
+            };
             info!("✓ Generated files:");
             info!("  • {output_dot_file}");
             info!("  • {svg_name}");
+            info!("  • {png_name}");
         }
         Err(e) => {
             error!("Failed to generate function subgraph: {e}");

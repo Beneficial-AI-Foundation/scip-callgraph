@@ -2,7 +2,7 @@
 
 A call graph generator and visualizer for Rust projects using rust-analyzer (or verus-analyzer) and SCIP.
 
-This tool can be used to generate a graph of callers/callees for a given rust project from the json obtained after running `rust-analyzer` (or `verus-analyzer`) and `scip`. 
+This tool can be used to generate a graph of callers/callees for a given rust project from the json obtained after running `rust-analyzer` (or `verus-analyzer`) and `scip`. The tool automatically generates output in multiple formats: DOT (for Graphviz), SVG (vector graphics), and PNG (raster graphics). 
 
 ## Prerequirements
 
@@ -34,6 +34,8 @@ This outputs:
 
 - `call_graph.json`: the call graph data in JSON format
 - `call_graph.dot`: the call graph in Graphviz DOT format
+- `call_graph.svg`: the call graph as an SVG image
+- `call_graph.png`: the call graph as a PNG image
 
 ### 2. Generate file subgraph
 
@@ -47,8 +49,12 @@ Example:
 
 ```bash
 cargo run --bin generate_files_subgraph_dot index_scip.json files_subgraph.dot src/lib.rs src/main.rs
-dot -Tsvg files_subgraph.dot -o files_subgraph.svg
 ```
+
+This automatically generates:
+- `files_subgraph.dot`: the subgraph in DOT format
+- `files_subgraph.svg`: the subgraph as an SVG image
+- `files_subgraph.png`: the subgraph as a PNG image
 
 ### 3. Generate function subgraph
 
@@ -70,6 +76,11 @@ Example:
 ```bash
 cargo run --bin generate_function_subgraph_dot examples/example_data/index_scip_libsignal_deps.json reduce3.dot "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/u64/field/impl#[FieldElement51]reduce()" --include-callers --depth 3
 ```
+
+This automatically generates:
+- `reduce3.dot`: the function subgraph in DOT format
+- `reduce3.svg`: the function subgraph as an SVG image
+- `reduce3.png`: the function subgraph as a PNG image
 
 ## Project Structure
 

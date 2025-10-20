@@ -1,3 +1,4 @@
+use log::{debug, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -5,7 +6,43 @@ use std::collections::{HashMap, HashSet};
 use std::fs::{self};
 use std::path::Path;
 use std::process::Command;
-use log::{debug, warn};
+
+/// Helper function to generate both SVG and PNG files from a DOT file using Graphviz
+fn generate_svg_and_png_from_dot(dot_path: &str) -> std::io::Result<()> {
+    let svg_path = if let Some(stripped) = dot_path.strip_suffix(".dot") {
+        format!("{stripped}.svg")
+    } else {
+        format!("{dot_path}.svg")
+    };
+
+    let png_path = if let Some(stripped) = dot_path.strip_suffix(".dot") {
+        format!("{stripped}.png")
+    } else {
+        format!("{dot_path}.png")
+    };
+
+    // Generate SVG
+    let svg_status = Command::new("dot")
+        .args(["-Tsvg", dot_path, "-o", &svg_path])
+        .status()?;
+    if !svg_status.success() {
+        return Err(std::io::Error::other(format!(
+            "Failed to generate SVG: dot exited with {svg_status}"
+        )));
+    }
+
+    // Generate PNG
+    let png_status = Command::new("dot")
+        .args(["-Tpng", dot_path, "-o", &png_path])
+        .status()?;
+    if !png_status.success() {
+        return Err(std::io::Error::other(format!(
+            "Failed to generate PNG: dot exited with {png_status}"
+        )));
+    }
+
+    Ok(())
+}
 
 // Re-using the SCIP data structures from our JSON parser
 #[derive(Debug, Serialize, Deserialize)]
@@ -224,7 +261,6 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
 
                         // Look for the opening brace and collect all code until matching closing brace
                         for (line_idx, line) in lines.iter().enumerate().skip(start_line) {
-
                             // Skip the first line as we've already added it
                             if line_idx == start_line {
                                 // Check if the first line already has an opening brace
@@ -424,9 +460,7 @@ pub fn generate_call_graph_dot(
         for node in nodes {
             let label = node.display_name.clone();
             let tooltip = if let Some(body) = &node.body {
-                let plain = body
-                    .replace(['\n', '\r'], " ")
-                    .replace('"', "' ");
+                let plain = body.replace(['\n', '\r'], " ").replace('"', "' ");
                 if plain.len() > 200 {
                     let truncated = &plain[..200];
                     format!("{truncated}...")
@@ -461,20 +495,8 @@ pub fn generate_call_graph_dot(
     dot.push_str("}\n");
     // Write the DOT file
     std::fs::write(output_path, &dot)?;
-    // Generate SVG using Graphviz
-    let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
-        format!("{stripped}.svg")
-    } else {
-        format!("{output_path}.svg")
-    };
-    let status = Command::new("dot")
-        .args(["-Tsvg", output_path, "-o", &svg_path])
-        .status()?;
-    if !status.success() {
-        return Err(std::io::Error::other(
-            format!("Failed to generate SVG: dot exited with {status}"),
-        ));
-    }
+    // Generate SVG and PNG using Graphviz
+    generate_svg_and_png_from_dot(output_path)?;
     Ok(())
 }
 
@@ -555,9 +577,7 @@ pub fn generate_file_subgraph_dot(
     for node in &file_nodes {
         let label = node.display_name.clone();
         let tooltip = if let Some(body) = &node.body {
-            let plain = body
-                .replace(['\n', '\r'], " ")
-                .replace('"', "' ");
+            let plain = body.replace(['\n', '\r'], " ").replace('"', "' ");
             if plain.len() > 200 {
                 format!("{}...", &plain[..200])
             } else {
@@ -608,20 +628,8 @@ pub fn generate_file_subgraph_dot(
     dot.push_str("}\n");
     // Write the DOT file
     std::fs::write(output_path, &dot)?;
-    // Generate SVG using Graphviz
-    let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
-        format!("{stripped}.svg")
-    } else {
-        format!("{output_path}.svg")
-    };
-    let status = Command::new("dot")
-        .args(["-Tsvg", output_path, "-o", &svg_path])
-        .status()?;
-    if !status.success() {
-        return Err(std::io::Error::other(
-            format!("Failed to generate SVG: dot exited with {status}"),
-        ));
-    }
+    // Generate SVG and PNG using Graphviz
+    generate_svg_and_png_from_dot(output_path)?;
     Ok(())
 }
 
@@ -735,9 +743,7 @@ pub fn generate_files_subgraph_dot(
         for node in nodes {
             let label = node.display_name.clone();
             let tooltip = if let Some(body) = &node.body {
-                let plain = body
-                    .replace(['\n', '\r'], " ")
-                    .replace('"', "' ");
+                let plain = body.replace(['\n', '\r'], " ").replace('"', "' ");
                 if plain.len() > 200 {
                     format!("{}...", &plain[..200])
                 } else {
@@ -792,20 +798,8 @@ pub fn generate_files_subgraph_dot(
     dot.push_str("}\n");
     // Write the DOT file
     std::fs::write(output_path, &dot)?;
-    // Generate SVG using Graphviz
-    let svg_path = if let Some(stripped) = output_path.strip_suffix(".dot") {
-        format!("{stripped}.svg")
-    } else {
-        format!("{output_path}.svg")
-    };
-    let status = Command::new("dot")
-        .args(["-Tsvg", output_path, "-o", &svg_path])
-        .status()?;
-    if !status.success() {
-        return Err(std::io::Error::other(
-            format!("Failed to generate SVG: dot exited with {status}"),
-        ));
-    }
+    // Generate SVG and PNG using Graphviz
+    generate_svg_and_png_from_dot(output_path)?;
     Ok(())
 }
 
@@ -843,15 +837,15 @@ pub fn generate_function_subgraph_dot(
                 if node.symbol.trim_end_matches('.') == normalized_symbol_query {
                     return true;
                 }
-                
+
                 // Match by exact display name
                 if node.display_name == *function_name {
                     return true;
                 }
-                
+
                 // Normalize the function_name by removing trailing () if present
                 let normalized_name = function_name.trim_end_matches("()");
-                
+
                 // Extract the function part from the symbol (after the last '#')
                 // Example: "...path/StructName#function_name()." -> "function_name()."
                 if let Some(func_part) = node.symbol.rsplit('#').next() {
@@ -861,28 +855,32 @@ pub fn generate_function_subgraph_dot(
                         return true;
                     }
                 }
-                
+
                 // Check if the function_name contains # (e.g., "FieldElement51#to_bytes")
                 // Match against the last part of the symbol path
                 if function_name.contains('#') {
                     // Extract the last two segments: StructName#function_name
                     if let Some(symbol_suffix) = node.symbol.rsplit('/').next() {
-                        let clean_suffix = symbol_suffix.trim_end_matches('.').trim_end_matches("()");
-                        let clean_query = function_name.trim_end_matches('.').trim_end_matches("()");
-                        if clean_suffix.contains(clean_query) || clean_suffix.ends_with(clean_query) {
+                        let clean_suffix =
+                            symbol_suffix.trim_end_matches('.').trim_end_matches("()");
+                        let clean_query =
+                            function_name.trim_end_matches('.').trim_end_matches("()");
+                        if clean_suffix.contains(clean_query) || clean_suffix.ends_with(clean_query)
+                        {
                             return true;
                         }
                     }
                 }
-                
+
                 // Also check if symbol contains the pattern with #
                 if node.symbol.contains(&format!("#{}", normalized_name))
                     && (node.symbol.ends_with(&format!("#{}().", normalized_name))
                         || node.symbol.ends_with(&format!("#{}.", normalized_name))
-                        || node.symbol.contains(&format!("#{}/", normalized_name))) {
+                        || node.symbol.contains(&format!("#{}/", normalized_name)))
+                {
                     return true;
                 }
-                
+
                 false
             })
             .collect();
@@ -896,9 +894,7 @@ pub fn generate_function_subgraph_dot(
     if matched_nodes.is_empty() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!(
-                "No functions found matching the provided names: {function_names:?}"
-            ),
+            format!("No functions found matching the provided names: {function_names:?}"),
         ));
     }
 
@@ -1100,9 +1096,7 @@ pub fn generate_function_subgraph_dot(
                 false
             }
         });
-        debug!(
-            "Processing file cluster: {file_path} (libsignal: {is_libsignal_cluster})"
-        );
+        debug!("Processing file cluster: {file_path} (libsignal: {is_libsignal_cluster})");
         if is_libsignal_cluster {
             dot.push_str("    color=lightblue;\n");
         } else {
@@ -1115,9 +1109,7 @@ pub fn generate_function_subgraph_dot(
             if let Some(node) = call_graph.get(symbol) {
                 let label = node.display_name.clone();
                 let tooltip = if let Some(body) = &node.body {
-                    let plain = body
-                        .replace(['\n', '\r'], " ")
-                        .replace('"', "' ");
+                    let plain = body.replace(['\n', '\r'], " ").replace('"', "' ");
                     if plain.len() > 200 {
                         format!("{}...", &plain[..200])
                     } else {
@@ -1189,7 +1181,7 @@ pub fn generate_function_subgraph_dot(
     }
 
     dot.push_str("}\n");
-    
+
     // Append depth to filename if specified
     let final_output_path = if let Some(d) = depth {
         if let Some(stripped) = output_path.strip_suffix(".dot") {
@@ -1200,24 +1192,12 @@ pub fn generate_function_subgraph_dot(
     } else {
         output_path.to_string()
     };
-    
+
     // Write the DOT file
     std::fs::write(&final_output_path, &dot)?;
-    
-    // Generate SVG using Graphviz
-    let svg_path = if let Some(stripped) = final_output_path.strip_suffix(".dot") {
-        format!("{stripped}.svg")
-    } else {
-        format!("{final_output_path}.svg")
-    };
-    let status = Command::new("dot")
-        .args(["-Tsvg", &final_output_path, "-o", &svg_path])
-        .status()?;
-    if !status.success() {
-        return Err(std::io::Error::other(
-            format!("Failed to generate SVG: dot exited with {status}"),
-        ));
-    }
+
+    // Generate SVG and PNG using Graphviz
+    generate_svg_and_png_from_dot(&final_output_path)?;
     Ok(())
 }
 

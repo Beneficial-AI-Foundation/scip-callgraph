@@ -1,9 +1,9 @@
+use clap::Parser;
+use log::{debug, info};
+use scip_callgraph::logging::init_logger;
 use scip_callgraph::scip_to_call_graph_json::{
     build_call_graph, generate_call_graph_dot, parse_scip_json,
 };
-use scip_callgraph::logging::init_logger;
-use clap::Parser;
-use log::{debug, info};
 
 /// Generate call graph DOT files from SCIP data
 #[derive(Parser, Debug)]
@@ -35,16 +35,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Generating DOT file at {}...", args.output_dot_file);
     generate_call_graph_dot(&call_graph, &args.output_dot_file)?;
-    
+
     // Show the actual filenames that were created
     let svg_name = if let Some(stripped) = args.output_dot_file.strip_suffix(".dot") {
         format!("{stripped}.svg")
     } else {
         format!("{}.svg", args.output_dot_file)
     };
+    let png_name = if let Some(stripped) = args.output_dot_file.strip_suffix(".dot") {
+        format!("{stripped}.png")
+    } else {
+        format!("{}.png", args.output_dot_file)
+    };
     info!("✓ Generated files:");
     info!("  • {}", args.output_dot_file);
     info!("  • {svg_name}");
+    info!("  • {png_name}");
 
     Ok(())
 }

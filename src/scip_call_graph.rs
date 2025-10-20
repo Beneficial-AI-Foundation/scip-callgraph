@@ -1,8 +1,8 @@
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
-use log::{debug, info};
 
 // Re-using the SCIP data structures from our JSON parser
 #[derive(Debug, Serialize, Deserialize)]
@@ -322,12 +322,8 @@ pub fn print_call_graph_summary(call_graph: &HashMap<String, FunctionNode>) {
         }
     }
 
-    info!(
-        "Entry points (functions not called by others): {entry_points}"
-    );
-    info!(
-        "Leaf functions (functions that don't call others): {leaf_functions}"
-    );
+    info!("Entry points (functions not called by others): {entry_points}");
+    info!("Leaf functions (functions that don't call others): {leaf_functions}");
     info!("Internal functions: {internal_functions}");
 
     // Find the most called functions
@@ -590,13 +586,13 @@ impl Serialize for Atom {
 
 // Type aliases to simplify complex return types and improve readability
 /// Result type for DOT file parsing: returns (node_id -> label, edges as (from, to) pairs)
-type DotParseResult = Result<(HashMap<String, String>, Vec<(String, String)>), Box<dyn std::error::Error>>;
+type DotParseResult =
+    Result<(HashMap<String, String>, Vec<(String, String)>), Box<dyn std::error::Error>>;
 /// Result type for SCIP symbol range parsing: returns symbol -> (relative_path, range)
-type ScipSymbolRangeResult = Result<HashMap<String, (String, Vec<i32>)>, Box<dyn std::error::Error>>;
+type ScipSymbolRangeResult =
+    Result<HashMap<String, (String, Vec<i32>)>, Box<dyn std::error::Error>>;
 
-fn parse_dot_file(
-    dot_file: &str,
-) -> DotParseResult {
+fn parse_dot_file(dot_file: &str) -> DotParseResult {
     use std::fs::File;
     use std::io::{BufRead, BufReader};
     let file = File::open(dot_file)?;
@@ -628,9 +624,7 @@ fn parse_dot_file(
     Ok((nodes, edges))
 }
 
-fn parse_scip_symbol_ranges(
-    scip_json: &str,
-) -> ScipSymbolRangeResult {
+fn parse_scip_symbol_ranges(scip_json: &str) -> ScipSymbolRangeResult {
     use serde_json;
     use std::fs::File;
     let scip: serde_json::Value = serde_json::from_reader(File::open(scip_json)?)?;
@@ -652,21 +646,21 @@ fn parse_scip_symbol_ranges(
                         {
                             for occ in occurrences {
                                 if occ.get("symbol").and_then(|s| s.as_str()) == Some(symbol)
-                                    && occ.get("symbol_roles").and_then(|r| r.as_i64()) == Some(1) {
-                                        if let Some(range) =
-                                            occ.get("range").and_then(|r| r.as_array())
-                                        {
-                                            let range_vec = range
-                                                .iter()
-                                                .filter_map(|v| v.as_i64().map(|x| x as i32))
-                                                .collect::<Vec<_>>();
-                                            symbol_to_range.insert(
-                                                symbol.to_string(),
-                                                (rel_path.to_string(), range_vec),
-                                            );
-                                            break;
-                                        }
+                                    && occ.get("symbol_roles").and_then(|r| r.as_i64()) == Some(1)
+                                {
+                                    if let Some(range) = occ.get("range").and_then(|r| r.as_array())
+                                    {
+                                        let range_vec = range
+                                            .iter()
+                                            .filter_map(|v| v.as_i64().map(|x| x as i32))
+                                            .collect::<Vec<_>>();
+                                        symbol_to_range.insert(
+                                            symbol.to_string(),
+                                            (rel_path.to_string(), range_vec),
+                                        );
+                                        break;
                                     }
+                                }
                             }
                         }
                     }
@@ -767,7 +761,9 @@ pub fn dot_to_atoms_json_with_body(
         deps_map.entry(node.clone()).or_default();
     }
     // Build atoms
-    let atoms: Vec<Atom> = nodes.keys().map(|id| {
+    let atoms: Vec<Atom> = nodes
+        .keys()
+        .map(|id| {
             // Find the best matching symbol for this node id
             let mut statement_type = "unknown";
             let mut body = String::new();
