@@ -124,7 +124,7 @@ fn generate_file_subgraph_dot_with_verification(
     let mut dot = String::from("digraph file_subgraph {\n");
     dot.push_str("  rankdir=LR;\n");
     dot.push_str("  node [shape=box, style=filled, fontname=Helvetica];\n");
-    dot.push_str("  edge [color=gray];\n\n");
+    dot.push_str("  edge [color=black];\n\n");
 
     // Create verification lookup sets
     let verified_functions: HashSet<String> = verification_status
