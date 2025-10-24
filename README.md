@@ -8,7 +8,7 @@ This tool can be used to generate a graph of callers/callees for a given rust pr
 
 If you want to use your own json file, you need to install:
 
-- [rust-analyzer](https://rust-analyzer.github.io/book/installation.html) it is used to generate a scip output file: one needs to run `rust-analyzer scip .` from the command line within a rust project; this will generate `index.scip` within the rust project; 
+- [rust-analyzer](https://rust-analyzer.github.io/book/installation.html) (or [verus-analyzer](github.com/verus-lang/verus-analyzer)) it is used to generate a scip output file: one needs to run `rust-analyzer scip .` from the command line within a rust project; this will generate `index.scip` within the rust project; 
 - [scip](https://github.com/sourcegraph/scip) it is used to generate a JSON from the scip output file.
 
 ### Note
