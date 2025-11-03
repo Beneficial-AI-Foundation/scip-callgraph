@@ -3,103 +3,122 @@ name: Release
 on:
   push:
     tags:
-      - "v*" # Trigger on version tags like v1.0.0
-  workflow_dispatch: # Allow manual triggering
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v3.0.5)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
 
 jobs:
-  build:
-    name: Build for ${{ matrix.os }}
+  build-release:
+    name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            binary-name: generate_function_subgraph_dot
-            asset-name: generate_function_subgraph_dot-linux-x86_64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            binary-name: generate_function_subgraph_dot.exe
-            asset-name: generate_function_subgraph_dot-windows-x86_64.exe
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            binary-name: generate_function_subgraph_dot
-            asset-name: generate_function_subgraph_dot-macos-x86_64
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            binary-name: generate_function_subgraph_dot
-            asset-name: generate_function_subgraph_dot-macos-arm64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          targets: ${{ matrix.target }}
+          toolchain: stable
+          target: ${{ matrix.target }}
 
-      - name: Cache cargo dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ matrix.target }}-
-            ${{ runner.os }}-cargo-
-
-      - name: Build release binary
-        run: cargo build --release --bin generate_function_subgraph_dot --target ${{ matrix.target }}
-
-      - name: Prepare release asset (Unix)
-        if: runner.os != 'Windows'
+      - name: Build binaries
         run: |
-          mkdir -p release-${{ matrix.target }}
-          cp target/${{ matrix.target }}/release/${{ matrix.binary-name }} release-${{ matrix.target }}/${{ matrix.asset-name }}
-          cp README.md release-${{ matrix.target }}/
-          cp release/README_RELEASE.md release-${{ matrix.target }}/
-          chmod +x release-${{ matrix.target }}/${{ matrix.asset-name }}
-
-      - name: Prepare release asset (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          New-Item -ItemType Directory -Force -Path "release-${{ matrix.target }}"
-          Copy-Item "target\${{ matrix.target }}\release\${{ matrix.binary-name }}" "release-${{ matrix.target }}\${{ matrix.asset-name }}"
-          Copy-Item "README.md" "release-${{ matrix.target }}\"
-          Copy-Item "release\README_RELEASE.md" "release-${{ matrix.target }}\"
+          cargo build --release --target ${{ matrix.target }} \
+            --bin detect_unused_specs \
+            --bin generate_index_scip_json \
+            --bin generate_call_graph_dot \
+            --bin generate_function_subgraph_dot \
+            --bin generate_file_subgraph_dot \
+            --bin generate_files_subgraph_dot \
+            --bin write_atoms
 
       - name: Create archive (Unix)
-        if: runner.os != 'Windows'
+        if: matrix.archive == 'tar.gz'
         run: |
-          cd release-${{ matrix.target }}
-          tar -czf ../${{ matrix.asset-name }}.tar.gz *
-          cd ..
+          VERSION=${GITHUB_REF#refs/tags/}
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$GITHUB_REF" ]; then
+            VERSION="${{ inputs.version }}"
+          fi
+          ARCHIVE_NAME="scip-callgraph-${VERSION}-${{ matrix.target }}"
+          
+          mkdir -p "${ARCHIVE_NAME}"
+          
+          cp target/${{ matrix.target }}/release/detect_unused_specs "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/generate_index_scip_json "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/generate_call_graph_dot "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/generate_function_subgraph_dot "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/generate_file_subgraph_dot "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/generate_files_subgraph_dot "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/write_atoms "${ARCHIVE_NAME}/"
+          
+          cp README.md "${ARCHIVE_NAME}/" 2>/dev/null || true
+          cp LICENSE* "${ARCHIVE_NAME}/" 2>/dev/null || true
+          
+          tar -czf "${ARCHIVE_NAME}.tar.gz" "${ARCHIVE_NAME}"
+          echo "ARCHIVE_NAME=${ARCHIVE_NAME}.tar.gz" >> $GITHUB_ENV
 
       - name: Create archive (Windows)
-        if: runner.os == 'Windows'
+        if: matrix.archive == 'zip'
+        shell: pwsh
         run: |
-          Compress-Archive -Path "release-${{ matrix.target }}\*" -DestinationPath "${{ matrix.asset-name }}.zip"
+          $VERSION = $env:GITHUB_REF -replace 'refs/tags/', ''
+          if ([string]::IsNullOrEmpty($VERSION) -or $VERSION -eq $env:GITHUB_REF) {
+            $VERSION = "${{ inputs.version }}"
+          }
+          $ARCHIVE_NAME = "scip-callgraph-$VERSION-${{ matrix.target }}"
+          
+          New-Item -ItemType Directory -Force -Path $ARCHIVE_NAME
+          
+          Copy-Item "target/${{ matrix.target }}/release/detect_unused_specs.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/generate_index_scip_json.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/generate_call_graph_dot.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/generate_function_subgraph_dot.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/generate_file_subgraph_dot.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/generate_files_subgraph_dot.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/write_atoms.exe" "$ARCHIVE_NAME/"
+          
+          if (Test-Path "README.md") { Copy-Item "README.md" "$ARCHIVE_NAME/" }
+          if (Test-Path "LICENSE") { Copy-Item "LICENSE*" "$ARCHIVE_NAME/" }
+          
+          Compress-Archive -Path $ARCHIVE_NAME -DestinationPath "$ARCHIVE_NAME.zip"
+          echo "ARCHIVE_NAME=$ARCHIVE_NAME.zip" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Upload release asset
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.asset-name }}
-          path: |
-            ${{ matrix.asset-name }}.tar.gz
-            ${{ matrix.asset-name }}.zip
-          if-no-files-found: ignore
+          name: ${{ matrix.target }}
+          path: ${{ env.ARCHIVE_NAME }}
+          retention-days: 7
 
-  release:
-    name: Create Release
-    needs: build
+  create-release:
+    needs: build-release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Download all artifacts
@@ -107,35 +126,75 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create Release
+      - name: Create release notes
+        id: release_notes
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$GITHUB_REF" ]; then
+            VERSION="${{ inputs.version }}"
+          fi
+          
+          cat > release_notes.md << 'EOF'
+          # scip-callgraph $VERSION
+          
+          ## Installation
+          
+          Download the appropriate archive for your platform and extract it:
+          
+          ### Linux
+          ```bash
+          tar -xzf scip-callgraph-$VERSION-x86_64-unknown-linux-gnu.tar.gz
+          cd scip-callgraph-$VERSION-x86_64-unknown-linux-gnu
+          sudo cp detect_unused_specs /usr/local/bin/
+          ```
+          
+          ### macOS
+          ```bash
+          tar -xzf scip-callgraph-$VERSION-x86_64-apple-darwin.tar.gz
+          cd scip-callgraph-$VERSION-x86_64-apple-darwin
+          sudo cp detect_unused_specs /usr/local/bin/
+          ```
+          
+          ### Windows
+          Extract the zip file and add the directory to your PATH.
+          
+          ## Tools Included
+          
+          - `detect_unused_specs` - Detect potentially unused Verus specifications
+          - `generate_index_scip_json` - Generate SCIP JSON index files
+          - `generate_call_graph_dot` - Generate call graph visualizations
+          - `generate_function_subgraph_dot` - Generate function-level subgraphs
+          - `generate_file_subgraph_dot` - Generate file-level subgraphs
+          - `generate_files_subgraph_dot` - Generate multi-file subgraphs
+          - `write_atoms` - Convert call graphs to atoms JSON format
+          
+          ## Quick Start
+          
+          ```bash
+          # Detect unused specs in your project
+          detect_unused_specs /path/to/verus/project
+          
+          # Generate SCIP index
+          generate_index_scip_json /path/to/project
+          ```
+          
+          ## Documentation
+          
+          See the [repository README](https://github.com/Beneficial-AI-Foundation/scip-callgraph) for full documentation.
+          
+          ## Requirements
+          
+          - `verus-analyzer` must be installed
+          - `scip` CLI tool must be installed
+          EOF
+          
+          sed -i "s/\$VERSION/$VERSION/g" release_notes.md
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            artifacts/**/*.tar.gz
-            artifacts/**/*.zip
-          body: |
-            ## Function Subgraph Analyzer Release
-
-            This release contains the `generate_function_subgraph_dot` binary for multiple platforms.
-
-            ### Available Binaries:
-            - **Linux x86_64**: `generate_function_subgraph_dot-linux-x86_64.tar.gz`
-            - **Windows x86_64**: `generate_function_subgraph_dot-windows-x86_64.exe.zip`
-            - **macOS x86_64**: `generate_function_subgraph_dot-macos-x86_64.tar.gz`
-            - **macOS ARM64**: `generate_function_subgraph_dot-macos-arm64.tar.gz`
-
-            ### Usage:
-            ```bash
-            ./generate_function_subgraph_dot <input-scip-json> <output-dot-file> <function-name1> [flags...]
-            ```
-
-            ### Flags:
-            - `--include-callees`: Include functions called by the specified functions
-            - `--include-callers`: Include functions that call the specified functions
-            - `--depth <n>`: Limit the caller/callee expansion to depth n
-            - `--filter-non-libsignal-sources`: Filter out non-libsignal sources
-
-            See the README files included in each archive for detailed usage instructions.
+          files: artifacts/**/*
+          body_path: release_notes.md
           draft: false
           prerelease: false
         env:
