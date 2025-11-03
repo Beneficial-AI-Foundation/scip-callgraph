@@ -1,6 +1,6 @@
 [package]
 name = "scip-callgraph"
-version = "3.0.4"
+version = "3.1.0"
 edition = "2021"
 description = "Call graph generator and visualizer for Rust projects using rust-analyzer and SCIP"
 repository = "https://github.com/Beneficial-AI-Foundation/scip-callgraph"
@@ -41,3 +41,11 @@ path = "src/bin/generate_call_graph_dot.rs"
 [[bin]]
 name = "generate_files_subgraph_dot"
 path = "src/bin/generate_files_subgraph_dot.rs"
+
+[[bin]]
+name = "generate_index_scip_json"
+path = "src/bin/generate_index_scip_json.rs"
+
+[[bin]]
+name = "detect_unused_specs"
+path = "src/bin/detect_unused_specs.rs"

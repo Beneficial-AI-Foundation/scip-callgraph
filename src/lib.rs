@@ -6,6 +6,8 @@ pub mod scip_reader;
 
 pub mod scip_to_call_graph_json;
 
+pub mod scip_utils;
+
 /// Logging utilities
 pub mod logging {
     use log::LevelFilter;

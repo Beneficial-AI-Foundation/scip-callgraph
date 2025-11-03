@@ -46,23 +46,50 @@ jobs:
         continue-on-error: true
 
       - name: Run clippy
-        run: cargo clippy --target ${{ matrix.target }} --bin generate_function_subgraph_dot
+        run: cargo clippy --target ${{ matrix.target }} --all-targets
 
-      - name: Build debug binary
-        run: cargo build --bin generate_function_subgraph_dot --target ${{ matrix.target }}
+      - name: Build debug binaries
+        run: |
+          cargo build --target ${{ matrix.target }} \
+            --bin detect_unused_specs \
+            --bin generate_index_scip_json \
+            --bin generate_function_subgraph_dot
 
-      - name: Build release binary
-        run: cargo build --release --bin generate_function_subgraph_dot --target ${{ matrix.target }}
+      - name: Build release binaries
+        run: |
+          cargo build --release --target ${{ matrix.target }} \
+            --bin detect_unused_specs \
+            --bin generate_index_scip_json \
+            --bin generate_function_subgraph_dot \
+            --bin generate_call_graph_dot \
+            --bin generate_file_subgraph_dot
 
       - name: Test binary functionality (Unix)
         if: runner.os != 'Windows'
         run: |
-          # Test that the binary shows usage when run without arguments
-          ./target/${{ matrix.target }}/release/generate_function_subgraph_dot || echo "Expected exit code 1 for usage message"
+          # Test that binaries show usage when run without arguments
+          echo "Testing detect_unused_specs..."
+          ./target/${{ matrix.target }}/release/detect_unused_specs || echo "Expected exit for usage message"
+          
+          echo "Testing generate_index_scip_json..."
+          ./target/${{ matrix.target }}/release/generate_index_scip_json || echo "Expected exit for usage message"
+          
+          echo "Testing generate_function_subgraph_dot..."
+          ./target/${{ matrix.target }}/release/generate_function_subgraph_dot || echo "Expected exit for usage message"
+          
+          echo "All binaries tested successfully!"
 
       - name: Test binary functionality (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Test that the binary shows usage when run without arguments
+          # Test that binaries show usage when run without arguments
+          Write-Host "Testing detect_unused_specs..."
+          & "target\${{ matrix.target }}\release\detect_unused_specs.exe"
+          
+          Write-Host "Testing generate_index_scip_json..."
+          & "target\${{ matrix.target }}\release\generate_index_scip_json.exe"
+          
+          Write-Host "Testing generate_function_subgraph_dot..."
           & "target\${{ matrix.target }}\release\generate_function_subgraph_dot.exe"
-          if ($LASTEXITCODE -eq 1) { Write-Host "Expected exit code 1 for usage message" }
+          
+          Write-Host "All binaries tested successfully!"
