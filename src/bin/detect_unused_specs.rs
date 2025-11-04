@@ -60,16 +60,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 4: Load atoms JSON and analyze
     println!("Analyzing for unused specs...");
     let unused_specs = find_unused_specs(&atoms_json_path)?;
+    
+    println!("Analyzing for unused proofs...");
+    let unused_proofs = find_unused_proofs(&atoms_json_path)?;
 
     // Step 5: Report results
     println!("\n{}", "=".repeat(80));
-    println!("UNUSED VERUS SPECS ANALYSIS");
+    println!("UNUSED VERUS SPECS & PROOFS ANALYSIS");
     println!("{}", "=".repeat(80));
     
+    // Report specs
     if unused_specs.is_empty() {
         println!("\n✓ No unused specs detected!");
     } else {
-        println!("\n⚠ Found {} potentially unused specs:\n", unused_specs.len());
+        println!("\n⚠ Found {} potentially unused SPECS:\n", unused_specs.len());
         
         let mut sorted_specs: Vec<_> = unused_specs.iter().collect();
         sorted_specs.sort_by(|a, b| a.identifier.cmp(&b.identifier));
@@ -98,35 +102,77 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!();
         }
     }
+    
+    // Report proofs
+    println!("\n{}", "-".repeat(80));
+    if unused_proofs.is_empty() {
+        println!("\n✓ No unused proofs detected!");
+    } else {
+        println!("\n⚠ Found {} potentially unused PROOFS:\n", unused_proofs.len());
+        
+        let mut sorted_proofs: Vec<_> = unused_proofs.iter().collect();
+        sorted_proofs.sort_by(|a, b| a.identifier.cmp(&b.identifier));
+        
+        for (idx, proof) in sorted_proofs.iter().enumerate() {
+            println!("{}. {}", idx + 1, proof.identifier);
+            if !proof.display_name.is_empty() {
+                println!("   Display name: {}", proof.display_name);
+            }
+            if !proof.file_name.is_empty() {
+                println!("   File: {}", proof.file_name);
+            }
+            if !proof.relative_path.is_empty() {
+                println!("   Path: {}", proof.relative_path);
+            }
+            
+            // Show first line of body if available
+            if !proof.body.is_empty() {
+                let first_line = proof.body.lines().next().unwrap_or("");
+                if first_line.len() > 80 {
+                    println!("   Decl: {}...", &first_line[..77]);
+                } else {
+                    println!("   Decl: {}", first_line);
+                }
+            }
+            println!();
+        }
+    }
 
     println!("{}", "=".repeat(80));
     println!("IMPORTANT NOTES:");
     println!("{}", "=".repeat(80));
     println!("This analysis may produce FALSE POSITIVES for:");
-    println!("  • Public API specs (intended for external use)");
+    println!("  • Public API specs/proofs (intended for external use)");
     println!("  • Top-level theorems/lemmas (entry points)");
-    println!("  • Specs used only in proof contexts");
-    println!("  • Specs referenced through macros");
-    println!("  • Test-only specifications");
-    println!("\n⚠ Manual review is recommended before removing any specs!");
+    println!("  • Specs/proofs used only in proof contexts");
+    println!("  • Specs/proofs referenced through macros");
+    println!("  • Test-only specifications/proofs");
+    println!("\n⚠ Manual review is recommended before removing anything!");
     println!("{}", "=".repeat(80));
 
     // Save results to a JSON file
-    let results_file = format!("{}_unused_specs.json", 
+    let results_file = format!("{}_unused_specs_proofs.json", 
         Path::new(project_path)
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("project")
     );
     
-    save_results_to_json(&unused_specs, &results_file)?;
+    save_results_to_json(&unused_specs, &unused_proofs, &results_file)?;
     println!("\nResults saved to: {}", results_file);
 
     Ok(())
 }
 
-/// Find unused specs from atoms JSON
-fn find_unused_specs(atoms_json_path: &str) -> Result<Vec<UnusedSpec>, Box<dyn std::error::Error>> {
+/// Generic function to find unused functions based on a predicate
+fn find_unused_functions<F>(
+    atoms_json_path: &str,
+    predicate: F,
+    function_type: &str,
+) -> Result<Vec<UnusedSpec>, Box<dyn std::error::Error>>
+where
+    F: Fn(&Atom) -> bool,
+{
     let contents = fs::read_to_string(atoms_json_path)?;
     let atoms: Vec<Atom> = serde_json::from_str(&contents)?;
 
@@ -136,14 +182,14 @@ fn find_unused_specs(atoms_json_path: &str) -> Result<Vec<UnusedSpec>, Box<dyn s
         .map(|atom| (atom.identifier.clone(), atom))
         .collect();
 
-    // Identify all spec identifiers
-    let spec_identifiers: HashSet<String> = atoms
+    // Identify all matching function identifiers
+    let function_identifiers: HashSet<String> = atoms
         .iter()
-        .filter(|atom| is_spec_function(atom))
+        .filter(|atom| predicate(atom))
         .map(|atom| atom.identifier.clone())
         .collect();
 
-    println!("Found {} total specs", spec_identifiers.len());
+    println!("Found {} total {}s", function_identifiers.len(), function_type);
 
     // Collect all dependencies (union of all deps)
     let all_deps: HashSet<String> = atoms
@@ -151,16 +197,14 @@ fn find_unused_specs(atoms_json_path: &str) -> Result<Vec<UnusedSpec>, Box<dyn s
         .flat_map(|atom| atom.deps.iter().cloned())
         .collect();
 
-    println!("Found {} unique dependencies across all functions", all_deps.len());
-
-    // Find specs that are NOT in the deps set
-    let unused_spec_ids: HashSet<String> = spec_identifiers
+    // Find functions that are NOT in the deps set
+    let unused_ids: HashSet<String> = function_identifiers
         .difference(&all_deps)
         .cloned()
         .collect();
 
-    // Build detailed info about unused specs
-    let unused_specs: Vec<UnusedSpec> = unused_spec_ids
+    // Build detailed info about unused functions
+    let unused_functions: Vec<UnusedSpec> = unused_ids
         .iter()
         .filter_map(|id| {
             atom_map.get(id).map(|atom| UnusedSpec {
@@ -175,7 +219,17 @@ fn find_unused_specs(atoms_json_path: &str) -> Result<Vec<UnusedSpec>, Box<dyn s
         })
         .collect();
 
-    Ok(unused_specs)
+    Ok(unused_functions)
+}
+
+/// Find unused specs from atoms JSON
+fn find_unused_specs(atoms_json_path: &str) -> Result<Vec<UnusedSpec>, Box<dyn std::error::Error>> {
+    find_unused_functions(atoms_json_path, is_spec_function, "spec")
+}
+
+/// Find unused proofs from atoms JSON
+fn find_unused_proofs(atoms_json_path: &str) -> Result<Vec<UnusedSpec>, Box<dyn std::error::Error>> {
+    find_unused_functions(atoms_json_path, is_proof_function, "proof")
 }
 
 /// Check if an Atom represents a spec function
@@ -187,6 +241,18 @@ fn is_spec_function(atom: &Atom) -> bool {
         || body_lower.contains("spec(") 
         || body_lower.starts_with("spec ")
         || (body_lower.contains("#[verifier") && body_lower.contains("spec"))
+}
+
+/// Check if an Atom represents a proof function
+fn is_proof_function(atom: &Atom) -> bool {
+    let body_lower = atom.body.to_lowercase();
+    
+    // Check for various proof patterns in the body
+    body_lower.contains("proof fn") 
+        || body_lower.starts_with("proof ")
+        || (body_lower.contains("#[verifier") && body_lower.contains("proof"))
+        || body_lower.contains("fn lemma_")
+        || body_lower.contains("fn proof_")
 }
 
 /// Extract visibility from function body (pub, pub(crate), private)
@@ -209,6 +275,7 @@ fn extract_visibility(body: &str) -> String {
 /// Save results to a JSON file
 fn save_results_to_json(
     unused_specs: &[UnusedSpec],
+    unused_proofs: &[UnusedSpec],
     output_path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use serde::Serialize;
@@ -217,13 +284,17 @@ fn save_results_to_json(
     struct UnusedSpecsReport {
         summary: Summary,
         unused_specs: Vec<UnusedSpecOutput>,
+        unused_proofs: Vec<UnusedSpecOutput>,
         warnings: Vec<String>,
     }
     
     #[derive(Serialize)]
     struct Summary {
         total_unused_specs: usize,
-        by_visibility: VisibilityBreakdown,
+        total_unused_proofs: usize,
+        total_unused_combined: usize,
+        specs_by_visibility: VisibilityBreakdown,
+        proofs_by_visibility: VisibilityBreakdown,
     }
     
     #[derive(Serialize)]
@@ -246,8 +317,8 @@ fn save_results_to_json(
         declaration: String,
     }
     
-    // Count by visibility
-    let mut vis_breakdown = VisibilityBreakdown {
+    // Count specs by visibility
+    let mut specs_vis_breakdown = VisibilityBreakdown {
         public: 0,
         pub_crate: 0,
         pub_open: 0,
@@ -257,16 +328,36 @@ fn save_results_to_json(
     
     for spec in unused_specs {
         match spec.visibility.as_str() {
-            "pub" => vis_breakdown.public += 1,
-            "pub(crate)" => vis_breakdown.pub_crate += 1,
-            "pub open" => vis_breakdown.pub_open += 1,
-            "pub closed" => vis_breakdown.pub_closed += 1,
-            "private" => vis_breakdown.private += 1,
-            _ => vis_breakdown.private += 1,
+            "pub" => specs_vis_breakdown.public += 1,
+            "pub(crate)" => specs_vis_breakdown.pub_crate += 1,
+            "pub open" => specs_vis_breakdown.pub_open += 1,
+            "pub closed" => specs_vis_breakdown.pub_closed += 1,
+            "private" => specs_vis_breakdown.private += 1,
+            _ => specs_vis_breakdown.private += 1,
         }
     }
     
-    // Convert to output format
+    // Count proofs by visibility
+    let mut proofs_vis_breakdown = VisibilityBreakdown {
+        public: 0,
+        pub_crate: 0,
+        pub_open: 0,
+        pub_closed: 0,
+        private: 0,
+    };
+    
+    for proof in unused_proofs {
+        match proof.visibility.as_str() {
+            "pub" => proofs_vis_breakdown.public += 1,
+            "pub(crate)" => proofs_vis_breakdown.pub_crate += 1,
+            "pub open" => proofs_vis_breakdown.pub_open += 1,
+            "pub closed" => proofs_vis_breakdown.pub_closed += 1,
+            "private" => proofs_vis_breakdown.private += 1,
+            _ => proofs_vis_breakdown.private += 1,
+        }
+    }
+    
+    // Convert specs to output format
     let mut sorted_specs: Vec<_> = unused_specs.iter().collect();
     sorted_specs.sort_by_key(|s| &s.identifier);
     
@@ -286,21 +377,45 @@ fn save_results_to_json(
         })
         .collect();
     
+    // Convert proofs to output format
+    let mut sorted_proofs: Vec<_> = unused_proofs.iter().collect();
+    sorted_proofs.sort_by_key(|s| &s.identifier);
+    
+    let output_proofs: Vec<UnusedSpecOutput> = sorted_proofs
+        .iter()
+        .map(|proof| {
+            let declaration = proof.body.lines().next().unwrap_or("").to_string();
+            UnusedSpecOutput {
+                identifier: proof.identifier.clone(),
+                display_name: proof.display_name.clone(),
+                visibility: proof.visibility.clone(),
+                file_name: proof.file_name.clone(),
+                relative_path: proof.relative_path.clone(),
+                full_path: proof.full_path.clone(),
+                declaration,
+            }
+        })
+        .collect();
+    
     let report = UnusedSpecsReport {
         summary: Summary {
             total_unused_specs: unused_specs.len(),
-            by_visibility: vis_breakdown,
+            total_unused_proofs: unused_proofs.len(),
+            total_unused_combined: unused_specs.len() + unused_proofs.len(),
+            specs_by_visibility: specs_vis_breakdown,
+            proofs_by_visibility: proofs_vis_breakdown,
         },
         unused_specs: output_specs,
+        unused_proofs: output_proofs,
         warnings: vec![
             "This analysis may produce FALSE POSITIVES for:".to_string(),
-            "• Public API specs (intended for external use)".to_string(),
+            "• Public API specs/proofs (intended for external use)".to_string(),
             "• Top-level theorems/lemmas (entry points)".to_string(),
-            "• Specs used only in proof contexts".to_string(),
-            "• Specs referenced through macros".to_string(),
-            "• Test-only specifications".to_string(),
+            "• Specs/proofs used only in proof contexts".to_string(),
+            "• Specs/proofs referenced through macros".to_string(),
+            "• Test-only specifications/proofs".to_string(),
             "".to_string(),
-            "⚠ Manual review is recommended before removing any specs!".to_string(),
+            "⚠ Manual review is recommended before removing anything!".to_string(),
         ],
     };
     
