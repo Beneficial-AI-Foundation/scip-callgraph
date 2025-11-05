@@ -135,7 +135,8 @@ async function autoLoadGraph(): Promise<void> {
   
   // Fall back to local graph.json
   try {
-    const response = await fetch('/graph.json');
+    // Use relative path to work with GitHub Pages base URL
+    const response = await fetch('./graph.json');
     
     if (!response.ok) {
       console.log('No graph.json found in public directory. Waiting for manual file load.');

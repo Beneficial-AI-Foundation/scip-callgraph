@@ -30,7 +30,7 @@ dist/
 !package-lock.json
 !tsconfig.json
 !vite.config.js
+!public/graph.json
 
-# Auto-loaded graph data
-public/graph.json
+# Auto-loaded graph data (example graph is committed for GitHub Pages)
 
