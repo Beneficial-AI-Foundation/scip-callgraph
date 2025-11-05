@@ -1,0 +1,22 @@
+{
+  "name": "scip-callgraph-viewer",
+  "version": "1.0.0",
+  "description": "Interactive D3.js visualization for SCIP call graphs",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "d3-force": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
+

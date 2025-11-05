@@ -127,6 +127,46 @@ pub struct Atom {
     pub parent_folder: String,
 }
 
+/// D3.js force-directed graph structures
+#[derive(Debug, Serialize, Deserialize)]
+pub struct D3Node {
+    pub id: String,
+    pub display_name: String,
+    pub symbol: String,
+    pub full_path: String,
+    pub relative_path: String,
+    pub file_name: String,
+    pub parent_folder: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+    pub is_libsignal: bool,
+    pub caller_count: usize,
+    pub callee_count: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct D3Link {
+    pub source: String,
+    pub target: String,
+    #[serde(rename = "type")]
+    pub link_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct D3GraphMetadata {
+    pub total_nodes: usize,
+    pub total_edges: usize,
+    pub project_root: String,
+    pub generated_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct D3Graph {
+    pub nodes: Vec<D3Node>,
+    pub links: Vec<D3Link>,
+    pub metadata: D3GraphMetadata,
+}
+
 /// Parse a SCIP JSON file
 pub fn parse_scip_json(file_path: &str) -> Result<ScipIndex, Box<dyn std::error::Error>> {
     let path = Path::new(file_path);
@@ -411,6 +451,99 @@ pub fn write_call_graph_as_atoms_json<P: AsRef<std::path::Path>>(
         .collect();
 
     let json = serde_json::to_string_pretty(&atoms).unwrap();
+    std::fs::write(output_path, json)
+}
+
+/// Helper function to determine if a node is from libsignal
+fn is_libsignal_node(node: &FunctionNode) -> bool {
+    node.symbol.contains("libsignal-protocol")
+        || node.symbol.contains("libsignal-core")
+        || node.symbol.contains("libsignal-net")
+        || node.symbol.contains("libsignal-keytrans")
+        || node.symbol.contains("libsignal-svrb")
+        || node.symbol.contains("libsignal")
+        || node.relative_path.contains("libsignal")
+        || node.symbol.contains("zkgroup")
+        || node.symbol.contains("poksho")
+        || node.symbol.contains("zkcredential")
+        || node.symbol.contains("usernames")
+}
+
+/// Export the call graph in D3.js force-directed graph format
+pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
+    call_graph: &HashMap<String, FunctionNode>,
+    scip_data: &ScipIndex,
+    output_path: P,
+) -> std::io::Result<()> {
+    // Create nodes
+    let nodes: Vec<D3Node> = call_graph
+        .values()
+        .map(|node| {
+            let parent_folder = Path::new(&node.file_path)
+                .parent()
+                .and_then(|p| p.file_name())
+                .and_then(|name| name.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+
+            let file_name = Path::new(&node.file_path)
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+
+            D3Node {
+                id: node.symbol.clone(),
+                display_name: node.display_name.clone(),
+                symbol: node.symbol.clone(),
+                full_path: node.file_path.clone(),
+                relative_path: node.relative_path.clone(),
+                file_name,
+                parent_folder,
+                body: node.body.clone(),
+                is_libsignal: is_libsignal_node(node),
+                caller_count: node.callers.len(),
+                callee_count: node.callees.len(),
+            }
+        })
+        .collect();
+
+    // Create links from the callee relationships
+    let mut links: Vec<D3Link> = Vec::new();
+    for node in call_graph.values() {
+        for callee in &node.callees {
+            // Only add link if the callee exists in the call graph
+            if call_graph.contains_key(callee) {
+                links.push(D3Link {
+                    source: node.symbol.clone(),
+                    target: callee.clone(),
+                    link_type: "calls".to_string(),
+                });
+            }
+        }
+    }
+
+    // Generate timestamp
+    let now = chrono::Utc::now();
+    let timestamp = now.to_rfc3339();
+
+    // Create metadata
+    let metadata = D3GraphMetadata {
+        total_nodes: nodes.len(),
+        total_edges: links.len(),
+        project_root: scip_data.metadata.project_root.clone(),
+        generated_at: timestamp,
+    };
+
+    // Create the full graph structure
+    let graph = D3Graph {
+        nodes,
+        links,
+        metadata,
+    };
+
+    // Write to file
+    let json = serde_json::to_string_pretty(&graph)?;
     std::fs::write(output_path, json)
 }
 

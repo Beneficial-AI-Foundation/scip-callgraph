@@ -82,14 +82,83 @@ This automatically generates:
 - `reduce3.svg`: the function subgraph as an SVG image
 - `reduce3.png`: the function subgraph as a PNG image
 
+### 4. 🆕 Interactive Call Graph Viewer
+
+Explore call graphs dynamically in your browser with real-time filtering!
+
+#### 🌐 Online Viewer (No Installation!)
+
+**Visit:** `https://beneficial-ai-foundation.github.io/scip-callgraph/`
+
+Just upload your JSON file or share via URL:
+```
+https://beneficial-ai-foundation.github.io/scip-callgraph/?json=https://gist.github.com/.../graph.json
+```
+
+See [GitHub Pages Guide](docs/GITHUB_PAGES_GUIDE.md) for detailed instructions.
+
+#### 💻 Local Setup
+
+**Quick start:**
+```bash
+# Option 1: Provide a Rust project (auto-generates SCIP)
+./QUICKSTART_INTERACTIVE.sh /path/to/your/rust/project
+
+# Option 2: Use existing SCIP JSON file
+./QUICKSTART_INTERACTIVE.sh /path/to/index_scip.json
+
+# Option 3: Use existing D3 JSON file (fastest!)
+./QUICKSTART_INTERACTIVE.sh /path/to/call_graph_d3.json
+
+# Option 4: Use SCIP JSON in current directory
+./QUICKSTART_INTERACTIVE.sh
+```
+
+**Or manually:**
+```bash
+# Export call graph data
+cargo run --bin export_call_graph_d3 -- <input-scip-json> -o call_graph_d3.json
+
+# Start the web viewer
+cd web
+npm install
+npm run dev
+```
+
+#### ✨ Features
+
+Explore with:
+- 🔍 Real-time search and filtering
+- 📏 Dynamic depth control from selected nodes
+- 🎨 Interactive force-directed visualization
+- ℹ️ Click nodes to see callers/callees
+- 🎯 Filter by source type (libsignal vs external)
+
+**Key advantages over static SVGs:**
+- No need to regenerate for different filters
+- Explore large graphs interactively
+- Search functionality
+- See caller/callee relationships on demand
+
+See [docs/INTERACTIVE_VIEWER.md](docs/INTERACTIVE_VIEWER.md) for complete documentation.
+
 ## Project Structure
 
 ```
 scip-callgraph/
 ├── src/              # Core library and binaries
+│   ├── bin/          # Command-line tools
+│   │   ├── export_call_graph_d3.rs  # NEW: Export for web viewer
+│   │   └── ...       # Other binaries
+│   └── ...
+├── web/              # NEW: Interactive web viewer
+│   ├── src/          # TypeScript source code
+│   ├── index.html    # Main HTML page
+│   └── package.json  # Node dependencies
 ├── examples/         # Example code and test projects
 ├── scripts/          # Build and utility scripts
 ├── docs/             # Detailed documentation
+│   └── INTERACTIVE_VIEWER.md  # NEW: Web viewer docs
 └── test_outputs/     # Generated graphs and outputs (gitignored)
 ```
 

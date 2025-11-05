@@ -25,6 +25,7 @@ quick-xml = "0.31"
 log = "0.4"
 env_logger = "0.11"
 clap = { version = "4.5", features = ["derive"] }
+chrono = "0.4"
 
 [dev-dependencies]
 tempfile = "3.5.0"
@@ -49,3 +50,7 @@ path = "src/bin/generate_index_scip_json.rs"
 [[bin]]
 name = "detect_unused_specs"
 path = "src/bin/detect_unused_specs.rs"
+
+[[bin]]
+name = "export_call_graph_d3"
+path = "src/bin/export_call_graph_d3.rs"

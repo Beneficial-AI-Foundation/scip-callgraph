@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCIP Call Graph Viewer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <h1>📊 SCIP Call Graph Viewer</h1>
+      <div class="file-input-container">
+        <label for="file-input" class="file-input-label">
+          📁 Load Graph JSON
+        </label>
+        <input type="file" id="file-input" accept=".json" />
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Left Sidebar - Controls -->
+      <aside class="sidebar sidebar-left">
+        <section class="panel">
+          <h2>🎛️ Filters</h2>
+          
+          <div class="filter-group">
+            <h3>Source Type</h3>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-libsignal" checked />
+              <span class="libsignal-badge">Libsignal</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-non-libsignal" checked />
+              <span class="other-badge">External</span>
+            </label>
+          </div>
+
+          <div class="filter-group">
+            <h3>Search</h3>
+            <input 
+              type="text" 
+              id="search-input" 
+              placeholder="Search by name, symbol, or file..." 
+              class="search-input"
+            />
+            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+              💡 Shows matching nodes + their callers/callees
+            </small>
+          </div>
+
+          <div class="filter-group">
+            <h3>Depth Limit</h3>
+            <label class="slider-label">
+              <span>Max Depth: <strong id="depth-value">All</strong></span>
+              <input 
+                type="range" 
+                id="depth-limit" 
+                min="0" 
+                max="10" 
+                value="0" 
+                class="slider"
+              />
+              <small>0 = Show all nodes</small>
+            </label>
+          </div>
+
+          <div class="filter-group">
+            <h3>Include Neighbors</h3>
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-callers" checked />
+              <span>Include Callers</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-callees" checked />
+              <span>Include Callees</span>
+            </label>
+            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.5rem;">
+              💡 When searching, these control which neighbors to show
+            </small>
+          </div>
+
+          <div class="button-group">
+            <button id="reset-filters" class="btn btn-secondary">
+              🔄 Reset Filters
+            </button>
+            <button id="clear-selection" class="btn btn-secondary">
+              ❌ Clear Selection
+            </button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>📈 Statistics</h2>
+          <div id="stats" class="stats-container">
+            <p>No graph loaded.</p>
+            <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+              💡 You can also load via URL:<br>
+              <code style="font-size: 0.75rem;">?json=https://url-to-graph.json</code>
+            </p>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Center - Graph Visualization -->
+      <main class="graph-section">
+        <div id="graph-container" class="graph-container">
+          <!-- D3 visualization will be rendered here -->
+        </div>
+        <div class="graph-instructions">
+          <p><strong>💡 Instructions:</strong></p>
+          <ul>
+            <li><strong>Zoom:</strong> Scroll or pinch</li>
+            <li><strong>Pan:</strong> Click and drag background</li>
+            <li><strong>Move Node:</strong> Drag a node</li>
+            <li><strong>Select:</strong> Click a node to see details</li>
+            <li><strong>Depth Filter:</strong> Click nodes to set starting points, then adjust depth slider</li>
+          </ul>
+        </div>
+      </main>
+
+      <!-- Right Sidebar - Node Info -->
+      <aside class="sidebar sidebar-right">
+        <section class="panel">
+          <h2>ℹ️ Node Details</h2>
+          <div id="node-info" class="node-info">
+            <p class="placeholder">Click or hover over a node to see details</p>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>
+        Built with <a href="https://d3js.org/" target="_blank">D3.js</a> | 
+        <a href="https://github.com/Beneficial-AI-Foundation/scip-callgraph" target="_blank">GitHub</a>
+      </p>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+
