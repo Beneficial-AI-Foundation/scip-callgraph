@@ -27,6 +27,7 @@ dist/
 # Test data
 *.json
 !package.json
+!package-lock.json
 !tsconfig.json
 !vite.config.js
 
