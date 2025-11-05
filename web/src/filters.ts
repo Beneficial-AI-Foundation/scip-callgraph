@@ -108,7 +108,7 @@ export function applyFilters(
  * Compute nodes within a certain depth from selected nodes
  */
 function computeDepthFromSelected(
-  nodes: D3Node[],
+  _nodes: D3Node[],
   links: D3Link[],
   selectedNodes: Set<string>,
   maxDepth: number
