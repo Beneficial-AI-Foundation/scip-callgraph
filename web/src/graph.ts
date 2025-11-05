@@ -1,10 +1,9 @@
 import * as d3 from 'd3';
 import { D3Graph, D3Node, D3Link, GraphState } from './types';
-import { getCallers, getCallees } from './filters';
 
 export class CallGraphVisualization {
-  private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, unknown>;
-  private g: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
+  private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
+  private g: d3.Selection<SVGGElement, unknown, null, undefined>;
   private width: number;
   private height: number;
   private simulation: d3.Simulation<D3Node, D3Link> | null = null;
@@ -188,7 +187,7 @@ export class CallGraphVisualization {
   /**
    * Drag behavior for nodes
    */
-  private dragBehavior(): d3.DragBehavior<Element, D3Node, D3Node> {
+  private dragBehavior(): d3.DragBehavior<Element, D3Node, D3Node | d3.SubjectPosition> {
     return d3
       .drag<Element, D3Node>()
       .on('start', (event, d) => {
@@ -234,7 +233,7 @@ export class CallGraphVisualization {
   /**
    * Handle node hover
    */
-  private handleNodeHover(event: MouseEvent, node: D3Node): void {
+  private handleNodeHover(_event: MouseEvent, node: D3Node): void {
     const newState = { ...this.state };
     newState.hoveredNode = node;
     this.onStateChange(newState);

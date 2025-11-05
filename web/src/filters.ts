@@ -113,7 +113,6 @@ function computeDepthFromSelected(
   selectedNodes: Set<string>,
   maxDepth: number
 ): Set<string> {
-  const nodeMap = new Map(nodes.map(node => [node.id, node]));
   const adjacencyList = new Map<string, Set<string>>();
 
   // Build adjacency list (bidirectional for depth traversal)
