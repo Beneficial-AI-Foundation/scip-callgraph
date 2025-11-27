@@ -2,21 +2,43 @@
 /target/
 Cargo.lock
 
+# Python virtual environment
+.venv/
+
 # Generated outputs
 *.dot
 *.svg
 *.png
-*.json
 *.scip
 !Cargo.toml
-!Cargo.lock
 
-# But keep example data
+# JSON files (large, generated)
+*.json
 !examples/**/*.json
-!examples/**/*.scip
+!web/public/**/*.json
+
+# But keep CSV tracking files
+!data/csv/*.csv
+
+# Keep documentation plots
+!data/plots/*.png
+
+# Backup files
+*.backup
+
+# Debug artifacts
+debug_*.sh
+debug_*.txt
+unmatched.txt
+verify_*.sh
 
 # Test outputs directory
 /test_outputs/
+
+# Large data files (regenerate with pipeline)
+data/scip/
+data/atoms/
+data/pipeline_*/
 
 # Archive directory (old versions - keep locally but don't commit)
 # Remove this line if you want to commit archived files

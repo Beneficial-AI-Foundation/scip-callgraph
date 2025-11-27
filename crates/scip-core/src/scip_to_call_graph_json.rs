@@ -182,6 +182,29 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
     let mut symbol_to_kind: HashMap<String, i32> = HashMap::new();
     let mut function_symbols: HashSet<String> = HashSet::new();
 
+    // Pre-pass: Find where each symbol is DEFINED (symbol_roles == 1)
+    // This is the authoritative source for file paths, not the symbols array
+    let mut symbol_to_def_file: HashMap<String, (String, String)> = HashMap::new(); // symbol -> (abs_path, rel_path)
+    for doc in &scip_data.documents {
+        let project_root = &scip_data.metadata.project_root;
+        let rel_path = doc.relative_path.trim_start_matches('/');
+        let abs_path = format!("{project_root}/{rel_path}");
+
+        for occurrence in &doc.occurrences {
+            let is_definition = occurrence.symbol_roles.unwrap_or(0) & 1 == 1;
+            if is_definition {
+                symbol_to_def_file.insert(
+                    occurrence.symbol.clone(),
+                    (abs_path.clone(), rel_path.to_string()),
+                );
+            }
+        }
+    }
+    debug!(
+        "Pre-pass: Found {} symbol definitions",
+        symbol_to_def_file.len()
+    );
+
     // First pass: identify all function symbols and their containing files
     for doc in &scip_data.documents {
         for symbol in &doc.symbols {
@@ -189,10 +212,18 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
             if is_function_like(symbol.kind) {
                 function_symbols.insert(symbol.symbol.clone());
 
-                // Create absolute path to the file
-                let project_root = &scip_data.metadata.project_root;
-                let rel_path = doc.relative_path.trim_start_matches('/');
-                let abs_path = format!("{project_root}/{rel_path}");
+                // Use the DEFINITION location if available, otherwise fall back to symbols array location
+                let (abs_path, rel_path) = if let Some((def_abs, def_rel)) =
+                    symbol_to_def_file.get(&symbol.symbol)
+                {
+                    (def_abs.clone(), def_rel.clone())
+                } else {
+                    // Fallback: use the document where the symbol appears in symbols array
+                    let project_root = &scip_data.metadata.project_root;
+                    let rel_path = doc.relative_path.trim_start_matches('/');
+                    let abs_path = format!("{project_root}/{rel_path}");
+                    (abs_path, rel_path.to_string())
+                };
 
                 symbol_to_file.insert(symbol.symbol.clone(), abs_path.clone());
                 symbol_to_kind.insert(symbol.symbol.clone(), symbol.kind);
@@ -207,7 +238,7 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                             .clone()
                             .unwrap_or_else(|| "unknown".to_string()),
                         file_path: abs_path,
-                        relative_path: rel_path.to_string(),
+                        relative_path: rel_path,
                         callers: HashSet::new(),
                         callees: HashSet::new(),
                         range: Vec::new(), // Will be filled in the second pass

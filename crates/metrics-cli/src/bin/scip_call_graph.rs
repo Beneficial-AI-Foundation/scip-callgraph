@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use scip_callgraph::scip_call_graph;
+use scip_core::scip_call_graph;
 use std::fs::File;
 use std::io::Write;
 

@@ -1,0 +1,175 @@
+[package]
+name = "metrics-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Command-line tools for SCIP analysis and Verus metrics computation"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+scip-core = { path = "../scip-core" }
+verus-metrics = { path = "../verus-metrics" }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+verus_syn = { workspace = true }
+petgraph = { workspace = true }
+csv = { workspace = true }
+glob = { workspace = true }
+clap = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
+chrono = { workspace = true }
+html-escape = { workspace = true }
+quick-xml = { workspace = true }
+prettyplease = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true }
+which = "6.0"
+
+[[bin]]
+name = "run_full_pipeline"
+path = "src/bin/run_full_pipeline.rs"
+
+[[bin]]
+name = "add_trivial_proof_column"
+path = "src/bin/add_trivial_proof_column.rs"
+
+[[bin]]
+name = "add_trivial_proof_from_source"
+path = "src/bin/add_trivial_proof_from_source.rs"
+
+[[bin]]
+name = "categorize_verified_functions"
+path = "src/bin/categorize_verified_functions.rs"
+
+[[bin]]
+name = "compute_metrics"
+path = "src/bin/compute_metrics.rs"
+
+[[bin]]
+name = "compute_proof_metrics"
+path = "src/bin/compute_proof_metrics.rs"
+
+[[bin]]
+name = "count_paths"
+path = "src/bin/count_paths.rs"
+
+[[bin]]
+name = "demo_spec_halstead"
+path = "src/bin/demo_spec_halstead.rs"
+
+[[bin]]
+name = "detect_unused_specs"
+path = "src/bin/detect_unused_specs.rs"
+
+[[bin]]
+name = "dot_to_atoms_json_example"
+path = "src/bin/dot_to_atoms_json_example.rs"
+
+[[bin]]
+name = "enrich_csv_complete"
+path = "src/bin/enrich_csv_complete.rs"
+
+[[bin]]
+name = "enrich_csv_with_metrics"
+path = "src/bin/enrich_csv_with_metrics.rs"
+
+[[bin]]
+name = "enrich_csv_with_proof_metrics"
+path = "src/bin/enrich_csv_with_proof_metrics.rs"
+
+[[bin]]
+name = "enrich_csv_with_spec_metrics"
+path = "src/bin/enrich_csv_with_spec_metrics.rs"
+
+[[bin]]
+name = "enrich_csv_with_verification_category"
+path = "src/bin/enrich_csv_with_verification_category.rs"
+
+[[bin]]
+name = "enrich_with_proof_difficulty"
+path = "src/bin/enrich_with_proof_difficulty.rs"
+
+[[bin]]
+name = "export_call_graph_d3"
+path = "src/bin/export_call_graph_d3.rs"
+
+[[bin]]
+name = "filter_dot"
+path = "src/bin/filter_dot.rs"
+
+[[bin]]
+name = "find_missing_verified_functions"
+path = "src/bin/find_missing_verified_functions.rs"
+
+[[bin]]
+name = "find_untracked_verified"
+path = "src/bin/find_untracked_verified.rs"
+
+[[bin]]
+name = "format_example"
+path = "src/bin/format_example.rs"
+
+[[bin]]
+name = "generate_atoms_with_lines"
+path = "src/bin/generate_atoms_with_lines.rs"
+
+[[bin]]
+name = "generate_call_graph_dot"
+path = "src/bin/generate_call_graph_dot.rs"
+
+[[bin]]
+name = "generate_dot_from_unit_graph"
+path = "src/bin/generate_dot_from_unit_graph.rs"
+
+[[bin]]
+name = "generate_files_subgraph_dot"
+path = "src/bin/generate_files_subgraph_dot.rs"
+
+[[bin]]
+name = "generate_file_subgraph_dot"
+path = "src/bin/generate_file_subgraph_dot.rs"
+
+[[bin]]
+name = "generate_function_subgraph_dot"
+path = "src/bin/generate_function_subgraph_dot.rs"
+
+[[bin]]
+name = "generate_index_scip_json"
+path = "src/bin/generate_index_scip_json.rs"
+
+[[bin]]
+name = "merge_rca_metrics"
+path = "src/bin/merge_rca_metrics.rs"
+
+[[bin]]
+name = "read_scip"
+path = "src/bin/read_scip.rs"
+
+[[bin]]
+name = "scip_call_graph"
+path = "src/bin/scip_call_graph.rs"
+
+[[bin]]
+name = "stats_unit_graph"
+path = "src/bin/stats_unit_graph.rs"
+
+[[bin]]
+name = "test_quantifiers"
+path = "src/bin/test_quantifiers.rs"
+
+[[bin]]
+name = "validate_spec_halstead"
+path = "src/bin/validate_spec_halstead.rs"
+
+[[bin]]
+name = "verify_rca_coverage"
+path = "src/bin/verify_rca_coverage.rs"
+
+[[bin]]
+name = "write_atoms"
+path = "src/bin/write_atoms.rs"
+
+[[bin]]
+name = "write_atoms_to_svg"
+path = "src/bin/write_atoms_to_svg.rs"

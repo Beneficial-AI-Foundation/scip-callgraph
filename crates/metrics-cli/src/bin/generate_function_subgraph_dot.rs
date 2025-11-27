@@ -1,7 +1,7 @@
 use clap::Parser;
 use log::{debug, error, info};
-use scip_callgraph::logging::init_logger;
-use scip_callgraph::scip_to_call_graph_json::{
+use scip_core::logging::init_logger;
+use scip_core::scip_to_call_graph_json::{
     build_call_graph, generate_function_subgraph_dot, parse_scip_json,
 };
 

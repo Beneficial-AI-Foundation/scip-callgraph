@@ -24,7 +24,7 @@ if [ -n "$1" ]; then
         # Build the generate_index_scip_json binary if needed
         if [ ! -f "target/release/generate_index_scip_json" ]; then
             echo "Building generate_index_scip_json binary..."
-            cargo build --release --bin generate_index_scip_json
+            cargo build --release -p metrics-cli --bin generate_index_scip_json
         fi
         
         # Generate SCIP JSON from project
@@ -128,7 +128,7 @@ if [ "$SKIP_EXPORT" = false ]; then
     echo ""
     echo "Step 2: Building Rust export binary..."
     echo "======================================="
-    cargo build --release --bin export_call_graph_d3
+    cargo build --release -p metrics-cli --bin export_call_graph_d3
 
     echo ""
     echo "Step 3: Exporting call graph to D3 format..."
