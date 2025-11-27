@@ -1,0 +1,17 @@
+[package]
+name = "verus-metrics"
+version = "0.1.0"
+edition = "2021"
+description = "Halstead metrics computation for Verus specifications and proofs"
+license = "MIT OR Apache-2.0"
+keywords = ["verus", "halstead", "metrics", "formal-verification"]
+
+[dependencies]
+scip-core = { path = "../scip-core" }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+verus_syn = { workspace = true }
+quote = { workspace = true }
+log = { workspace = true }
+

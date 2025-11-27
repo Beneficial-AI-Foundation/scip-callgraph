@@ -1,4 +1,4 @@
-use scip_callgraph::scip_utils::generate_scip_json_index;
+use scip_core::scip_utils::generate_scip_json_index;
 use std::env;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

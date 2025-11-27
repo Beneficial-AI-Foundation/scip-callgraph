@@ -19,10 +19,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Use our SCIP reader to print a summary of the file
-    scip_callgraph::scip_reader::print_scip_file_summary(scip_path)?;
+    scip_core::scip_reader::print_scip_file_summary(scip_path)?;
 
     // Try to extract potential symbol information
-    let potential_symbols = scip_callgraph::scip_reader::extract_potential_symbols(scip_path)?;
+    let potential_symbols = scip_core::scip_reader::extract_potential_symbols(scip_path)?;
 
     println!("\nIdentified potential symbols in the SCIP file:");
     let display_limit = 20;

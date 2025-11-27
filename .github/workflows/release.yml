@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g., v3.0.5)'
+        description: 'Version tag (e.g., v4.0.0)'
         required: true
         type: string
 
@@ -49,13 +49,19 @@ jobs:
         shell: bash
         run: |
           cargo build --release --target ${{ matrix.target }} \
+            -p metrics-cli \
             --bin detect_unused_specs \
             --bin generate_index_scip_json \
             --bin generate_call_graph_dot \
             --bin generate_function_subgraph_dot \
             --bin generate_file_subgraph_dot \
             --bin generate_files_subgraph_dot \
-            --bin write_atoms
+            --bin write_atoms \
+            --bin run_full_pipeline \
+            --bin compute_metrics \
+            --bin compute_proof_metrics \
+            --bin enrich_csv_with_metrics \
+            --bin enrich_csv_complete
 
       - name: Create archive (Unix)
         if: matrix.archive == 'tar.gz'
@@ -68,6 +74,7 @@ jobs:
           
           mkdir -p "${ARCHIVE_NAME}"
           
+          # Core tools
           cp target/${{ matrix.target }}/release/detect_unused_specs "${ARCHIVE_NAME}/"
           cp target/${{ matrix.target }}/release/generate_index_scip_json "${ARCHIVE_NAME}/"
           cp target/${{ matrix.target }}/release/generate_call_graph_dot "${ARCHIVE_NAME}/"
@@ -76,7 +83,15 @@ jobs:
           cp target/${{ matrix.target }}/release/generate_files_subgraph_dot "${ARCHIVE_NAME}/"
           cp target/${{ matrix.target }}/release/write_atoms "${ARCHIVE_NAME}/"
           
+          # Metrics pipeline tools
+          cp target/${{ matrix.target }}/release/run_full_pipeline "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/compute_metrics "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/compute_proof_metrics "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/enrich_csv_with_metrics "${ARCHIVE_NAME}/"
+          cp target/${{ matrix.target }}/release/enrich_csv_complete "${ARCHIVE_NAME}/"
+          
           cp README.md "${ARCHIVE_NAME}/" 2>/dev/null || true
+          cp METRICS_PIPELINE.md "${ARCHIVE_NAME}/" 2>/dev/null || true
           cp LICENSE* "${ARCHIVE_NAME}/" 2>/dev/null || true
           
           tar -czf "${ARCHIVE_NAME}.tar.gz" "${ARCHIVE_NAME}"
@@ -94,6 +109,7 @@ jobs:
           
           New-Item -ItemType Directory -Force -Path $ARCHIVE_NAME
           
+          # Core tools
           Copy-Item "target/${{ matrix.target }}/release/detect_unused_specs.exe" "$ARCHIVE_NAME/"
           Copy-Item "target/${{ matrix.target }}/release/generate_index_scip_json.exe" "$ARCHIVE_NAME/"
           Copy-Item "target/${{ matrix.target }}/release/generate_call_graph_dot.exe" "$ARCHIVE_NAME/"
@@ -102,7 +118,15 @@ jobs:
           Copy-Item "target/${{ matrix.target }}/release/generate_files_subgraph_dot.exe" "$ARCHIVE_NAME/"
           Copy-Item "target/${{ matrix.target }}/release/write_atoms.exe" "$ARCHIVE_NAME/"
           
+          # Metrics pipeline tools
+          Copy-Item "target/${{ matrix.target }}/release/run_full_pipeline.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/compute_metrics.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/compute_proof_metrics.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/enrich_csv_with_metrics.exe" "$ARCHIVE_NAME/"
+          Copy-Item "target/${{ matrix.target }}/release/enrich_csv_complete.exe" "$ARCHIVE_NAME/"
+          
           if (Test-Path "README.md") { Copy-Item "README.md" "$ARCHIVE_NAME/" }
+          if (Test-Path "METRICS_PIPELINE.md") { Copy-Item "METRICS_PIPELINE.md" "$ARCHIVE_NAME/" }
           if (Test-Path "LICENSE") { Copy-Item "LICENSE*" "$ARCHIVE_NAME/" }
           
           Compress-Archive -Path $ARCHIVE_NAME -DestinationPath "$ARCHIVE_NAME.zip"
@@ -138,6 +162,22 @@ jobs:
           cat > release_notes.md << 'EOF'
           # scip-callgraph $VERSION
           
+          ## What's New in v4.0.0
+          
+          **BREAKING CHANGE:** Restructured to Cargo workspace. Commands now require `-p metrics-cli` flag when using `cargo run`.
+          
+          ### New Features
+          - **Metrics Pipeline**: Complete toolchain for computing code, spec, and proof metrics
+          - **Halstead Metrics for Verus Specs**: First-of-kind metrics for `requires`/`ensures` clauses
+          - **Transitive Proof Metrics**: Aggregate metrics across lemma dependencies
+          - **One-Command Pipeline**: `run_full_pipeline` orchestrates all metrics computation
+          - **Visualization Support**: Python script for correlation analysis plots
+          
+          ### Key Findings
+          - Code complexity does NOT predict proof difficulty (r ≈ 0)
+          - Spec complexity does NOT predict proof difficulty (r = -0.27)
+          - Proof effort is highly concentrated in foundational functions
+          
           ## Installation
           
           Download the appropriate archive for your platform and extract it:
@@ -146,14 +186,14 @@ jobs:
           ```bash
           tar -xzf scip-callgraph-$VERSION-x86_64-unknown-linux-gnu.tar.gz
           cd scip-callgraph-$VERSION-x86_64-unknown-linux-gnu
-          sudo cp detect_unused_specs /usr/local/bin/
+          sudo cp * /usr/local/bin/
           ```
           
           ### macOS
           ```bash
           tar -xzf scip-callgraph-$VERSION-x86_64-apple-darwin.tar.gz
           cd scip-callgraph-$VERSION-x86_64-apple-darwin
-          sudo cp detect_unused_specs /usr/local/bin/
+          sudo cp * /usr/local/bin/
           ```
           
           ### Windows
@@ -161,6 +201,7 @@ jobs:
           
           ## Tools Included
           
+          ### Core Tools
           - `detect_unused_specs` - Detect potentially unused Verus specifications
           - `generate_index_scip_json` - Generate SCIP JSON index files
           - `generate_call_graph_dot` - Generate call graph visualizations
@@ -169,24 +210,41 @@ jobs:
           - `generate_files_subgraph_dot` - Generate multi-file subgraphs
           - `write_atoms` - Convert call graphs to atoms JSON format
           
+          ### Metrics Pipeline Tools (NEW)
+          - `run_full_pipeline` - One-command metrics computation (~17s)
+          - `compute_metrics` - Compute Halstead metrics for Verus specs
+          - `compute_proof_metrics` - Compute metrics for proof blocks with lemma traversal
+          - `enrich_csv_with_metrics` - Add RCA code metrics to CSV
+          - `enrich_csv_complete` - Combine all metrics into final CSV
+          
           ## Quick Start
           
           ```bash
-          # Detect unused specs in your project
-          detect_unused_specs /path/to/verus/project
+          # Full metrics pipeline
+          run_full_pipeline \
+            --scip index.json \
+            --csv functions.csv \
+            --rca-dir rca_output/ \
+            --proof-csv proofs.csv \
+            --output-dir metrics/
           
-          # Generate SCIP index
-          generate_index_scip_json /path/to/project
+          # Or individual steps
+          write_atoms index.json atoms.json
+          compute_metrics atoms.json with_specs.json
+          compute_proof_metrics with_specs.json with_proofs.json
           ```
           
           ## Documentation
           
-          See the [repository README](https://github.com/Beneficial-AI-Foundation/scip-callgraph) for full documentation.
+          - [README](https://github.com/Beneficial-AI-Foundation/scip-callgraph/blob/main/README.md)
+          - [Metrics Pipeline Guide](https://github.com/Beneficial-AI-Foundation/scip-callgraph/blob/main/METRICS_PIPELINE.md)
+          - [Correlation Analysis Findings](https://github.com/Beneficial-AI-Foundation/scip-callgraph/blob/main/docs/CORRELATION_ANALYSIS_FINDINGS.md)
           
           ## Requirements
           
           - `verus-analyzer` must be installed
           - `scip` CLI tool must be installed
+          - For visualization: Python 3 with pandas, matplotlib, seaborn
           EOF
           
           sed -i "s/\$VERSION/$VERSION/g" release_notes.md

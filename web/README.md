@@ -43,10 +43,10 @@ This will start a Vite development server (usually at `http://localhost:3000`).
 **Option B: Manual generation**
 ```bash
 # Build the project first
-cargo build --release
+cargo build --workspace --release
 
 # Export call graph from SCIP JSON
-cargo run --bin export_call_graph_d3 -- <input_scip.json> -o call_graph_d3.json
+cargo run -p metrics-cli --bin export_call_graph_d3 -- <input_scip.json> -o call_graph_d3.json
 ```
 
 ### 4. Load the Graph

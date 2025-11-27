@@ -46,23 +46,21 @@ jobs:
         continue-on-error: true
 
       - name: Run clippy
-        run: cargo clippy --target ${{ matrix.target }} --all-targets
+        run: cargo clippy --workspace --target ${{ matrix.target }} --all-targets
 
-      - name: Build debug binaries
-        run: |
-          cargo build --target ${{ matrix.target }} \
-            --bin detect_unused_specs \
-            --bin generate_index_scip_json \
-            --bin generate_function_subgraph_dot
+      - name: Build workspace (debug)
+        run: cargo build --workspace --target ${{ matrix.target }}
 
-      - name: Build release binaries
+      - name: Build key binaries (release)
         run: |
           cargo build --release --target ${{ matrix.target }} \
+            -p metrics-cli \
             --bin detect_unused_specs \
             --bin generate_index_scip_json \
             --bin generate_function_subgraph_dot \
             --bin generate_call_graph_dot \
-            --bin generate_file_subgraph_dot
+            --bin write_atoms \
+            --bin run_full_pipeline
 
       - name: Test binary functionality (Unix)
         if: runner.os != 'Windows'
@@ -74,8 +72,11 @@ jobs:
           echo "Testing generate_index_scip_json..."
           ./target/${{ matrix.target }}/release/generate_index_scip_json || echo "Expected exit for usage message"
           
-          echo "Testing generate_function_subgraph_dot..."
-          ./target/${{ matrix.target }}/release/generate_function_subgraph_dot || echo "Expected exit for usage message"
+          echo "Testing write_atoms..."
+          ./target/${{ matrix.target }}/release/write_atoms || echo "Expected exit for usage message"
+          
+          echo "Testing run_full_pipeline..."
+          ./target/${{ matrix.target }}/release/run_full_pipeline --help || echo "Expected exit for usage message"
           
           echo "All binaries tested successfully!"
 
@@ -89,7 +90,10 @@ jobs:
           Write-Host "Testing generate_index_scip_json..."
           & "target\${{ matrix.target }}\release\generate_index_scip_json.exe"
           
-          Write-Host "Testing generate_function_subgraph_dot..."
-          & "target\${{ matrix.target }}\release\generate_function_subgraph_dot.exe"
+          Write-Host "Testing write_atoms..."
+          & "target\${{ matrix.target }}\release\write_atoms.exe"
+          
+          Write-Host "Testing run_full_pipeline..."
+          & "target\${{ matrix.target }}\release\run_full_pipeline.exe" --help
           
           Write-Host "All binaries tested successfully!"

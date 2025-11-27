@@ -1,6 +1,6 @@
 use log::{error, info};
-use scip_callgraph::logging::{init_logger, should_enable_debug};
-use scip_callgraph::scip_to_call_graph_json::{
+use scip_core::logging::{init_logger, should_enable_debug};
+use scip_core::scip_to_call_graph_json::{
     build_call_graph, generate_call_graph_svg, parse_scip_json,
 };
 

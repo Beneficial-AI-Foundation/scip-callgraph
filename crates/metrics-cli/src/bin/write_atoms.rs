@@ -1,4 +1,4 @@
-use scip_callgraph::scip_to_call_graph_json::{
+use scip_core::scip_to_call_graph_json::{
     build_call_graph, parse_scip_json, write_call_graph_as_atoms_json,
 };
 
