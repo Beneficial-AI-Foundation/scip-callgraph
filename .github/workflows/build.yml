@@ -52,6 +52,7 @@ jobs:
         run: cargo build --workspace --target ${{ matrix.target }}
 
       - name: Build key binaries (release)
+        shell: bash
         run: |
           cargo build --release --target ${{ matrix.target }} \
             -p metrics-cli \
