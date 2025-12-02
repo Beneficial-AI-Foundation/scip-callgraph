@@ -8,7 +8,7 @@ export class CallGraphVisualization {
   private height: number;
   private simulation: d3.Simulation<D3Node, D3Link> | null = null;
   private state: GraphState;
-  private onStateChange: (state: GraphState) => void;
+  private onStateChange: (state: GraphState, selectionChanged?: boolean) => void;
 
   private linkElements: d3.Selection<SVGLineElement, D3Link, SVGGElement, unknown> | null = null;
   private nodeElements: d3.Selection<SVGCircleElement, D3Node, SVGGElement, unknown> | null = null;
@@ -17,7 +17,7 @@ export class CallGraphVisualization {
   constructor(
     container: HTMLElement,
     state: GraphState,
-    onStateChange: (state: GraphState) => void
+    onStateChange: (state: GraphState, selectionChanged?: boolean) => void
   ) {
     this.state = state;
     this.onStateChange = onStateChange;
@@ -226,7 +226,7 @@ export class CallGraphVisualization {
       newState.filters.selectedNodes.add(node.id);
     }
     
-    this.onStateChange(newState);
+    this.onStateChange(newState, true);  // Selection changed
     this.highlightNode(node);
   }
 
@@ -236,7 +236,7 @@ export class CallGraphVisualization {
   private handleNodeHover(_event: MouseEvent, node: D3Node): void {
     const newState = { ...this.state };
     newState.hoveredNode = node;
-    this.onStateChange(newState);
+    this.onStateChange(newState, false);  // Hover only, no selection change
     
     // Highlight connected nodes
     this.nodeElements?.style('opacity', (d) => {
@@ -264,7 +264,7 @@ export class CallGraphVisualization {
   private handleNodeLeave(): void {
     const newState = { ...this.state };
     newState.hoveredNode = null;
-    this.onStateChange(newState);
+    this.onStateChange(newState, false);  // Hover only, no selection change
     
     this.nodeElements?.style('opacity', 1);
     this.linkElements?.style('opacity', 0.6);

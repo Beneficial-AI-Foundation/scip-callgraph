@@ -160,6 +160,12 @@ function loadGraph(graph: D3Graph, message: string): void {
   state.fullGraph = graph;
   state.filters = { ...initialFilters };
   
+  console.log('[DEBUG] Graph loaded:', graph.nodes.length, 'nodes,', graph.links.length, 'links');
+  
+  // Debug: check for fermat nodes
+  const fermatNodes = graph.nodes.filter(n => n.display_name.toLowerCase().includes('fermat'));
+  console.log('[DEBUG] Fermat nodes in loaded graph:', fermatNodes.map(n => n.display_name));
+  
   applyFiltersAndUpdate();
   
   console.log(message, {
@@ -223,7 +229,9 @@ async function handleFileLoad(event: Event): Promise<void> {
 function applyFiltersAndUpdate(): void {
   if (!state.fullGraph) return;
 
+  console.log('[DEBUG] applyFiltersAndUpdate called with searchQuery:', JSON.stringify(state.filters.searchQuery));
   state.filteredGraph = applyFilters(state.fullGraph, state.filters);
+  console.log('[DEBUG] Filtered graph:', state.filteredGraph.nodes.length, 'nodes,', state.filteredGraph.links.length, 'links');
   visualization?.update(state.filteredGraph);
   updateStats();
   updateNodeInfo();
@@ -232,12 +240,13 @@ function applyFiltersAndUpdate(): void {
 /**
  * Handle state changes from visualization
  */
-function handleStateChange(newState: GraphState): void {
+function handleStateChange(newState: GraphState, selectionChanged: boolean = false): void {
   state = newState;
   updateNodeInfo();
   
-  // If depth filtering is enabled and we have selected nodes, re-apply filters
-  if (state.filters.maxDepth !== null && state.filters.selectedNodes.size > 0) {
+  // Only re-apply filters if selection actually changed (not just hover)
+  // This prevents flickering when hovering over nodes while depth filtering is active
+  if (selectionChanged && state.filters.maxDepth !== null && state.filters.selectedNodes.size > 0) {
     applyFiltersAndUpdate();
   }
 }

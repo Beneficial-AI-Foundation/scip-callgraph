@@ -14,16 +14,20 @@ export function applyFilters(
   const query = filters.searchQuery.trim().toLowerCase();
   const searchMatchIds = new Set<string>();
   
+  console.log('[DEBUG] Search query:', JSON.stringify(query), 'Full graph nodes:', fullGraph.nodes.length);
+  
   if (query !== '') {
     fullGraph.nodes.forEach(node => {
-      if (
-        node.display_name.toLowerCase().includes(query) ||
-        node.symbol.toLowerCase().includes(query) ||
-        node.file_name.toLowerCase().includes(query)
-      ) {
+      const matchesName = node.display_name.toLowerCase().includes(query);
+      const matchesSymbol = node.symbol.toLowerCase().includes(query);
+      const matchesFile = node.file_name.toLowerCase().includes(query);
+      
+      if (matchesName || matchesSymbol || matchesFile) {
         searchMatchIds.add(node.id);
+        console.log('[DEBUG] Match found:', node.display_name, { matchesName, matchesSymbol, matchesFile });
       }
     });
+    console.log('[DEBUG] Total search matches:', searchMatchIds.size);
   }
 
   // Build the set of nodes to include
