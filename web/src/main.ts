@@ -6,7 +6,7 @@ import { CallGraphVisualization } from './graph';
 const initialFilters: FilterOptions = {
   showLibsignal: true,
   showNonLibsignal: true,
-  maxDepth: null,
+  maxDepth: 1,
   searchQuery: '',
   includeCallers: true,
   includeCallees: true,
@@ -367,8 +367,8 @@ function resetFilters(): void {
   (document.getElementById('search-input') as HTMLInputElement).value = '';
   (document.getElementById('include-callers') as HTMLInputElement).checked = true;
   (document.getElementById('include-callees') as HTMLInputElement).checked = true;
-  (document.getElementById('depth-limit') as HTMLInputElement).value = '0';
-  document.getElementById('depth-value')!.textContent = 'All';
+  (document.getElementById('depth-limit') as HTMLInputElement).value = '1';
+  document.getElementById('depth-value')!.textContent = '1';
   
   applyFiltersAndUpdate();
 }
