@@ -2,7 +2,7 @@ name: Deploy Web Viewer to GitHub Pages
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - 'web/**'
       - '.github/workflows/deploy-pages.yml'
