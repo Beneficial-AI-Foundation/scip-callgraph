@@ -63,7 +63,7 @@ fn convert_to_atoms_with_lines(call_graph: &HashMap<String, FunctionNode>) -> Ve
             let (lines_start, lines_end) = if node.range.len() >= 3 {
                 // SCIP line numbers are 0-based, but we'll use them as-is or add 1 if needed
                 let start = node.range[0] as usize + 1; // Convert to 1-based
-                let end = node.range[2] as usize + 1;   // Convert to 1-based
+                let end = node.range[2] as usize + 1; // Convert to 1-based
                 (start, end)
             } else {
                 (0, 0)
@@ -95,7 +95,10 @@ fn main() {
         eprintln!("  3. Generate an atoms JSON with line numbers instead of function bodies");
         eprintln!();
         eprintln!("Example:");
-        eprintln!("  {} ./curve25519-dalek curve_dalek_atoms_with_lines.json", args[0]);
+        eprintln!(
+            "  {} ./curve25519-dalek curve_dalek_atoms_with_lines.json",
+            args[0]
+        );
         eprintln!();
         eprintln!("Prerequisites:");
         eprintln!("  - rust-analyzer must be installed (rustup component add rust-analyzer)");
@@ -113,7 +116,7 @@ fn main() {
 
     // Check prerequisites
     println!("Checking prerequisites...");
-    
+
     if !check_command_exists("rust-analyzer") {
         eprintln!("✗ Error: rust-analyzer not found in PATH");
         eprintln!("  Install with: rustup component add rust-analyzer");
@@ -134,27 +137,33 @@ fn main() {
         eprintln!("✗ Error: Project path does not exist: {}", project_path);
         std::process::exit(1);
     }
-    
+
     // Check if it's a valid Rust project
     let cargo_toml = project_path_buf.join("Cargo.toml");
     if !cargo_toml.exists() {
-        eprintln!("✗ Error: Not a valid Rust project (Cargo.toml not found): {}", project_path);
+        eprintln!(
+            "✗ Error: Not a valid Rust project (Cargo.toml not found): {}",
+            project_path
+        );
         std::process::exit(1);
     }
     println!("  ✓ Valid Rust project found");
     println!();
 
     // Step 1: Run rust-analyzer scip
-    println!("Step 1/4: Running rust-analyzer scip on {}...", project_path);
+    println!(
+        "Step 1/4: Running rust-analyzer scip on {}...",
+        project_path
+    );
     println!("  (This may take a while for large projects)");
-    
+
     // rust-analyzer scip creates index.scip in the current directory
     // We need to cd into the project directory first
     let scip_status = Command::new("rust-analyzer")
         .args(["scip", "."])
         .current_dir(&project_path_buf)
         .status();
-    
+
     match scip_status {
         Ok(status) if status.success() => {
             println!("  ✓ SCIP index generated successfully");
@@ -173,7 +182,10 @@ fn main() {
     // Path to the generated index.scip file (created in project directory)
     let index_scip_path = project_path_buf.join("index.scip");
     if !index_scip_path.exists() {
-        eprintln!("✗ Error: index.scip not found at {}", index_scip_path.display());
+        eprintln!(
+            "✗ Error: index.scip not found at {}",
+            index_scip_path.display()
+        );
         eprintln!("  rust-analyzer scip may have failed silently");
         std::process::exit(1);
     }
@@ -182,21 +194,16 @@ fn main() {
 
     // Step 2: Convert SCIP to JSON
     println!("Step 2/4: Converting index.scip to JSON...");
-    
+
     let temp_json_path = project_path_buf.join("index.scip.json");
-    
+
     let scip_output = Command::new("scip")
-        .args([
-            "print",
-            "--json",
-            index_scip_path.to_str().unwrap(),
-        ])
+        .args(["print", "--json", index_scip_path.to_str().unwrap()])
         .output();
 
     match scip_output {
         Ok(output) if output.status.success() => {
-            std::fs::write(&temp_json_path, output.stdout)
-                .expect("Failed to write SCIP JSON file");
+            std::fs::write(&temp_json_path, output.stdout).expect("Failed to write SCIP JSON file");
             println!("  ✓ SCIP JSON generated at {}", temp_json_path.display());
         }
         Ok(output) => {
@@ -215,7 +222,7 @@ fn main() {
 
     // Step 3: Parse SCIP JSON and build call graph
     println!("Step 3/4: Parsing SCIP JSON and building call graph...");
-    
+
     let scip_index = match parse_scip_json(temp_json_path.to_str().unwrap()) {
         Ok(idx) => idx,
         Err(e) => {
@@ -230,7 +237,7 @@ fn main() {
 
     // Step 4: Convert to atoms format with line numbers
     println!("Step 4/4: Converting to atoms format with line numbers...");
-    
+
     let atoms = convert_to_atoms_with_lines(&call_graph);
     println!("  ✓ Converted {} functions to atoms format", atoms.len());
 
@@ -247,8 +254,10 @@ fn main() {
     println!();
     println!("Summary:");
     println!("  - Total functions: {}", atoms.len());
-    println!("  - Total dependencies: {}", 
-             atoms.iter().map(|a| a.dependencies.len()).sum::<usize>());
+    println!(
+        "  - Total dependencies: {}",
+        atoms.iter().map(|a| a.dependencies.len()).sum::<usize>()
+    );
     println!("  - Output format: atoms with line numbers and visibility flags");
     println!();
 
@@ -258,4 +267,3 @@ fn main() {
         println!("Cleaned up temporary file: {}", temp_json_path.display());
     }
 }
-

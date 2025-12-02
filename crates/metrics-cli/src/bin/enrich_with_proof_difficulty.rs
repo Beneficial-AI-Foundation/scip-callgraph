@@ -57,7 +57,10 @@ struct OutputRow {
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 4 {
-        eprintln!("Usage: {} <curve25519_with_trivial_csv> <functions_to_track_csv> <output_csv>", args[0]);
+        eprintln!(
+            "Usage: {} <curve25519_with_trivial_csv> <functions_to_track_csv> <output_csv>",
+            args[0]
+        );
         eprintln!();
         eprintln!("Enriches functions_to_track CSV with proof difficulty information.");
         eprintln!();
@@ -72,47 +75,51 @@ fn main() -> Result<(), Box<dyn Error>> {
         eprintln!("    functions_to_track_complete.csv");
         std::process::exit(1);
     }
-    
+
     let proof_csv = &args[1];
     let input_csv = &args[2];
     let output_csv = &args[3];
-    
+
     // Load proof information
     println!("Loading proof information from {}...", proof_csv);
     let mut reader = Reader::from_path(proof_csv)?;
-    
+
     let mut proof_info: HashMap<String, (String, String)> = HashMap::new();
-    
+
     for result in reader.deserialize() {
         let row: ProofRow = result?;
-        
+
         // Store by function name
         proof_info.insert(
             row.function.clone(),
-            (row.has_proof.clone(), row.trivial_proof.clone())
+            (row.has_proof.clone(), row.trivial_proof.clone()),
         );
-        
+
         // Also store by stripped name (e.g., "FieldElement51::add" -> "add")
         if let Some(pos) = row.function.rfind("::") {
-            let stripped = row.function[pos+2..].to_string();
-            proof_info.entry(stripped)
+            let stripped = row.function[pos + 2..].to_string();
+            proof_info
+                .entry(stripped)
                 .or_insert((row.has_proof.clone(), row.trivial_proof.clone()));
         }
     }
-    
-    println!("  Loaded proof info for {} function names", proof_info.len());
-    
+
+    println!(
+        "  Loaded proof info for {} function names",
+        proof_info.len()
+    );
+
     // Read input CSV and enrich
     println!("Reading CSV from {}...", input_csv);
     let mut reader = Reader::from_path(input_csv)?;
-    
+
     let mut enriched_rows = Vec::new();
     let mut stats = Stats::default();
-    
+
     for result in reader.deserialize() {
         let row: InputRow = result?;
         stats.total += 1;
-        
+
         // Try to find proof info
         let (has_proof, trivial_proof) = if let Some(info) = proof_info.get(&row.function) {
             stats.matched += 1;
@@ -128,7 +135,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         } else {
             // Try stripping type prefix
             if let Some(pos) = row.function.rfind("::") {
-                let stripped = &row.function[pos+2..];
+                let stripped = &row.function[pos + 2..];
                 if let Some(info) = proof_info.get(stripped) {
                     stats.matched += 1;
                     if info.0 == "yes" {
@@ -149,7 +156,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 (String::new(), String::new())
             }
         };
-        
+
         enriched_rows.push(OutputRow {
             function: row.function,
             module: row.module,
@@ -169,16 +176,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             decreases_count: row.decreases_count,
         });
     }
-    
+
     // Write enriched CSV
     println!("Writing enriched CSV to {}...", output_csv);
     let mut writer = Writer::from_path(output_csv)?;
-    
+
     for row in &enriched_rows {
         writer.serialize(row)?;
     }
     writer.flush()?;
-    
+
     println!("✓ Done!");
     println!();
     println!("═══════════════════════════════════════════════════════════════");
@@ -186,26 +193,40 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("═══════════════════════════════════════════════════════════════");
     println!();
     println!("Total functions in tracking CSV: {}", stats.total);
-    println!("Matched with proof info: {} ({:.1}%)", stats.matched, (stats.matched as f64 / stats.total as f64) * 100.0);
+    println!(
+        "Matched with proof info: {} ({:.1}%)",
+        stats.matched,
+        (stats.matched as f64 / stats.total as f64) * 100.0
+    );
     println!("  ├─ With proofs (has_proof=yes): {}", stats.with_proof);
     println!("  │  ├─ Non-trivial (manual proofs): {}", stats.non_trivial);
     println!("  │  └─ Trivial (SMT-verified): {}", stats.trivial);
     println!("  └─ Without proofs: {}", stats.matched - stats.with_proof);
-    println!("Not found: {} ({:.1}%)", stats.not_found, (stats.not_found as f64 / stats.total as f64) * 100.0);
+    println!(
+        "Not found: {} ({:.1}%)",
+        stats.not_found,
+        (stats.not_found as f64 / stats.total as f64) * 100.0
+    );
     println!();
-    
+
     if stats.with_proof > 0 {
         let non_trivial_pct = (stats.non_trivial as f64 / stats.with_proof as f64) * 100.0;
         let trivial_pct = (stats.trivial as f64 / stats.with_proof as f64) * 100.0;
-        
+
         println!("Of verified functions:");
-        println!("  • {:.1}% have non-trivial proofs (manual proof engineering)", non_trivial_pct);
-        println!("  • {:.1}% are trivially verified (SMT handles)", trivial_pct);
+        println!(
+            "  • {:.1}% have non-trivial proofs (manual proof engineering)",
+            non_trivial_pct
+        );
+        println!(
+            "  • {:.1}% are trivially verified (SMT handles)",
+            trivial_pct
+        );
     }
-    
+
     println!();
     println!("═══════════════════════════════════════════════════════════════");
-    
+
     Ok(())
 }
 
@@ -218,4 +239,3 @@ struct Stats {
     non_trivial: usize,
     trivial: usize,
 }
-

@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let folder_path = &args[1];
-    
+
     match generate_scip_json_index(folder_path) {
         Ok(output_file) => {
             println!("\nDone! Output file: {}", output_file);
@@ -22,4 +22,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 }
-

@@ -105,7 +105,10 @@ struct CsvOutputRow {
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 4 {
-        eprintln!("Usage: {} <proof_metrics_json> <input_csv> <output_csv>", args[0]);
+        eprintln!(
+            "Usage: {} <proof_metrics_json> <input_csv> <output_csv>",
+            args[0]
+        );
         eprintln!();
         eprintln!("Enriches CSV with proof metrics (direct and transitive).");
         eprintln!();
@@ -116,48 +119,48 @@ fn main() -> Result<(), Box<dyn Error>> {
         eprintln!("    functions_complete.csv");
         std::process::exit(1);
     }
-    
+
     let proof_json_path = &args[1];
     let input_csv_path = &args[2];
     let output_csv_path = &args[3];
-    
+
     println!("Loading proof metrics from {}...", proof_json_path);
     let file = File::open(proof_json_path)?;
     let atoms: Vec<AtomWithProofMetrics> = serde_json::from_reader(file)?;
     println!("  Loaded {} functions", atoms.len());
-    
+
     let with_proofs = atoms.iter().filter(|a| a.proof_metrics.is_some()).count();
     println!("  Functions with proofs: {}", with_proofs);
-    
+
     // Build lookup maps by full_path only (display_name can have duplicates)
     let mut by_full_path: HashMap<String, &AtomWithProofMetrics> = HashMap::new();
-    
+
     for atom in &atoms {
         by_full_path.insert(atom.full_path.clone(), atom);
         // Also add display_name as a key for fallback
         by_full_path.insert(atom.display_name.clone(), atom);
     }
-    
+
     println!("Loading CSV from {}...", input_csv_path);
     let mut reader = Reader::from_path(input_csv_path)?;
     let mut writer = Writer::from_path(output_csv_path)?;
-    
+
     let mut matched = 0;
     let mut total = 0;
     let mut with_proof_metrics = 0;
-    
+
     for result in reader.deserialize() {
         let input_row: CsvInputRow = result?;
         total += 1;
-        
+
         // Try to find the function in the proof metrics JSON
         let function_name = &input_row.function;
         let module = &input_row.module;
-        
+
         // Strategy 1: Try module::function (most specific, use FIRST)
         let key1 = format!("{}::{}", module, function_name);
         let mut atom_opt: Option<&AtomWithProofMetrics> = by_full_path.get(&key1).copied();
-        
+
         // Strategy 2: Extract last segment of module and try module::Type::function
         if atom_opt.is_none() && module.contains("::") {
             let parts: Vec<&str> = module.split("::").collect();
@@ -166,36 +169,38 @@ fn main() -> Result<(), Box<dyn Error>> {
                 atom_opt = by_full_path.get(&key).copied();
             }
         }
-        
+
         // Strategy 3: Try matching any full_path that contains module and ends with function
         if atom_opt.is_none() {
             for (full_path, atom) in &by_full_path {
                 // Check if full_path contains the module and ends with ::function_name
-                if full_path.contains(module) && full_path.ends_with(&format!("::{}", function_name)) {
+                if full_path.contains(module)
+                    && full_path.ends_with(&format!("::{}", function_name))
+                {
                     atom_opt = Some(atom);
                     break;
                 }
             }
         }
-        
+
         // Strategy 4: Try just the function name (last resort, may match wrong function)
         if atom_opt.is_none() {
             atom_opt = by_full_path.get(function_name).copied();
         }
-        
+
         let output_row = if let Some(atom) = atom_opt {
             matched += 1;
-            
+
             if let Some(pm) = &atom.proof_metrics {
                 with_proof_metrics += 1;
-                
+
                 // Calculate proof overhead ratio
                 let proof_overhead = if pm.direct_proof_halstead.effort > 0.0 {
                     pm.transitive_proof_halstead.effort / pm.direct_proof_halstead.effort
                 } else {
                     0.0
                 };
-                
+
                 CsvOutputRow {
                     function: input_row.function,
                     module: input_row.module,
@@ -215,7 +220,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                     direct_proof_difficulty: format!("{:.2}", pm.direct_proof_halstead.difficulty),
                     direct_proof_effort: format!("{:.2}", pm.direct_proof_halstead.effort),
                     transitive_proof_length: pm.transitive_proof_halstead.length.to_string(),
-                    transitive_proof_difficulty: format!("{:.2}", pm.transitive_proof_halstead.difficulty),
+                    transitive_proof_difficulty: format!(
+                        "{:.2}",
+                        pm.transitive_proof_halstead.difficulty
+                    ),
                     transitive_proof_effort: format!("{:.2}", pm.transitive_proof_halstead.effort),
                     proof_overhead: format!("{:.2}", proof_overhead),
                     proof_depth: pm.proof_depth.to_string(),
@@ -280,21 +288,27 @@ fn main() -> Result<(), Box<dyn Error>> {
                 transitive_lemmas_count: String::new(),
             }
         };
-        
+
         writer.serialize(output_row)?;
     }
-    
+
     writer.flush()?;
-    
+
     println!();
     println!("✓ Done!");
     println!();
     println!("Results:");
     println!("  Total rows: {}", total);
-    println!("  Matched: {} ({:.1}%)", matched, (matched as f64 / total as f64) * 100.0);
-    println!("  With proof metrics: {} ({:.1}%)", 
-             with_proof_metrics, 
-             (with_proof_metrics as f64 / total as f64) * 100.0);
+    println!(
+        "  Matched: {} ({:.1}%)",
+        matched,
+        (matched as f64 / total as f64) * 100.0
+    );
+    println!(
+        "  With proof metrics: {} ({:.1}%)",
+        with_proof_metrics,
+        (with_proof_metrics as f64 / total as f64) * 100.0
+    );
     println!("  Unmatched: {}", total - matched);
     println!();
     println!("Output written to: {}", output_csv_path);
@@ -310,7 +324,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("  • proof_depth                  (lemma call chain depth)");
     println!("  • direct_lemmas_count          (lemmas called directly)");
     println!("  • transitive_lemmas_count      (all lemmas transitively)");
-    
+
     Ok(())
 }
-

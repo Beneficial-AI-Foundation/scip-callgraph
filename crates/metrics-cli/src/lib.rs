@@ -8,4 +8,3 @@
 //! - Enriching CSV files with complexity metrics
 //!
 //! See the individual binaries for usage information.
-

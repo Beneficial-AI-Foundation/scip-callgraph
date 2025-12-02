@@ -23,14 +23,14 @@ use std::time::Instant;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    
+
     // Parse arguments
     let mut scip_json = String::new();
     let mut base_csv = String::new();
     let mut rca_dir = String::new();
     let mut proof_csv = String::new();
     let mut output_dir = String::from("data/pipeline_output");
-    
+
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -64,19 +64,19 @@ fn main() {
             }
         }
     }
-    
+
     // Validate required arguments
     if scip_json.is_empty() || base_csv.is_empty() || rca_dir.is_empty() || proof_csv.is_empty() {
         eprintln!("Error: Missing required arguments\n");
         print_usage(&args[0]);
         std::process::exit(1);
     }
-    
+
     // Create output directory
     fs::create_dir_all(&output_dir).expect("Failed to create output directory");
-    
+
     let total_start = Instant::now();
-    
+
     println!("═══════════════════════════════════════════════════════════════");
     println!("           FULL METRICS PIPELINE");
     println!("═══════════════════════════════════════════════════════════════");
@@ -87,95 +87,105 @@ fn main() {
     println!("Proof CSV:      {}", proof_csv);
     println!("Output Dir:     {}", output_dir);
     println!();
-    
+
     // Define intermediate file paths
     let step1_atoms = format!("{}/step1_atoms.json", output_dir);
     let step2_specs = format!("{}/step2_with_specs.json", output_dir);
     let step3_proofs = format!("{}/step3_with_proofs.json", output_dir);
     let step4_code = format!("{}/step4_with_code.csv", output_dir);
     let final_csv = format!("{}/FINAL.csv", output_dir);
-    
+
     // Step 1: Generate atoms from SCIP
     println!("───────────────────────────────────────────────────────────────");
     println!("STEP 1: Generate atoms from SCIP");
     println!("───────────────────────────────────────────────────────────────");
     let step1_start = Instant::now();
-    
+
     let status = run_binary("write_atoms", &[&scip_json, &step1_atoms]);
     if !status {
         eprintln!("❌ Step 1 failed!");
         std::process::exit(1);
     }
-    
+
     // Sanity check step 1
     let atoms_count = count_json_array(&step1_atoms);
-    println!("✓ Generated {} atoms in {:?}", atoms_count, step1_start.elapsed());
+    println!(
+        "✓ Generated {} atoms in {:?}",
+        atoms_count,
+        step1_start.elapsed()
+    );
     println!();
-    
+
     // Step 2: Compute spec metrics
     println!("───────────────────────────────────────────────────────────────");
     println!("STEP 2: Compute spec Halstead metrics");
     println!("───────────────────────────────────────────────────────────────");
     let step2_start = Instant::now();
-    
+
     let status = run_binary("compute_metrics", &[&step1_atoms, &step2_specs]);
     if !status {
         eprintln!("❌ Step 2 failed!");
         std::process::exit(1);
     }
-    
+
     println!("✓ Computed spec metrics in {:?}", step2_start.elapsed());
     println!();
-    
+
     // Step 3: Compute proof metrics
     println!("───────────────────────────────────────────────────────────────");
     println!("STEP 3: Compute proof Halstead metrics");
     println!("───────────────────────────────────────────────────────────────");
     let step3_start = Instant::now();
-    
+
     let status = run_binary("compute_proof_metrics", &[&step2_specs, &step3_proofs]);
     if !status {
         eprintln!("❌ Step 3 failed!");
         std::process::exit(1);
     }
-    
+
     println!("✓ Computed proof metrics in {:?}", step3_start.elapsed());
     println!();
-    
+
     // Step 4: Enrich CSV with RCA code metrics
     println!("───────────────────────────────────────────────────────────────");
     println!("STEP 4: Enrich CSV with RCA code metrics");
     println!("───────────────────────────────────────────────────────────────");
     let step4_start = Instant::now();
-    
-    let status = run_binary("enrich_csv_with_metrics", &[&base_csv, &rca_dir, &step4_code]);
+
+    let status = run_binary(
+        "enrich_csv_with_metrics",
+        &[&base_csv, &rca_dir, &step4_code],
+    );
     if !status {
         eprintln!("❌ Step 4 failed!");
         std::process::exit(1);
     }
-    
+
     println!("✓ Added code metrics in {:?}", step4_start.elapsed());
     println!();
-    
+
     // Step 5: Enrich CSV with all spec + proof metrics
     println!("───────────────────────────────────────────────────────────────");
     println!("STEP 5: Enrich CSV with spec + proof metrics");
     println!("───────────────────────────────────────────────────────────────");
     let step5_start = Instant::now();
-    
-    let status = run_binary("enrich_csv_complete", &[&step3_proofs, &proof_csv, &step4_code, &final_csv]);
+
+    let status = run_binary(
+        "enrich_csv_complete",
+        &[&step3_proofs, &proof_csv, &step4_code, &final_csv],
+    );
     if !status {
         eprintln!("❌ Step 5 failed!");
         std::process::exit(1);
     }
-    
+
     // Count final CSV rows
     let final_rows = count_csv_rows(&final_csv);
     let final_cols = count_csv_columns(&final_csv);
-    
+
     println!("✓ Generated final CSV in {:?}", step5_start.elapsed());
     println!();
-    
+
     // Summary
     println!("═══════════════════════════════════════════════════════════════");
     println!("           PIPELINE COMPLETE");
@@ -229,7 +239,7 @@ fn run_binary(name: &str, args: &[&str]) -> bool {
         format!("target/release/{}", name),
         name.to_string(),
     ];
-    
+
     for binary_path in &binary_paths {
         if Path::new(binary_path).exists() || which::which(name).is_ok() {
             let output = Command::new(binary_path)
@@ -237,14 +247,14 @@ fn run_binary(name: &str, args: &[&str]) -> bool {
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .output();
-            
+
             match output {
                 Ok(out) => return out.status.success(),
                 Err(_) => continue,
             }
         }
     }
-    
+
     // Fallback: use cargo run
     let mut cargo_args = vec![
         "run".to_string(),
@@ -255,14 +265,14 @@ fn run_binary(name: &str, args: &[&str]) -> bool {
         "--".to_string(),
     ];
     cargo_args.extend(args.iter().map(|s| s.to_string()));
-    
+
     let output = Command::new("cargo")
         .args(&cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
         .expect("Failed to run cargo");
-    
+
     output.status.success()
 }
 
@@ -279,6 +289,9 @@ fn count_csv_rows(path: &str) -> usize {
 
 fn count_csv_columns(path: &str) -> usize {
     let content = fs::read_to_string(path).unwrap_or_default();
-    content.lines().next().map(|l| l.split(',').count()).unwrap_or(0)
+    content
+        .lines()
+        .next()
+        .map(|l| l.split(',').count())
+        .unwrap_or(0)
 }
-
