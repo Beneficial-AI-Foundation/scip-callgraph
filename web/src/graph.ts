@@ -226,6 +226,7 @@ export class CallGraphVisualization {
       newState.filters.selectedNodes.add(node.id);
     }
     
+    this.state = newState;  // Keep local state in sync
     this.onStateChange(newState, true);  // Selection changed
     this.highlightNode(node);
   }
@@ -236,6 +237,7 @@ export class CallGraphVisualization {
   private handleNodeHover(_event: MouseEvent, node: D3Node): void {
     const newState = { ...this.state };
     newState.hoveredNode = node;
+    this.state = newState;  // Keep local state in sync
     this.onStateChange(newState, false);  // Hover only, no selection change
     
     // Highlight connected nodes
@@ -264,6 +266,7 @@ export class CallGraphVisualization {
   private handleNodeLeave(): void {
     const newState = { ...this.state };
     newState.hoveredNode = null;
+    this.state = newState;  // Keep local state in sync
     this.onStateChange(newState, false);  // Hover only, no selection change
     
     this.nodeElements?.style('opacity', 1);
