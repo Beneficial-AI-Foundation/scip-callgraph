@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 
-struct FunctionNode {
+pub struct FunctionNode {
     symbol: String,
     display_name: String,
     body: Option<String>,

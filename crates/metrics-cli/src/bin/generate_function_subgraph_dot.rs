@@ -49,12 +49,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .function_names
         .iter()
         .map(|name| {
-            name.replace(' ', "_")
-                .replace('/', "_")
-                .replace('\\', "_")
-                .replace('#', "_")
-                .replace('(', "")
-                .replace(')', "")
+            name.replace([' ', '/', '\\', '#'], "_")
+                .replace(['(', ')'], "")
                 .replace('.', "_")
         })
         .collect();

@@ -1,6 +1,6 @@
-/// Detailed validation: Show exactly what tokens are counted
-///
-/// Usage: cargo run --bin validate_spec_halstead
+//! Detailed validation: Show exactly what tokens are counted
+//!
+//! Usage: cargo run --bin validate_spec_halstead
 
 use verus_metrics::spec_halstead::analyze_spec;
 

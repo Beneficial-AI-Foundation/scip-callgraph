@@ -9,6 +9,7 @@ struct CsvRow {
     function: String,
     module: String,
     link: String,
+    #[allow(dead_code)]
     has_spec: String,
     has_proof: String,
     trivial_proof: String,
@@ -52,7 +53,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Also extract the function name from identifier
         // Format: "4.1.3 module/path/Type/function"
         if let Some(path_part) = atom.identifier.split_whitespace().nth(1) {
-            if let Some(function) = path_part.split('/').last() {
+            if let Some(function) = path_part.split('/').next_back() {
                 atom_names.insert(function.to_string());
             }
         }

@@ -1,6 +1,6 @@
-/// Test Verus quantifier handling
-///
-/// Usage: cargo run --bin test_quantifiers
+//! Test Verus quantifier handling
+//!
+//! Usage: cargo run --bin test_quantifiers
 
 use verus_metrics::spec_halstead::analyze_spec;
 

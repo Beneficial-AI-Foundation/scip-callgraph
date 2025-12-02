@@ -66,8 +66,7 @@ fn has_proof_block(content: &str, start_line: usize) -> Result<bool, String> {
     let mut brace_depth = 0;
     let mut found_opening_brace = false;
     
-    for i in start_idx..lines.len() {
-        let line = lines[i];
+    for (i, line) in lines.iter().enumerate().skip(start_idx) {
         
         // Track braces
         for ch in line.chars() {

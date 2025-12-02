@@ -5,13 +5,18 @@ use std::fs::File;
 #[derive(Debug, Deserialize)]
 struct Atom {
     identifier: String,
+    #[allow(dead_code)]
     statement_type: String,
+    #[allow(dead_code)]
     deps: Vec<String>,
     body: String,
     display_name: String,
+    #[allow(dead_code)]
     full_path: String,
+    #[allow(dead_code)]
     relative_path: String,
     file_name: String,
+    #[allow(dead_code)]
     parent_folder: String,
 }
 

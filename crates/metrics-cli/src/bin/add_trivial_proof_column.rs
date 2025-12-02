@@ -8,6 +8,7 @@ use std::fs::File;
 struct VerificationCategory {
     identifier: String,
     display_name: String,
+    #[allow(dead_code)]
     category: String,
     has_proof_block: bool,
     is_trivially_verified: bool,
@@ -114,7 +115,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 // Strategy 3: Try module::function
                 let key = format!("{}::{}", row.module, row.function);
-                by_module_function.get(&key).map(|v| *v)
+                by_module_function.get(&key).copied()
             }
         };
         

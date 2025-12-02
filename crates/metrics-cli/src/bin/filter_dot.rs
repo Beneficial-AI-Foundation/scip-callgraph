@@ -46,7 +46,7 @@ fn main() -> io::Result<()> {
                     let parts: Vec<&str> = trimmed.split("->").collect();
                     if parts.len() == 2 {
                         let source = parts[0].trim();
-                        let target = parts[1].trim().split_whitespace().next().unwrap_or("");
+                        let target = parts[1].split_whitespace().next().unwrap_or("");
 
                         // Skip edges where either source or target starts with "core::"
                         if !source.contains("\"core::") && !target.contains("\"core::") {

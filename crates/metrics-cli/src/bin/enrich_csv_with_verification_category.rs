@@ -8,11 +8,15 @@ use std::fs::File;
 struct VerificationCategory {
     identifier: String,
     display_name: String,
+    #[allow(dead_code)]
     file_name: String,
     category: String,
+    #[allow(dead_code)]
     has_requires: bool,
+    #[allow(dead_code)]
     has_ensures: bool,
     has_proof_block: bool,
+    #[allow(dead_code)]
     has_assume_false: bool,
     is_trivially_verified: bool,
     requires_count: usize,
@@ -86,7 +90,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Read and enrich CSV
     println!("Reading CSV from {}...", input_csv);
     let mut reader = Reader::from_path(input_csv)?;
-    let headers = reader.headers()?.clone();
+    let _headers = reader.headers()?.clone();
     
     let mut enriched_rows = Vec::new();
     let mut matched = 0;
@@ -101,7 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             Some(*cat)
         } else {
             let key = format!("{}::{}", row.module, row.function);
-            by_module_function.get(&key).map(|v| *v)
+            by_module_function.get(&key).copied()
         };
         
         let enriched = if let Some(cat) = category {

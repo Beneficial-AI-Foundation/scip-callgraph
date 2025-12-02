@@ -10,7 +10,9 @@ struct VerificationCategory {
     display_name: String,
     file_name: String,
     category: String,
+    #[allow(dead_code)]
     has_requires: bool,
+    #[allow(dead_code)]
     has_ensures: bool,
     has_proof_block: bool,
     has_assume_false: bool,
@@ -142,7 +144,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut by_file: std::collections::HashMap<String, Vec<&UntrackedVerified>> = std::collections::HashMap::new();
     for func in &untracked_verified {
         by_file.entry(func.file_name.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(func);
     }
     

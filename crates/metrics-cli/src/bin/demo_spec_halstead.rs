@@ -1,6 +1,6 @@
-/// Demo: Compute Halstead metrics for Verus specifications
-///
-/// Usage: cargo run --bin demo_spec_halstead
+//! Demo: Compute Halstead metrics for Verus specifications
+//!
+//! Usage: cargo run --bin demo_spec_halstead
 
 use verus_metrics::spec_halstead::analyze_spec;
 
