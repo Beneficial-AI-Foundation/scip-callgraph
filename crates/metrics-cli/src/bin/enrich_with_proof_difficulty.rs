@@ -6,8 +6,11 @@ use std::error::Error;
 #[derive(Debug, Deserialize)]
 struct ProofRow {
     function: String,
+    #[allow(dead_code)]
     module: String,
+    #[allow(dead_code)]
     link: String,
+    #[allow(dead_code)]
     has_spec: String,
     has_proof: String,
     trivial_proof: String,

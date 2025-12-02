@@ -233,7 +233,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 if let Some(a) = atoms_by_qualified.get(stripped) {
                     Some(*a)
                 } else {
-                    atoms_by_display.get(stripped).map(|v| *v)
+                    atoms_by_display.get(stripped).copied()
                 }
             } else {
                 None
@@ -245,7 +245,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let module_parts: Vec<&str> = row.module.split("::").collect();
                 if module_parts.len() >= 2 {
                     // Skip crate name (first part) and convert to path
-                    let path_parts: Vec<&str> = module_parts[1..].iter().map(|s| *s).collect();
+                    let path_parts: Vec<&str> = module_parts[1..].to_vec();
                     let file_path = format!("src/{}.rs", path_parts.join("/"));
                     
                     // Extract method name from function (e.g., "FieldElement51::sub" -> "sub")
@@ -257,7 +257,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     
                     // Try to find by display_name + file_path
                     let key = format!("{}|{}", method_name, file_path);
-                    atoms_by_display_and_file.get(&key).map(|v| *v)
+                    atoms_by_display_and_file.get(&key).copied()
                 } else {
                     None
                 }

@@ -154,11 +154,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         let function_name = &input_row.function;
         let module = &input_row.module;
         
-        let mut atom_opt: Option<&AtomWithProofMetrics> = None;
-        
         // Strategy 1: Try module::function (most specific, use FIRST)
         let key1 = format!("{}::{}", module, function_name);
-        atom_opt = by_full_path.get(&key1).copied();
+        let mut atom_opt: Option<&AtomWithProofMetrics> = by_full_path.get(&key1).copied();
         
         // Strategy 2: Extract last segment of module and try module::Type::function
         if atom_opt.is_none() && module.contains("::") {

@@ -1,19 +1,19 @@
-/// Full Metrics Pipeline Runner
-///
-/// Orchestrates the complete metrics pipeline:
-/// 1. Generate atoms from SCIP index
-/// 2. Compute spec Halstead metrics
-/// 3. Compute proof Halstead metrics
-/// 4. Enrich CSV with RCA code metrics
-/// 5. Enrich CSV with all spec + proof metrics
-///
-/// Usage:
-///   cargo run -p metrics-cli --bin run_full_pipeline -- \
-///     --scip data/scip/curve_dalek_index_scip_26_nov.json \
-///     --csv data/csv/functions_to_track.csv \
-///     --rca-dir curve25519-dalek/curve25519-dalek/ \
-///     --proof-csv data/csv/curve25519_functions_with_trivial.csv \
-///     --output-dir data/pipeline_output/
+//! Full Metrics Pipeline Runner
+//!
+//! Orchestrates the complete metrics pipeline:
+//! 1. Generate atoms from SCIP index
+//! 2. Compute spec Halstead metrics
+//! 3. Compute proof Halstead metrics
+//! 4. Enrich CSV with RCA code metrics
+//! 5. Enrich CSV with all spec + proof metrics
+//!
+//! Usage:
+//!   cargo run -p metrics-cli --bin run_full_pipeline -- \
+//!     --scip data/scip/curve_dalek_index_scip_26_nov.json \
+//!     --csv data/csv/functions_to_track.csv \
+//!     --rca-dir curve25519-dalek/curve25519-dalek/ \
+//!     --proof-csv data/csv/curve25519_functions_with_trivial.csv \
+//!     --output-dir data/pipeline_output/
 
 use std::env;
 use std::fs;
