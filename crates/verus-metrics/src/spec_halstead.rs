@@ -572,23 +572,9 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_remove_type_casts() {
-        // Simple cast
-        let spec = "x as int";
-        let result = remove_type_casts(spec);
-        assert_eq!(result, "x");
-        
-        // Cast in parentheses
-        let spec2 = "(pow2(51) as int)";
-        let result2 = remove_type_casts(spec2);
-        assert_eq!(result2, "(pow2(51))");
-        
-        // Multiple casts
-        let spec3 = "a as int + b as nat";
-        let result3 = remove_type_casts(spec3);
-        assert_eq!(result3, "a + b");
-    }
+    // REMOVED: test_remove_type_casts
+    // The remove_type_casts function was removed because verus_syn handles type casts natively.
+    // See lines 219-229 for explanation.
 
     #[test]
     fn test_chained_comparison_with_cast() {
@@ -603,5 +589,59 @@ mod tests {
     // Note: Very complex chained comparisons with arithmetic operators in middle expressions
     // (e.g., "a <= b - c < d") are edge cases not handled by simple regex.
     // These are rare and can be skipped.
+
+    #[test]
+    fn test_function_calls_are_syntactic_only() {
+        // This test demonstrates that Halstead metrics are computed SYNTACTICALLY,
+        // NOT by recursively expanding function definitions.
+        
+        // Simple operands
+        let m1 = analyze_spec("x == y").unwrap();
+        println!("\n'x == y' -> length={} (ops={}, operands={})", 
+                 m1.halstead_length, m1.n1_total_operators, m1.n2_total_operands);
+        // == : 1 operator
+        // x, y : 2 operands
+        // Total: 3
+        assert_eq!(m1.halstead_length, 3);
+        
+        // Add function call f(x)
+        let m2 = analyze_spec("f(x) == y").unwrap();
+        println!("'f(x) == y' -> length={} (ops={}, operands={})", 
+                 m2.halstead_length, m2.n1_total_operators, m2.n2_total_operands);
+        // call, == : 2 operators
+        // f, x, y : 3 operands
+        // Total: 5
+        assert_eq!(m2.halstead_length, 5);
+        
+        // Two function calls: f(x) == g(y)
+        let m3 = analyze_spec("f(x) == g(y)").unwrap();
+        println!("'f(x) == g(y)' -> length={} (ops={}, operands={})", 
+                 m3.halstead_length, m3.n1_total_operators, m3.n2_total_operands);
+        // call, ==, call : 3 operators
+        // f, x, g, y : 4 operands
+        // Total: 7
+        assert_eq!(m3.halstead_length, 7);
+        
+        // Nested function call: f(g(x)) == y
+        let m4 = analyze_spec("f(g(x)) == y").unwrap();
+        println!("'f(g(x)) == y' -> length={} (ops={}, operands={})", 
+                 m4.halstead_length, m4.n1_total_operators, m4.n2_total_operands);
+        // call (f), call (g), == : 3 operators  
+        // f, g, x, y : 4 operands
+        // Total: 7
+        assert_eq!(m4.halstead_length, 7);
+        
+        // Complex nesting: h(f(x), g(y))
+        let m5 = analyze_spec("h(f(x), g(y))").unwrap();
+        println!("'h(f(x), g(y))' -> length={} (ops={}, operands={})", 
+                 m5.halstead_length, m5.n1_total_operators, m5.n2_total_operands);
+        // call (h), call (f), call (g) : 3 operators
+        // h, f, x, g, y : 5 operands
+        // Total: 8
+        assert_eq!(m5.halstead_length, 8);
+        
+        println!("\n✅ Key: Function calls add 'call' operator + function name operand.");
+        println!("   They do NOT recursively expand the function body!");
+    }
 }
 
