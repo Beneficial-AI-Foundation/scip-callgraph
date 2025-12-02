@@ -323,6 +323,27 @@ body {
   word-break: break-all;
 }
 
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, #24292e 0%, #3a3f44 100%);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.github-link:hover {
+  background: linear-gradient(135deg, #3a3f44 0%, #4a5055 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
 .node-list {
   list-style: none;
   max-height: 200px;

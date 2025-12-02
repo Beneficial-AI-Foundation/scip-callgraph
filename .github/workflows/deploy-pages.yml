@@ -7,6 +7,22 @@ on:
       - 'web/**'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:  # Allow manual deployment
+    inputs:
+      graph_json_url:
+        description: 'Default graph.json URL to load'
+        required: false
+        type: string
+        default: 'https://raw.githubusercontent.com/Beneficial-AI-Foundation/scip-callgraph/main/web/public/graph.json'
+      github_url:
+        description: 'Default GitHub URL for source links'
+        required: false
+        type: string
+        default: 'https://github.com/Beneficial-AI-Foundation/dalek-lite'
+      github_path_prefix:
+        description: 'Path prefix for source files (e.g., "curve25519-dalek" if repo has subdir)'
+        required: false
+        type: string
+        default: 'curve25519-dalek'
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -39,6 +55,10 @@ jobs:
 
       - name: Build web viewer
         working-directory: web
+        env:
+          VITE_GRAPH_JSON_URL: ${{ inputs.graph_json_url || 'https://raw.githubusercontent.com/Beneficial-AI-Foundation/scip-callgraph/main/web/public/graph.json' }}
+          VITE_GITHUB_URL: ${{ inputs.github_url || 'https://github.com/Beneficial-AI-Foundation/dalek-lite' }}
+          VITE_GITHUB_PATH_PREFIX: ${{ inputs.github_path_prefix || 'curve25519-dalek' }}
         run: npm run build
 
       - name: Setup Pages
