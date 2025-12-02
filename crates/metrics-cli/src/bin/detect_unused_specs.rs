@@ -9,12 +9,18 @@ use std::path::Path;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() < 2 {
-        eprintln!("Usage: {} <path_to_rust_project> [path_to_scip_json]", args[0]);
+        eprintln!(
+            "Usage: {} <path_to_rust_project> [path_to_scip_json]",
+            args[0]
+        );
         eprintln!("\nExamples:");
         eprintln!("  {} /path/to/project", args[0]);
-        eprintln!("  {} /path/to/project /path/to/project_index_scip.json", args[0]);
+        eprintln!(
+            "  {} /path/to/project /path/to/project_index_scip.json",
+            args[0]
+        );
         eprintln!("\nIf SCIP JSON path is not provided, it will be generated automatically.");
         std::process::exit(1);
     }
@@ -26,14 +32,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.len() >= 3 {
         scip_json_path = args[2].clone();
         println!("Using provided SCIP JSON: {}", scip_json_path);
-        
+
         if !Path::new(&scip_json_path).exists() {
             eprintln!("Error: SCIP JSON file '{}' does not exist", scip_json_path);
             std::process::exit(1);
         }
     } else {
         println!("No SCIP JSON provided, generating it...");
-        
+
         scip_json_path = generate_scip_json_index(project_path)?;
         println!("Generated SCIP JSON: {}", scip_json_path);
     }
@@ -41,26 +47,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 2: Build call graph
     println!("\nParsing SCIP JSON...");
     let scip_data = parse_scip_json(&scip_json_path)?;
-    
+
     println!("Building call graph...");
     let call_graph = build_call_graph(&scip_data);
     println!("Call graph contains {} functions", call_graph.len());
 
     // Step 3: Write atoms JSON
-    let atoms_json_path = format!("{}_atoms.json", 
+    let atoms_json_path = format!(
+        "{}_atoms.json",
         Path::new(project_path)
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("project")
     );
-    
+
     println!("Writing atoms JSON to {}...", atoms_json_path);
     write_call_graph_as_atoms_json(&call_graph, &atoms_json_path)?;
 
     // Step 4: Load atoms JSON and analyze
     println!("Analyzing for unused specs...");
     let unused_specs = find_unused_specs(&atoms_json_path)?;
-    
+
     println!("Analyzing for unused proofs...");
     let unused_proofs = find_unused_proofs(&atoms_json_path)?;
 
@@ -68,16 +75,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n{}", "=".repeat(80));
     println!("UNUSED VERUS SPECS & PROOFS ANALYSIS");
     println!("{}", "=".repeat(80));
-    
+
     // Report specs
     if unused_specs.is_empty() {
         println!("\n✓ No unused specs detected!");
     } else {
-        println!("\n⚠ Found {} potentially unused SPECS:\n", unused_specs.len());
-        
+        println!(
+            "\n⚠ Found {} potentially unused SPECS:\n",
+            unused_specs.len()
+        );
+
         let mut sorted_specs: Vec<_> = unused_specs.iter().collect();
         sorted_specs.sort_by(|a, b| a.identifier.cmp(&b.identifier));
-        
+
         for (idx, spec) in sorted_specs.iter().enumerate() {
             println!("{}. {}", idx + 1, spec.identifier);
             if !spec.display_name.is_empty() {
@@ -89,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if !spec.relative_path.is_empty() {
                 println!("   Path: {}", spec.relative_path);
             }
-            
+
             // Show first line of body if available
             if !spec.body.is_empty() {
                 let first_line = spec.body.lines().next().unwrap_or("");
@@ -102,17 +112,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!();
         }
     }
-    
+
     // Report proofs
     println!("\n{}", "-".repeat(80));
     if unused_proofs.is_empty() {
         println!("\n✓ No unused proofs detected!");
     } else {
-        println!("\n⚠ Found {} potentially unused PROOFS:\n", unused_proofs.len());
-        
+        println!(
+            "\n⚠ Found {} potentially unused PROOFS:\n",
+            unused_proofs.len()
+        );
+
         let mut sorted_proofs: Vec<_> = unused_proofs.iter().collect();
         sorted_proofs.sort_by(|a, b| a.identifier.cmp(&b.identifier));
-        
+
         for (idx, proof) in sorted_proofs.iter().enumerate() {
             println!("{}. {}", idx + 1, proof.identifier);
             if !proof.display_name.is_empty() {
@@ -124,7 +137,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if !proof.relative_path.is_empty() {
                 println!("   Path: {}", proof.relative_path);
             }
-            
+
             // Show first line of body if available
             if !proof.body.is_empty() {
                 let first_line = proof.body.lines().next().unwrap_or("");
@@ -151,13 +164,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "=".repeat(80));
 
     // Save results to a JSON file
-    let results_file = format!("{}_unused_specs_proofs.json", 
+    let results_file = format!(
+        "{}_unused_specs_proofs.json",
         Path::new(project_path)
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("project")
     );
-    
+
     save_results_to_json(&unused_specs, &unused_proofs, &results_file)?;
     println!("\nResults saved to: {}", results_file);
 
@@ -189,7 +203,11 @@ where
         .map(|atom| atom.identifier.clone())
         .collect();
 
-    println!("Found {} total {}s", function_identifiers.len(), function_type);
+    println!(
+        "Found {} total {}s",
+        function_identifiers.len(),
+        function_type
+    );
 
     // Collect all dependencies (union of all deps)
     let all_deps: HashSet<String> = atoms
@@ -228,17 +246,19 @@ fn find_unused_specs(atoms_json_path: &str) -> Result<Vec<UnusedSpec>, Box<dyn s
 }
 
 /// Find unused proofs from atoms JSON
-fn find_unused_proofs(atoms_json_path: &str) -> Result<Vec<UnusedSpec>, Box<dyn std::error::Error>> {
+fn find_unused_proofs(
+    atoms_json_path: &str,
+) -> Result<Vec<UnusedSpec>, Box<dyn std::error::Error>> {
     find_unused_functions(atoms_json_path, is_proof_function, "proof")
 }
 
 /// Check if an Atom represents a spec function
 fn is_spec_function(atom: &Atom) -> bool {
     let body_lower = atom.body.to_lowercase();
-    
+
     // Check for various spec patterns in the body
-    body_lower.contains("spec fn") 
-        || body_lower.contains("spec(") 
+    body_lower.contains("spec fn")
+        || body_lower.contains("spec(")
         || body_lower.starts_with("spec ")
         || (body_lower.contains("#[verifier") && body_lower.contains("spec"))
 }
@@ -246,9 +266,9 @@ fn is_spec_function(atom: &Atom) -> bool {
 /// Check if an Atom represents a proof function
 fn is_proof_function(atom: &Atom) -> bool {
     let body_lower = atom.body.to_lowercase();
-    
+
     // Check for various proof patterns in the body
-    body_lower.contains("proof fn") 
+    body_lower.contains("proof fn")
         || body_lower.starts_with("proof ")
         || (body_lower.contains("#[verifier") && body_lower.contains("proof"))
         || body_lower.contains("fn lemma_")
@@ -258,7 +278,7 @@ fn is_proof_function(atom: &Atom) -> bool {
 /// Extract visibility from function body (pub, pub(crate), private)
 fn extract_visibility(body: &str) -> String {
     let body_trimmed = body.trim();
-    
+
     if body_trimmed.starts_with("pub(crate)") {
         "pub(crate)".to_string()
     } else if body_trimmed.starts_with("pub open") {
@@ -279,7 +299,7 @@ fn save_results_to_json(
     output_path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use serde::Serialize;
-    
+
     #[derive(Serialize)]
     struct UnusedSpecsReport {
         summary: Summary,
@@ -287,7 +307,7 @@ fn save_results_to_json(
         unused_proofs: Vec<UnusedSpecOutput>,
         warnings: Vec<String>,
     }
-    
+
     #[derive(Serialize)]
     struct Summary {
         total_unused_specs: usize,
@@ -296,7 +316,7 @@ fn save_results_to_json(
         specs_by_visibility: VisibilityBreakdown,
         proofs_by_visibility: VisibilityBreakdown,
     }
-    
+
     #[derive(Serialize)]
     struct VisibilityBreakdown {
         public: usize,
@@ -305,7 +325,7 @@ fn save_results_to_json(
         pub_closed: usize,
         private: usize,
     }
-    
+
     #[derive(Serialize)]
     struct UnusedSpecOutput {
         identifier: String,
@@ -316,7 +336,7 @@ fn save_results_to_json(
         full_path: String,
         declaration: String,
     }
-    
+
     // Count specs by visibility
     let mut specs_vis_breakdown = VisibilityBreakdown {
         public: 0,
@@ -325,7 +345,7 @@ fn save_results_to_json(
         pub_closed: 0,
         private: 0,
     };
-    
+
     for spec in unused_specs {
         match spec.visibility.as_str() {
             "pub" => specs_vis_breakdown.public += 1,
@@ -336,7 +356,7 @@ fn save_results_to_json(
             _ => specs_vis_breakdown.private += 1,
         }
     }
-    
+
     // Count proofs by visibility
     let mut proofs_vis_breakdown = VisibilityBreakdown {
         public: 0,
@@ -345,7 +365,7 @@ fn save_results_to_json(
         pub_closed: 0,
         private: 0,
     };
-    
+
     for proof in unused_proofs {
         match proof.visibility.as_str() {
             "pub" => proofs_vis_breakdown.public += 1,
@@ -356,11 +376,11 @@ fn save_results_to_json(
             _ => proofs_vis_breakdown.private += 1,
         }
     }
-    
+
     // Convert specs to output format
     let mut sorted_specs: Vec<_> = unused_specs.iter().collect();
     sorted_specs.sort_by_key(|s| &s.identifier);
-    
+
     let output_specs: Vec<UnusedSpecOutput> = sorted_specs
         .iter()
         .map(|spec| {
@@ -376,11 +396,11 @@ fn save_results_to_json(
             }
         })
         .collect();
-    
+
     // Convert proofs to output format
     let mut sorted_proofs: Vec<_> = unused_proofs.iter().collect();
     sorted_proofs.sort_by_key(|s| &s.identifier);
-    
+
     let output_proofs: Vec<UnusedSpecOutput> = sorted_proofs
         .iter()
         .map(|proof| {
@@ -396,7 +416,7 @@ fn save_results_to_json(
             }
         })
         .collect();
-    
+
     let report = UnusedSpecsReport {
         summary: Summary {
             total_unused_specs: unused_specs.len(),
@@ -418,10 +438,10 @@ fn save_results_to_json(
             "⚠ Manual review is recommended before removing anything!".to_string(),
         ],
     };
-    
+
     let json = serde_json::to_string_pretty(&report)?;
     fs::write(output_path, json)?;
-    
+
     Ok(())
 }
 
@@ -436,4 +456,3 @@ struct UnusedSpec {
     body: String,
     visibility: String,
 }
-

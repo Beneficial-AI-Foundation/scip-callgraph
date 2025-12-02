@@ -22,4 +22,3 @@ pub mod spec_halstead;
 
 // Re-export main types
 pub use spec_halstead::{analyze_spec, is_prose, SpecHalsteadMetrics};
-

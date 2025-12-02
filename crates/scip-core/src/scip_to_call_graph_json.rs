@@ -213,17 +213,16 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                 function_symbols.insert(symbol.symbol.clone());
 
                 // Use the DEFINITION location if available, otherwise fall back to symbols array location
-                let (abs_path, rel_path) = if let Some((def_abs, def_rel)) =
-                    symbol_to_def_file.get(&symbol.symbol)
-                {
-                    (def_abs.clone(), def_rel.clone())
-                } else {
-                    // Fallback: use the document where the symbol appears in symbols array
-                    let project_root = &scip_data.metadata.project_root;
-                    let rel_path = doc.relative_path.trim_start_matches('/');
-                    let abs_path = format!("{project_root}/{rel_path}");
-                    (abs_path, rel_path.to_string())
-                };
+                let (abs_path, rel_path) =
+                    if let Some((def_abs, def_rel)) = symbol_to_def_file.get(&symbol.symbol) {
+                        (def_abs.clone(), def_rel.clone())
+                    } else {
+                        // Fallback: use the document where the symbol appears in symbols array
+                        let project_root = &scip_data.metadata.project_root;
+                        let rel_path = doc.relative_path.trim_start_matches('/');
+                        let abs_path = format!("{project_root}/{rel_path}");
+                        (abs_path, rel_path.to_string())
+                    };
 
                 symbol_to_file.insert(symbol.symbol.clone(), abs_path.clone());
                 symbol_to_kind.insert(symbol.symbol.clone(), symbol.kind);

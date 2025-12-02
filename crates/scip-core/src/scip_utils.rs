@@ -37,7 +37,10 @@ pub fn generate_scip_json_index(folder_path: &str) -> Result<String, Box<dyn std
         return Err(format!("Path '{}' is not a directory", folder_path.display()).into());
     }
 
-    println!("Running verus-analyzer scip on '{}'...", folder_path.display());
+    println!(
+        "Running verus-analyzer scip on '{}'...",
+        folder_path.display()
+    );
 
     // Step 1: Run verus-analyzer scip <path_to_folder>
     let status = Command::new("verus-analyzer")
@@ -84,4 +87,3 @@ pub fn generate_scip_json_index(folder_path: &str) -> Result<String, Box<dyn std
 
     Ok(output_filename)
 }
-

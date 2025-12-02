@@ -1,9 +1,7 @@
 use clap::Parser;
-use log::{info, error};
+use log::{error, info};
 use scip_core::logging::init_logger;
-use scip_core::scip_to_call_graph_json::{
-    build_call_graph, export_call_graph_d3, parse_scip_json,
-};
+use scip_core::scip_to_call_graph_json::{build_call_graph, export_call_graph_d3, parse_scip_json};
 
 /// Export call graph in D3.js force-directed graph format
 #[derive(Parser, Debug)]
@@ -39,22 +37,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(_) => {
             info!("✓ Successfully exported call graph to {}", args.output);
             info!("  Total nodes: {}", call_graph.len());
-            
+
             // Count total edges
-            let total_edges: usize = call_graph.values()
-                .map(|node| node.callees.len())
-                .sum();
+            let total_edges: usize = call_graph.values().map(|node| node.callees.len()).sum();
             info!("  Total edges: {}", total_edges);
-            
+
             // Count libsignal nodes
-            let libsignal_count = call_graph.values()
+            let libsignal_count = call_graph
+                .values()
                 .filter(|node| {
-                    node.symbol.contains("libsignal") || 
-                    node.relative_path.contains("libsignal")
+                    node.symbol.contains("libsignal") || node.relative_path.contains("libsignal")
                 })
                 .count();
             info!("  Libsignal nodes: {}", libsignal_count);
-            
+
             info!("\nNext steps:");
             info!("  1. Open the web viewer: open web/index.html");
             info!("  2. Load the exported file: {}", args.output);
@@ -67,4 +63,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

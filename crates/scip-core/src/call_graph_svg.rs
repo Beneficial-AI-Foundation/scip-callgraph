@@ -9,14 +9,18 @@ pub struct FunctionNode {
 }
 
 fn escape_html(input: &str) -> String {
-    input.replace('&', "&amp;")
-         .replace('<', "&lt;")
-         .replace('>', "&gt;")
-         .replace('"', "&quot;")
-         .replace('\'', "&#39;")
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
 }
 
-pub fn generate_call_graph_svg(call_graph: &HashMap<String, FunctionNode>, output_path: &str) -> std::io::Result<()> {
+pub fn generate_call_graph_svg(
+    call_graph: &HashMap<String, FunctionNode>,
+    output_path: &str,
+) -> std::io::Result<()> {
     let mut svg = String::new();
     let node_radius = 20;
     let positions = calculate_positions(call_graph);
@@ -25,7 +29,11 @@ pub fn generate_call_graph_svg(call_graph: &HashMap<String, FunctionNode>, outpu
 
     for node in call_graph.values() {
         let (x, y) = positions[&node.symbol];
-        let body = node.body.as_ref().map(|b| escape_html(b)).unwrap_or_default();
+        let body = node
+            .body
+            .as_ref()
+            .map(|b| escape_html(b))
+            .unwrap_or_default();
         svg.push_str(&format!(
             "<g>\
                 <circle cx='{x}' cy='{y}' r='{r}' fill='#4a90e2' stroke='#222' stroke-width='2'/>\
