@@ -1,6 +1,53 @@
-import { D3Graph, GraphState, FilterOptions } from './types';
+import { D3Graph, D3Node, GraphState, FilterOptions } from './types';
 import { applyFilters, getCallers, getCallees } from './filters';
 import { CallGraphVisualization } from './graph';
+
+// GitHub URL for source code links (configurable via env var, URL param, or graph metadata)
+// Priority: URL param > graph metadata > env var
+let githubBaseUrl: string | null = import.meta.env.VITE_GITHUB_URL || null;
+
+// Path prefix to prepend to relative_path when building GitHub links
+// (e.g., "curve25519-dalek" if repo structure is repo/curve25519-dalek/src/...)
+let githubPathPrefix: string = import.meta.env.VITE_GITHUB_PATH_PREFIX || '';
+
+/**
+ * Get a short snippet from function body (first few lines)
+ */
+function getBodySnippet(body: string, maxLines: number = 5): string {
+  const lines = body.split('\n');
+  if (lines.length <= maxLines) {
+    return body;
+  }
+  return lines.slice(0, maxLines).join('\n') + '\n// ...';
+}
+
+/**
+ * Build a GitHub link to the source code
+ */
+function buildGitHubLink(node: D3Node): string | null {
+  if (!githubBaseUrl) return null;
+  
+  // Clean up the base URL (remove trailing slash)
+  const baseUrl = githubBaseUrl.replace(/\/$/, '');
+  
+  // Clean up path prefix (remove leading/trailing slashes)
+  const prefix = githubPathPrefix.replace(/^\/|\/$/g, '');
+  
+  // Build the full path
+  const fullPath = prefix ? `${prefix}/${node.relative_path}` : node.relative_path;
+  
+  // Build the link with line numbers if available
+  let link = `${baseUrl}/blob/main/${fullPath}`;
+  
+  if (node.start_line) {
+    link += `#L${node.start_line}`;
+    if (node.end_line && node.end_line !== node.start_line) {
+      link += `-L${node.end_line}`;
+    }
+  }
+  
+  return link;
+}
 
 // Initialize state
 const initialFilters: FilterOptions = {
@@ -105,12 +152,28 @@ function setupUIHandlers(): void {
 }
 
 /**
- * Auto-load graph from URL parameter or local graph.json
+ * Auto-load graph from URL parameter, env var, or local graph.json
+ * Priority: URL param > env var > local file
  */
 async function autoLoadGraph(): Promise<void> {
-  // First, check for URL parameter
+  // Check for URL parameters (highest priority)
   const urlParams = new URLSearchParams(window.location.search);
-  const jsonUrl = urlParams.get('json') || urlParams.get('url');
+  const jsonUrlParam = urlParams.get('json') || urlParams.get('url');
+  
+  // Check for GitHub URL parameter (overrides metadata and env var)
+  const githubParam = urlParams.get('github');
+  if (githubParam) {
+    githubBaseUrl = githubParam;
+  }
+  
+  // Check for GitHub path prefix parameter (e.g., "curve25519-dalek")
+  const prefixParam = urlParams.get('github_prefix') || urlParams.get('prefix');
+  if (prefixParam) {
+    githubPathPrefix = prefixParam;
+  }
+  
+  // Determine which JSON URL to use: URL param > env var > local file
+  const jsonUrl = jsonUrlParam || import.meta.env.VITE_GRAPH_JSON_URL || null;
   
   if (jsonUrl) {
     try {
@@ -124,7 +187,8 @@ async function autoLoadGraph(): Promise<void> {
       const text = await response.text();
       const graph: D3Graph = JSON.parse(text);
       
-      loadGraph(graph, `Loaded from URL: ${jsonUrl}`);
+      const source = jsonUrlParam ? 'URL parameter' : 'configured default';
+      loadGraph(graph, `Loaded from ${source}: ${jsonUrl}`);
       return;
     } catch (error) {
       console.error('Failed to load graph from URL:', error);
@@ -159,6 +223,11 @@ async function autoLoadGraph(): Promise<void> {
 function loadGraph(graph: D3Graph, message: string): void {
   state.fullGraph = graph;
   state.filters = { ...initialFilters };
+  
+  // Set GitHub URL from metadata if not already set via URL param
+  if (!githubBaseUrl && graph.metadata.github_url) {
+    githubBaseUrl = graph.metadata.github_url;
+  }
   
   console.log('[DEBUG] Graph loaded:', graph.nodes.length, 'nodes,', graph.links.length, 'links');
   
@@ -318,6 +387,13 @@ function updateNodeInfo(): void {
     ? callees.map(n => `<li>${n.display_name}</li>`).join('')
     : '<li><em>None</em></li>';
 
+  const githubLink = buildGitHubLink(node);
+  const lineInfo = node.start_line 
+    ? (node.end_line && node.end_line !== node.start_line 
+        ? `Lines ${node.start_line}-${node.end_line}` 
+        : `Line ${node.start_line}`)
+    : '';
+
   nodeInfoDiv.innerHTML = `
     <div class="node-detail">
       <h3>${node.display_name}</h3>
@@ -327,15 +403,19 @@ function updateNodeInfo(): void {
     </div>
     <div class="node-detail">
       <strong>File:</strong> ${node.file_name}
+      ${lineInfo ? `<span style="color: #888; margin-left: 0.5rem;">(${lineInfo})</span>` : ''}
     </div>
     <div class="node-detail">
       <strong>Path:</strong> 
       <code class="code-block">${node.relative_path}</code>
     </div>
-    <div class="node-detail">
-      <strong>Symbol:</strong>
-      <code class="code-block">${node.symbol}</code>
-    </div>
+    ${githubLink ? `
+      <div class="node-detail">
+        <a href="${githubLink}" target="_blank" rel="noopener noreferrer" class="github-link">
+          📂 View on GitHub
+        </a>
+      </div>
+    ` : ''}
     <div class="node-detail">
       <strong>Callers (${callers.length}):</strong>
       <ul class="node-list">${callersHtml}</ul>
@@ -346,8 +426,8 @@ function updateNodeInfo(): void {
     </div>
     ${node.body ? `
       <div class="node-detail">
-        <strong>Body:</strong>
-        <pre class="code-block"><code>${escapeHtml(node.body)}</code></pre>
+        <strong>Code Preview:</strong>
+        <pre class="code-block"><code>${escapeHtml(getBodySnippet(node.body, 8))}</code></pre>
       </div>
     ` : ''}
   `;

@@ -139,6 +139,10 @@ pub struct D3Node {
     pub parent_folder: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_line: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_line: Option<usize>,
     pub is_libsignal: bool,
     pub caller_count: usize,
     pub callee_count: usize,
@@ -158,6 +162,8 @@ pub struct D3GraphMetadata {
     pub total_edges: usize,
     pub project_root: String,
     pub generated_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub github_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -522,6 +528,16 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
                 .to_string_lossy()
                 .to_string();
 
+            // Extract line numbers from range (SCIP uses 0-based, convert to 1-based)
+            let (start_line, end_line) = if node.range.len() >= 3 {
+                (
+                    Some(node.range[0] as usize + 1),
+                    Some(node.range[2] as usize + 1),
+                )
+            } else {
+                (None, None)
+            };
+
             D3Node {
                 id: node.symbol.clone(),
                 display_name: node.display_name.clone(),
@@ -531,6 +547,8 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
                 file_name,
                 parent_folder,
                 body: node.body.clone(),
+                start_line,
+                end_line,
                 is_libsignal: is_libsignal_node(node),
                 caller_count: node.callers.len(),
                 callee_count: node.callees.len(),
@@ -563,6 +581,7 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
         total_edges: links.len(),
         project_root: scip_data.metadata.project_root.clone(),
         generated_at: timestamp,
+        github_url: None, // Can be set via CLI or JSON config
     };
 
     // Create the full graph structure

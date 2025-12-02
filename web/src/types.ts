@@ -9,6 +9,8 @@ export interface D3Node {
   file_name: string;
   parent_folder: string;
   body?: string;
+  start_line?: number;
+  end_line?: number;
   is_libsignal: boolean;
   caller_count: number;
   callee_count: number;
@@ -32,6 +34,7 @@ export interface D3GraphMetadata {
   total_edges: number;
   project_root: string;
   generated_at: string;
+  github_url?: string;
 }
 
 export interface D3Graph {
