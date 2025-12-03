@@ -1,5 +1,14 @@
 // Type definitions matching the Rust D3Graph structure
 
+export interface SimilarLemma {
+  name: string;
+  score: number;
+  file_path: string;
+  line_number: number | null;
+  signature: string;
+  source: string;  // "project" or "vstd"
+}
+
 export interface D3Node {
   id: string;
   display_name: string;
@@ -14,6 +23,7 @@ export interface D3Node {
   is_libsignal: boolean;
   caller_count: number;
   callee_count: number;
+  similar_lemmas?: SimilarLemma[];
   // D3-specific properties added during simulation
   x?: number;
   y?: number;
@@ -47,11 +57,12 @@ export interface FilterOptions {
   showLibsignal: boolean;
   showNonLibsignal: boolean;
   maxDepth: number | null;
-  searchQuery: string;
-  includeCallers: boolean;
-  includeCallees: boolean;
+  sourceQuery: string;  // Source node(s) - shows what they call (callees direction)
+  sinkQuery: string;    // Sink node(s) - shows who calls them (callers direction)
+  // When both source and sink are set, shows paths between them
   selectedNodes: Set<string>;
   expandedNodes: Set<string>;
+  hiddenNodes: Set<string>;  // Nodes hidden by user (Shift+click)
 }
 
 export interface GraphState {

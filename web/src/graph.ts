@@ -212,11 +212,28 @@ export class CallGraphVisualization {
 
   /**
    * Handle node click
+   * - Normal click: select/deselect node
+   * - Shift+click: hide node
    */
   private handleNodeClick(event: MouseEvent, node: D3Node): void {
     event.stopPropagation();
     
     const newState = { ...this.state };
+    
+    // Shift+click: hide the node
+    if (event.shiftKey) {
+      newState.filters.hiddenNodes.add(node.id);
+      // Clear selection if hiding the selected node
+      if (newState.selectedNode?.id === node.id) {
+        newState.selectedNode = null;
+      }
+      newState.filters.selectedNodes.delete(node.id);
+      this.state = newState;
+      this.onStateChange(newState, true);  // Triggers re-filter
+      return;
+    }
+    
+    // Normal click: toggle selection
     newState.selectedNode = node;
     
     // Toggle node selection for filtering
