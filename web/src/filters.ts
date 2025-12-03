@@ -25,7 +25,11 @@ export function applyFilters(
         sourceMatchIds.add(node.id);
       }
     });
-    console.log('[DEBUG] Source matches:', sourceMatchIds.size);
+    // Log matched node names for debugging
+    const sourceNames = fullGraph.nodes
+      .filter(n => sourceMatchIds.has(n.id))
+      .map(n => `${n.display_name} (${n.file_name})`);
+    console.log('[DEBUG] Source matches:', sourceMatchIds.size, sourceNames);
   }
   
   if (sinkQuery !== '') {
@@ -34,7 +38,10 @@ export function applyFilters(
         sinkMatchIds.add(node.id);
       }
     });
-    console.log('[DEBUG] Sink matches:', sinkMatchIds.size);
+    const sinkNames = fullGraph.nodes
+      .filter(n => sinkMatchIds.has(n.id))
+      .map(n => `${n.display_name} (${n.file_name})`);
+    console.log('[DEBUG] Sink matches:', sinkMatchIds.size, sinkNames);
   }
 
   // Build the set of nodes to include based on source/sink configuration
@@ -155,13 +162,30 @@ export function applyFilters(
  * 
  * Supports two modes:
  * - Substring match (default): "foo" matches anything containing "foo"
- * - Exact match: '"foo"' (with quotes) matches only nodes named exactly "foo"
+ * - Exact match: '"foo"' (with quotes) matches only nodes where:
+ *   - display_name equals exactly, OR
+ *   - the function name part of symbol equals exactly
  */
 function matchesQuery(node: D3Node, query: string): boolean {
   // Check for exact match syntax: "query" (surrounded by quotes)
   if (query.startsWith('"') && query.endsWith('"') && query.length > 2) {
     const exactQuery = query.slice(1, -1).toLowerCase();
-    return node.display_name.toLowerCase() === exactQuery;
+    
+    // Check display_name
+    if (node.display_name.toLowerCase() === exactQuery) {
+      return true;
+    }
+    
+    // Also check the function name extracted from symbol
+    // Symbol format varies, but function name is usually after last `/` and before `(`
+    // e.g., "rust-analyzer .../scalar.rs/impl Scalar52/as_bytes()."
+    const symbolLower = node.symbol.toLowerCase();
+    const funcNameMatch = symbolLower.match(/\/([^/(]+)\([^)]*\)[.`]?$/);
+    if (funcNameMatch && funcNameMatch[1] === exactQuery) {
+      return true;
+    }
+    
+    return false;
   }
   
   // Default: substring match
