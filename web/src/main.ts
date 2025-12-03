@@ -54,11 +54,11 @@ const initialFilters: FilterOptions = {
   showLibsignal: true,
   showNonLibsignal: true,
   maxDepth: 1,
-  searchQuery: '',
-  includeCallers: true,
-  includeCallees: true,
+  sourceQuery: '',  // Source nodes - shows what they call (callees)
+  sinkQuery: '',    // Sink nodes - shows who calls them (callers)
   selectedNodes: new Set(),
   expandedNodes: new Set(),
+  hiddenNodes: new Set(),
 };
 
 let state: GraphState = {
@@ -114,18 +114,13 @@ function setupUIHandlers(): void {
     applyFiltersAndUpdate();
   });
 
-  document.getElementById('search-input')?.addEventListener('input', (e) => {
-    state.filters.searchQuery = (e.target as HTMLInputElement).value;
+  document.getElementById('source-input')?.addEventListener('input', (e) => {
+    state.filters.sourceQuery = (e.target as HTMLInputElement).value;
     applyFiltersAndUpdate();
   });
 
-  document.getElementById('include-callers')?.addEventListener('change', (e) => {
-    state.filters.includeCallers = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
-
-  document.getElementById('include-callees')?.addEventListener('change', (e) => {
-    state.filters.includeCallees = (e.target as HTMLInputElement).checked;
+  document.getElementById('sink-input')?.addEventListener('input', (e) => {
+    state.filters.sinkQuery = (e.target as HTMLInputElement).value;
     applyFiltersAndUpdate();
   });
 
@@ -145,6 +140,10 @@ function setupUIHandlers(): void {
     state.filters.selectedNodes.clear();
     state.selectedNode = null;
     applyFiltersAndUpdate();
+  });
+
+  document.getElementById('show-all-hidden')?.addEventListener('click', () => {
+    showAllHiddenNodes();
   });
 
   // Window resize
@@ -298,12 +297,13 @@ async function handleFileLoad(event: Event): Promise<void> {
 function applyFiltersAndUpdate(): void {
   if (!state.fullGraph) return;
 
-  console.log('[DEBUG] applyFiltersAndUpdate called with searchQuery:', JSON.stringify(state.filters.searchQuery));
+  console.log('[DEBUG] applyFiltersAndUpdate called with source:', JSON.stringify(state.filters.sourceQuery), 'sink:', JSON.stringify(state.filters.sinkQuery));
   state.filteredGraph = applyFilters(state.fullGraph, state.filters);
   console.log('[DEBUG] Filtered graph:', state.filteredGraph.nodes.length, 'nodes,', state.filteredGraph.links.length, 'links');
   visualization?.update(state.filteredGraph);
   updateStats();
   updateNodeInfo();
+  updateHiddenNodesUI();
 }
 
 /**
@@ -376,15 +376,26 @@ function updateNodeInfo(): void {
     return;
   }
 
-  const callers = getCallers(state.filteredGraph, node.id);
-  const callees = getCallees(state.filteredGraph, node.id);
+  // Get callers/callees from FULL graph (not filtered) to show complete info
+  const allCallers = state.fullGraph ? getCallers(state.fullGraph, node.id) : [];
+  const allCallees = state.fullGraph ? getCallees(state.fullGraph, node.id) : [];
+  
+  // Also get visible callers/callees for the list (only show what's in view)
+  const visibleCallers = getCallers(state.filteredGraph, node.id);
+  const visibleCallees = getCallees(state.filteredGraph, node.id);
 
-  const callersHtml = callers.length > 0
-    ? callers.map(n => `<li>${n.display_name}</li>`).join('')
+  const callersHtml = allCallers.length > 0
+    ? allCallers.map(n => {
+        const isVisible = visibleCallers.some(vc => vc.id === n.id);
+        return `<li${!isVisible ? ' style="opacity: 0.5;"' : ''}>${n.display_name}${!isVisible ? ' <em>(filtered)</em>' : ''}</li>`;
+      }).join('')
     : '<li><em>None</em></li>';
 
-  const calleesHtml = callees.length > 0
-    ? callees.map(n => `<li>${n.display_name}</li>`).join('')
+  const calleesHtml = allCallees.length > 0
+    ? allCallees.map(n => {
+        const isVisible = visibleCallees.some(vc => vc.id === n.id);
+        return `<li${!isVisible ? ' style="opacity: 0.5;"' : ''}>${n.display_name}${!isVisible ? ' <em>(filtered)</em>' : ''}</li>`;
+      }).join('')
     : '<li><em>None</em></li>';
 
   const githubLink = buildGitHubLink(node);
@@ -417,13 +428,29 @@ function updateNodeInfo(): void {
       </div>
     ` : ''}
     <div class="node-detail">
-      <strong>Callers (${callers.length}):</strong>
+      <strong>Callers (${allCallers.length}):</strong>
       <ul class="node-list">${callersHtml}</ul>
     </div>
     <div class="node-detail">
-      <strong>Callees (${callees.length}):</strong>
+      <strong>Callees (${allCallees.length}):</strong>
       <ul class="node-list">${calleesHtml}</ul>
     </div>
+    ${node.similar_lemmas && node.similar_lemmas.length > 0 ? `
+      <div class="node-detail">
+        <strong>🔍 Similar Lemmas:</strong>
+        <ul class="similar-lemmas-list">
+          ${node.similar_lemmas.map(lemma => `
+            <li class="similar-lemma-item">
+              <span class="similar-lemma-name">${escapeHtml(lemma.name)}</span>
+              <span class="similar-lemma-score">${(lemma.score * 100).toFixed(0)}%</span>
+              <div class="similar-lemma-meta">
+                ${lemma.file_path}${lemma.line_number ? `:${lemma.line_number}` : ''}
+              </div>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    ` : ''}
     ${node.body ? `
       <div class="node-detail">
         <strong>Code Preview:</strong>
@@ -439,17 +466,66 @@ function updateNodeInfo(): void {
 function resetFilters(): void {
   state.filters = { ...initialFilters };
   state.filters.selectedNodes.clear();
+  state.filters.hiddenNodes.clear();
   state.selectedNode = null;
   
   // Reset UI controls
   (document.getElementById('show-libsignal') as HTMLInputElement).checked = true;
   (document.getElementById('show-non-libsignal') as HTMLInputElement).checked = true;
-  (document.getElementById('search-input') as HTMLInputElement).value = '';
-  (document.getElementById('include-callers') as HTMLInputElement).checked = true;
-  (document.getElementById('include-callees') as HTMLInputElement).checked = true;
+  (document.getElementById('source-input') as HTMLInputElement).value = '';
+  (document.getElementById('sink-input') as HTMLInputElement).value = '';
   (document.getElementById('depth-limit') as HTMLInputElement).value = '1';
   document.getElementById('depth-value')!.textContent = '1';
   
+  applyFiltersAndUpdate();
+}
+
+/**
+ * Update the hidden nodes UI
+ */
+function updateHiddenNodesUI(): void {
+  const container = document.getElementById('hidden-nodes-container');
+  const list = document.getElementById('hidden-nodes-list');
+  const count = document.getElementById('hidden-count');
+  
+  if (!container || !list || !count) return;
+  
+  const hiddenCount = state.filters.hiddenNodes.size;
+  count.textContent = hiddenCount.toString();
+  
+  if (hiddenCount === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  
+  container.style.display = 'block';
+  
+  // Build list of hidden nodes
+  const nodeMap = new Map(state.fullGraph?.nodes.map(n => [n.id, n]) || []);
+  list.innerHTML = '';
+  
+  state.filters.hiddenNodes.forEach(nodeId => {
+    const node = nodeMap.get(nodeId);
+    if (node) {
+      const item = document.createElement('li');
+      item.className = 'hidden-node-item';
+      item.textContent = node.display_name;
+      item.title = 'Click to unhide';
+      item.style.cursor = 'pointer';
+      item.addEventListener('click', () => {
+        state.filters.hiddenNodes.delete(nodeId);
+        applyFiltersAndUpdate();
+      });
+      list.appendChild(item);
+    }
+  });
+}
+
+/**
+ * Show all hidden nodes
+ */
+function showAllHiddenNodes(): void {
+  state.filters.hiddenNodes.clear();
   applyFiltersAndUpdate();
 }
 

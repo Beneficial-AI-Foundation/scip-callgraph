@@ -4,11 +4,11 @@ Metrics Correlation Visualizer
 
 Generates plots to explore correlations between code, spec, and proof metrics.
 
-Usage:
-    python scripts/visualize_metrics.py data/csv/pipeline_FINAL.csv
+Usage (recommended - uses uv):
+    uv run --extra viz python scripts/visualize_metrics.py data/csv/pipeline_FINAL.csv
 
-Requirements:
-    pip install pandas matplotlib seaborn numpy
+Setup (first time only):
+    uv sync --extra viz
 """
 
 import sys
@@ -118,7 +118,7 @@ def plot_code_vs_proof(df: pd.DataFrame, output_dir: Path):
     plt.tight_layout()
     plt.savefig(output_dir / 'plot1_code_vs_proof.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"✓ Saved plot1_code_vs_proof.png")
+    print("✓ Saved plot1_code_vs_proof.png")
 
 
 def plot_spec_vs_proof(df: pd.DataFrame, output_dir: Path):
@@ -177,7 +177,7 @@ def plot_spec_vs_proof(df: pd.DataFrame, output_dir: Path):
     plt.tight_layout()
     plt.savefig(output_dir / 'plot2_spec_vs_proof.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"✓ Saved plot2_spec_vs_proof.png")
+    print("✓ Saved plot2_spec_vs_proof.png")
 
 
 def plot_correlation_heatmap(df: pd.DataFrame, output_dir: Path):
@@ -229,7 +229,7 @@ def plot_correlation_heatmap(df: pd.DataFrame, output_dir: Path):
     plt.tight_layout()
     plt.savefig(output_dir / 'plot3_correlation_heatmap.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"✓ Saved plot3_correlation_heatmap.png")
+    print("✓ Saved plot3_correlation_heatmap.png")
 
 
 def plot_proof_overhead(df: pd.DataFrame, output_dir: Path):
@@ -271,7 +271,7 @@ def plot_proof_overhead(df: pd.DataFrame, output_dir: Path):
     plt.tight_layout()
     plt.savefig(output_dir / 'plot4_proof_overhead.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"✓ Saved plot4_proof_overhead.png")
+    print("✓ Saved plot4_proof_overhead.png")
 
 
 def plot_proof_distribution(df: pd.DataFrame, output_dir: Path):
@@ -320,7 +320,7 @@ def plot_proof_distribution(df: pd.DataFrame, output_dir: Path):
     plt.tight_layout()
     plt.savefig(output_dir / 'plot5_proof_distribution.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"✓ Saved plot5_proof_distribution.png")
+    print("✓ Saved plot5_proof_distribution.png")
 
 
 def plot_combined_complexity(df: pd.DataFrame, output_dir: Path):
@@ -375,7 +375,7 @@ def plot_combined_complexity(df: pd.DataFrame, output_dir: Path):
     plt.tight_layout()
     plt.savefig(output_dir / 'plot6_combined_complexity.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"✓ Saved plot6_combined_complexity.png")
+    print("✓ Saved plot6_combined_complexity.png")
 
 
 def generate_summary_stats(df: pd.DataFrame, output_dir: Path):
@@ -412,7 +412,7 @@ def generate_summary_stats(df: pd.DataFrame, output_dir: Path):
                 correlations.append((desc, corr, len(valid)))
                 summary += f"| {desc} | r = {corr:.3f} | n = {len(valid)} |\n"
     
-    summary += f"""
+    summary += """
 ## Insights
 
 """
@@ -430,7 +430,7 @@ def generate_summary_stats(df: pd.DataFrame, output_dir: Path):
     df_overhead = df[df['proof_overhead_ratio'].notna() & df['non_trivial_proof']]
     if len(df_overhead) > 0:
         top5 = df_overhead.nlargest(5, 'proof_overhead_ratio')
-        summary += f"""
+        summary += """
 ## Top 5 Functions by Proof Overhead
 
 | Function | Proof Overhead Ratio |
@@ -442,7 +442,7 @@ def generate_summary_stats(df: pd.DataFrame, output_dir: Path):
     with open(output_dir / 'ANALYSIS_SUMMARY.md', 'w') as f:
         f.write(summary)
     
-    print(f"✓ Saved ANALYSIS_SUMMARY.md")
+    print("✓ Saved ANALYSIS_SUMMARY.md")
 
 
 def main():

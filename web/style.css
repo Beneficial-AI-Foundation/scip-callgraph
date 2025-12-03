@@ -135,6 +135,19 @@ body {
   color: #558b2f;
 }
 
+/* Input Labels */
+.input-label {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.input-label span {
+  display: block;
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 0.25rem;
+}
+
 /* Search Input */
 .search-input {
   width: 100%;
@@ -148,6 +161,7 @@ body {
 .search-input:focus {
   outline: none;
   border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
 }
 
 /* Slider */
@@ -380,6 +394,78 @@ body {
 .badge-other {
   background: #f1f8e9;
   color: #558b2f;
+}
+
+/* Similar Lemmas */
+.similar-lemmas-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+}
+
+.similar-lemma-item {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+  border-radius: 6px;
+  border-left: 3px solid #6c5ce7;
+}
+
+.similar-lemma-name {
+  font-weight: 600;
+  color: #2d3436;
+  font-size: 0.9rem;
+  display: block;
+}
+
+.similar-lemma-score {
+  display: inline-block;
+  background: #6c5ce7;
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+  margin-top: 0.25rem;
+  font-weight: 600;
+}
+
+.similar-lemma-meta {
+  font-size: 0.75rem;
+  color: #636e72;
+  margin-top: 0.25rem;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* Hidden Nodes List */
+.hidden-nodes-list {
+  list-style: none;
+  max-height: 150px;
+  overflow-y: auto;
+  background: #fff3e0;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+  border: 1px solid #ffcc80;
+}
+
+.hidden-node-item {
+  padding: 0.3rem 0.5rem;
+  margin-bottom: 0.25rem;
+  background: white;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  color: #e65100;
+  border-left: 3px solid #ff9800;
+  transition: all 0.2s;
+}
+
+.hidden-node-item:hover {
+  background: #ffe0b2;
+  transform: translateX(2px);
+}
+
+.hidden-node-item:last-child {
+  margin-bottom: 0;
 }
 
 .placeholder {

@@ -39,15 +39,30 @@
           </div>
 
           <div class="filter-group">
-            <h3>Search</h3>
-            <input 
-              type="text" 
-              id="search-input" 
-              placeholder="Search by name, symbol, or file..." 
-              class="search-input"
-            />
-            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-              💡 Shows matching nodes + their callers/callees
+            <h3>🔍 Source → Sink</h3>
+            <label class="input-label">
+              <span>Source (shows callees):</span>
+              <input 
+                type="text" 
+                id="source-input" 
+                placeholder="e.g., main, parse_config..." 
+                class="search-input"
+              />
+            </label>
+            <label class="input-label">
+              <span>Sink (shows callers):</span>
+              <input 
+                type="text" 
+                id="sink-input" 
+                placeholder="e.g., to_bytes, validate..." 
+                class="search-input"
+              />
+            </label>
+            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.5rem;">
+              💡 <strong>Source only:</strong> what it calls (uses depth)<br>
+              💡 <strong>Sink only:</strong> who calls it (uses depth)<br>
+              💡 <strong>Both:</strong> all paths between them (ignores depth)<br>
+              💡 Use <code>"quotes"</code> for exact match
             </small>
           </div>
 
@@ -67,21 +82,6 @@
             </label>
           </div>
 
-          <div class="filter-group">
-            <h3>Include Neighbors</h3>
-            <label class="checkbox-label">
-              <input type="checkbox" id="include-callers" checked />
-              <span>Include Callers</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="include-callees" checked />
-              <span>Include Callees</span>
-            </label>
-            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.5rem;">
-              💡 When searching, these control which neighbors to show
-            </small>
-          </div>
-
           <div class="button-group">
             <button id="reset-filters" class="btn btn-secondary">
               🔄 Reset Filters
@@ -89,6 +89,17 @@
             <button id="clear-selection" class="btn btn-secondary">
               ❌ Clear Selection
             </button>
+          </div>
+
+          <div id="hidden-nodes-container" class="filter-group" style="display: none;">
+            <h3>👁️ Hidden Nodes (<span id="hidden-count">0</span>)</h3>
+            <ul id="hidden-nodes-list" class="hidden-nodes-list"></ul>
+            <button id="show-all-hidden" class="btn btn-secondary" style="margin-top: 0.5rem;">
+              👁️ Show All
+            </button>
+            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+              💡 Shift+click to hide nodes
+            </small>
           </div>
         </section>
 
@@ -116,7 +127,7 @@
             <li><strong>Pan:</strong> Click and drag background</li>
             <li><strong>Move Node:</strong> Drag a node</li>
             <li><strong>Select:</strong> Click a node to see details</li>
-            <li><strong>Depth Filter:</strong> Click nodes to set starting points, then adjust depth slider</li>
+            <li><strong>Source/Sink:</strong> Enter function names to explore call paths</li>
           </ul>
         </div>
       </main>

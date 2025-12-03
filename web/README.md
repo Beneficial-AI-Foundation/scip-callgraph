@@ -4,13 +4,12 @@ An interactive web-based visualization tool for exploring call graphs generated 
 
 ## Features
 
-- 🎨 **Interactive D3.js Force-Directed Graph** - Visualize call relationships with physics-based layout
-- 🔍 **Dynamic Filtering** - Filter by source type (libsignal vs external), search, caller/callee counts
-- 📏 **Depth Control** - Explore call graphs from selected nodes with adjustable depth
-- 🎯 **Node Selection** - Click nodes to see detailed information about functions
-- 🔗 **Relationship Visualization** - See callers and callees for any selected function
-- ⚡ **Real-time Updates** - All filters apply instantly without reloading
-- 📱 **Responsive Design** - Works on different screen sizes
+- **Force-Directed Graph** - D3.js physics-based layout for call relationships
+- **Source→Sink Path Finding** - Find all paths between two functions
+- **Similar Lemmas** - See semantically similar lemmas for each function
+- **Node Hiding** - Shift+click to hide nodes, declutter complex graphs
+- **Depth Control** - Explore from selected nodes with adjustable depth
+- **Real-time Filtering** - All filters apply instantly
 
 ## Quick Start
 
@@ -77,37 +76,38 @@ This creates an optimized production build in the `dist/` directory.
 
 ### Navigation
 
-- **Zoom:** Mouse wheel or pinch gesture
-- **Pan:** Click and drag the background
-- **Move Nodes:** Click and drag individual nodes
-- **Select Node:** Click on a node to see details
+- **Zoom:** Mouse wheel or pinch
+- **Pan:** Drag background
+- **Move Node:** Drag node
+- **Select:** Click node
+- **Hide:** Shift+click node
 
 ### Filtering
 
-#### Source Type
-- **Libsignal** (blue nodes): Functions from the libsignal codebase
-- **External** (green nodes): Functions from external dependencies
+#### Source → Sink
+- **Source only**: Shows what the function calls (callees)
+- **Sink only**: Shows who calls the function (callers)
+- **Both**: Shows all paths from source to sink
 
-#### Search
-Type function names, symbols, or file names to filter the graph.
+Use `"quotes"` for exact match (e.g., `"as_bytes"` matches only `as_bytes`, not `lemma_as_bytes_foo`).
 
 #### Depth Limit
-1. Click one or more nodes to select them as starting points
-2. Adjust the "Max Depth" slider to show only nodes within N steps
-3. Use "Clear Selection" to reset
+Adjust "Max Depth" slider to limit traversal depth. Only applies to source-only or sink-only mode.
 
-#### Connection Thresholds
-- **Min Callers:** Show only functions called by at least N other functions
-- **Min Callees:** Show only functions that call at least N other functions
+#### Node Type
+- **Libsignal** (blue): Functions from the libsignal codebase
+- **External** (green): Functions from external dependencies
 
-### Node Information Panel
+#### Hiding Nodes
+**Shift+click** any node to hide it. Hidden nodes appear in the sidebar list—click to unhide, or use "Show All".
 
-The right sidebar shows detailed information about selected/hovered nodes:
-- Display name and source type
-- File location and full symbol path
-- List of callers (functions that call this one)
-- List of callees (functions called by this one)
-- Function body (if available)
+### Node Details (Right Sidebar)
+
+- Function name, type, and file location
+- GitHub link (if configured)
+- Callers and callees lists
+- Similar lemmas with similarity scores (if available)
+- Code preview
 
 ## File Structure
 
@@ -125,21 +125,16 @@ web/
 └── vite.config.js      # Vite bundler configuration
 ```
 
-## Technology Stack
+## Stack
 
-- **TypeScript** - Type-safe JavaScript for better development experience
-- **D3.js v7** - Data visualization and force simulation
-- **Vite** - Fast build tool and development server
-- **Vanilla CSS** - No framework overhead, clean and maintainable
+TypeScript, D3.js v7, Vite, vanilla CSS.
 
 ## Tips for Large Graphs
 
-For very large call graphs (1000+ nodes):
-
-1. Use filters to reduce the visible set before loading
-2. Start with a search query to focus on specific areas
-3. Use depth filtering from key entry points
-4. Adjust caller/callee thresholds to show only important nodes
+1. Use source/sink filtering to focus on specific paths
+2. Shift+click to hide noisy nodes
+3. Use depth limit to constrain traversal
+4. Use exact match (`"quotes"`) when substring matching is too broad
 
 ## Troubleshooting
 
@@ -160,17 +155,13 @@ For very large call graphs (1000+ nodes):
 
 ## Development
 
-### Type Checking
-
 ```bash
-npm run type-check
+npm run type-check  # Type checking
+npm run dev         # Dev server with HMR
+npm run build       # Production build
 ```
-
-### Hot Module Replacement
-
-The dev server supports HMR - changes to TypeScript files will update instantly without page reload.
 
 ## License
 
-Same as parent project (MIT OR Apache-2.0)
+MIT OR Apache-2.0
 

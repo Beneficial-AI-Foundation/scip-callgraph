@@ -90,18 +90,36 @@ cargo run -p metrics-cli --bin generate_function_subgraph_dot -- \
 
 ### 4. Interactive Call Graph Viewer
 
-**Online:** Visit `https://beneficial-ai-foundation.github.io/scip-callgraph/`
+**Online:** Visit https://beneficial-ai-foundation.github.io/scip-callgraph/
 
 **Local:**
 ```bash
-# Export call graph data
-cargo run -p metrics-cli --bin export_call_graph_d3 -- <input-scip-json> -o call_graph_d3.json
+# Step 1: Export call graph from SCIP JSON
+cargo run --release --bin export_call_graph_d3 -- \
+    path/to/index_scip.json \
+    -o web/public/graph.json
 
-# Start the web viewer
+# Step 2: Start the web viewer
 cd web && npm install && npm run dev
 ```
 
-See [docs/INTERACTIVE_VIEWER.md](docs/INTERACTIVE_VIEWER.md) for complete documentation.
+Open http://localhost:5173 to explore your call graph interactively.
+
+#### Optional: Enrich with Similar Lemmas
+
+If you have [verus_lemma_finder](https://github.com/Beneficial-AI-Foundation/verus_lemma_finder) set up:
+
+```bash
+# Setup (first time only)
+uv sync --extra enrich
+
+# Enrich graph with similar lemmas
+uv run python scripts/enrich_graph_with_similar_lemmas.py \
+    --graph web/public/graph.json \
+    --index /path/to/lemma_index.json
+```
+
+See [docs/guides/INTERACTIVE_VIEWER.md](docs/guides/INTERACTIVE_VIEWER.md) and [docs/SIMILAR_LEMMAS.md](docs/SIMILAR_LEMMAS.md) for details.
 
 ---
 
@@ -206,8 +224,9 @@ git push origin v1.0.0
 ## Documentation
 
 - [METRICS_PIPELINE.md](METRICS_PIPELINE.md) - Verus metrics pipeline guide
-- [docs/INTERACTIVE_VIEWER.md](docs/INTERACTIVE_VIEWER.md) - Web viewer documentation
-- [docs/GITHUB_PAGES_GUIDE.md](docs/GITHUB_PAGES_GUIDE.md) - Online viewer guide
+- [docs/guides/INTERACTIVE_VIEWER.md](docs/guides/INTERACTIVE_VIEWER.md) - Web viewer documentation
+- [docs/guides/GITHUB_PAGES_GUIDE.md](docs/guides/GITHUB_PAGES_GUIDE.md) - Online viewer guide
+- [docs/SIMILAR_LEMMAS.md](docs/SIMILAR_LEMMAS.md) - Similar lemmas feature
 
 ## License
 
