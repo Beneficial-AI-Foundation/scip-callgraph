@@ -157,6 +157,59 @@ pub struct Atom {
     pub parent_folder: String,
 }
 
+/// Verus function modes
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FunctionMode {
+    /// Executable code (default Rust functions)
+    Exec,
+    /// Proof functions (lemmas, verification helpers)
+    Proof,
+    /// Specification functions (pure mathematical definitions)
+    Spec,
+}
+
+impl FunctionMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FunctionMode::Exec => "exec",
+            FunctionMode::Proof => "proof",
+            FunctionMode::Spec => "spec",
+        }
+    }
+}
+
+/// Detect the Verus function mode from the function signature/body.
+///
+/// Verus functions can be:
+/// - `fn` or `exec fn` - executable code
+/// - `proof fn` - proof functions (lemmas)
+/// - `spec fn` or `open spec fn` or `closed spec fn` - specification functions
+pub fn detect_function_mode(body: &str) -> FunctionMode {
+    // Look at the first few lines for the function signature
+    // The signature typically contains keywords like "proof fn", "spec fn", etc.
+    let signature_area: String = body.lines().take(5).collect::<Vec<_>>().join(" ");
+    let signature_lower = signature_area.to_lowercase();
+    
+    // Check for spec functions (including open/closed spec)
+    // Patterns: "spec fn", "open spec fn", "closed spec fn", "spec(checked) fn"
+    if signature_lower.contains("spec fn") 
+        || signature_lower.contains("spec(checked) fn")
+        || signature_lower.contains("open spec fn")
+        || signature_lower.contains("closed spec fn") 
+    {
+        return FunctionMode::Spec;
+    }
+    
+    // Check for proof functions
+    if signature_lower.contains("proof fn") {
+        return FunctionMode::Proof;
+    }
+    
+    // Default to exec (regular executable functions)
+    FunctionMode::Exec
+}
+
 /// D3.js force-directed graph structures
 #[derive(Debug, Serialize, Deserialize)]
 pub struct D3Node {
@@ -176,6 +229,8 @@ pub struct D3Node {
     pub is_libsignal: bool,
     pub caller_count: usize,
     pub callee_count: usize,
+    /// Verus function mode: exec, proof, or spec
+    pub mode: FunctionMode,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -741,6 +796,11 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
                 (None, None)
             };
 
+            // Detect function mode from body
+            let mode = node.body.as_ref()
+                .map(|b| detect_function_mode(b))
+                .unwrap_or(FunctionMode::Exec);
+            
             D3Node {
                 id: node.symbol.clone(),
                 display_name: node.display_name.clone(),
@@ -755,6 +815,7 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
                 is_libsignal: is_libsignal_node(node),
                 caller_count: node.callers.len(),
                 callee_count: node.callees.len(),
+                mode,
             }
         })
         .collect();

@@ -1,6 +1,61 @@
 import { D3Graph, D3Node, D3Link, FilterOptions } from './types';
 
 /**
+ * Check if a node should be included based on mode filters
+ */
+function nodePassesModeFilter(node: D3Node, filters: FilterOptions): boolean {
+  const mode = node.mode || 'exec';
+  if (mode === 'exec' && !filters.showExecFunctions) return false;
+  if (mode === 'proof' && !filters.showProofFunctions) return false;
+  if (mode === 'spec' && !filters.showSpecFunctions) return false;
+  return true;
+}
+
+/**
+ * Convert a glob pattern to a regex
+ * - * matches any characters (including empty)
+ * - ? matches a single character
+ * - Other regex special chars are escaped
+ * - Pattern is anchored: p_* matches "p_foo" but not "step_1"
+ * - Use *pattern* for substring matching
+ */
+function globToRegex(pattern: string): RegExp {
+  // Escape regex special characters except * and ?
+  let regexStr = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  
+  // Convert glob wildcards to regex
+  regexStr = regexStr.replace(/\*/g, '.*');
+  regexStr = regexStr.replace(/\?/g, '.');
+  
+  // Anchor the pattern (start and end)
+  regexStr = '^' + regexStr + '$';
+  
+  return new RegExp(regexStr, 'i');  // case-insensitive
+}
+
+/**
+ * Check if a node matches any of the exclude patterns
+ * Returns true if node should be EXCLUDED (hidden)
+ */
+function nodeMatchesExcludePattern(node: D3Node, excludePatterns: RegExp[]): boolean {
+  if (excludePatterns.length === 0) return false;
+  const displayName = node.display_name;
+  return excludePatterns.some(pattern => pattern.test(displayName));
+}
+
+/**
+ * Parse exclude patterns from comma-separated string and convert to regexes
+ */
+function parseExcludePatterns(patternsStr: string): RegExp[] {
+  if (!patternsStr.trim()) return [];
+  return patternsStr
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => p.length > 0)
+    .map(p => globToRegex(p));
+}
+
+/**
  * Apply filters to the full graph and return a filtered graph
  */
 export function applyFilters(
@@ -14,6 +69,35 @@ export function applyFilters(
   const sinkQuery = filters.sinkQuery.trim().toLowerCase();
   
   console.log('[DEBUG] Source query:', JSON.stringify(sourceQuery), 'Sink query:', JSON.stringify(sinkQuery));
+
+  // Parse exclude patterns
+  const excludePatterns = parseExcludePatterns(filters.excludePatterns);
+  console.log('[DEBUG] Exclude patterns:', excludePatterns);
+
+  // Pre-filter: Create a set of node IDs that pass mode filters AND don't match exclude patterns
+  // AND are not hidden by the user
+  // This is used to exclude links to/from filtered-out nodes during traversal
+  const modeAllowedNodeIds = new Set<string>(
+    fullGraph.nodes
+      .filter(node => nodePassesModeFilter(node, filters))
+      .filter(node => !nodeMatchesExcludePattern(node, excludePatterns))
+      .filter(node => !filters.hiddenNodes.has(node.id))  // Exclude hidden nodes from traversal
+      .map(node => node.id)
+  );
+  
+  // Create a "traversable" graph that respects mode filters
+  // This prevents traversal through spec/proof/exec nodes that are filtered out
+  const traversableLinks = fullGraph.links.filter(link => {
+    const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+    const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    return modeAllowedNodeIds.has(sourceId) && modeAllowedNodeIds.has(targetId);
+  });
+  
+  const traversableGraph: D3Graph = {
+    nodes: fullGraph.nodes.filter(n => modeAllowedNodeIds.has(n.id)),
+    links: traversableLinks,
+    metadata: fullGraph.metadata,
+  };
 
   // Find nodes matching source and sink queries
   const sourceMatchIds = new Set<string>();
@@ -53,43 +137,108 @@ export function applyFilters(
   // Check if source and sink are the same (for neighborhood mode)
   const isSameQuery = sourceQuery !== '' && sourceQuery === sinkQuery;
 
+  // Track node depths for proper link filtering
+  // For callees: depth increases from source (source_depth + 1 = target_depth)
+  // For callers: depth increases towards source (target_depth + 1 = source_depth)
+  const calleeDepths = new Map<string, number>();  // nodeId -> depth from source
+  const callerDepths = new Map<string, number>();  // nodeId -> depth from sink
+  let usePathBasedLinkFilter = false;  // Whether to filter links based on depth
+
   if (hasSource && hasSink) {
     if (isSameQuery) {
       // Same node in both → show full neighborhood (both directions)
       console.log('[DEBUG] Same query mode - showing full neighborhood');
-      sourceMatchIds.forEach(id => includedNodeIds.add(id));
+      usePathBasedLinkFilter = true;
       
-      // Get both callers and callees
+      sourceMatchIds.forEach(id => {
+        if (modeAllowedNodeIds.has(id)) {
+          includedNodeIds.add(id);
+          calleeDepths.set(id, 0);
+          callerDepths.set(id, 0);
+        }
+      });
+      
+      // Get both callers and callees (using traversableGraph to respect mode filters)
       sourceMatchIds.forEach(nodeId => {
-        const callers = getCallersRecursive(fullGraph, nodeId, filters.maxDepth);
-        const callees = getCalleesRecursive(fullGraph, nodeId, filters.maxDepth);
-        callers.forEach(id => includedNodeIds.add(id));
-        callees.forEach(id => includedNodeIds.add(id));
+        if (!modeAllowedNodeIds.has(nodeId)) return;
+        const callersResult = getCallersRecursive(traversableGraph, nodeId, filters.maxDepth);
+        const calleesResult = getCalleesRecursive(traversableGraph, nodeId, filters.maxDepth);
+        callersResult.nodeIds.forEach(id => includedNodeIds.add(id));
+        calleesResult.nodeIds.forEach(id => includedNodeIds.add(id));
+        // Merge depths (keep minimum depth if node appears multiple times)
+        callersResult.nodeDepths.forEach((depth, id) => {
+          if (!callerDepths.has(id) || depth < callerDepths.get(id)!) {
+            callerDepths.set(id, depth);
+          }
+        });
+        calleesResult.nodeDepths.forEach((depth, id) => {
+          if (!calleeDepths.has(id) || depth < calleeDepths.get(id)!) {
+            calleeDepths.set(id, depth);
+          }
+        });
       });
     } else {
       // Different source and sink → find paths between them
       // NOTE: We ignore maxDepth here - we want ALL nodes on any path from source to sink
       console.log('[DEBUG] Path mode - finding paths from source to sink (ignoring depth limit)');
-      const pathNodes = findPathNodes(fullGraph, sourceMatchIds, sinkMatchIds, null);
+      // Filter source/sink to only include mode-allowed nodes
+      const allowedSources = new Set([...sourceMatchIds].filter(id => modeAllowedNodeIds.has(id)));
+      const allowedSinks = new Set([...sinkMatchIds].filter(id => modeAllowedNodeIds.has(id)));
+      const pathNodes = findPathNodes(traversableGraph, allowedSources, allowedSinks, null);
       pathNodes.forEach(id => includedNodeIds.add(id));
+      // Don't use path-based link filter for source→sink paths (show all path edges)
     }
   } else if (hasSource) {
     // Source only → show callees (what source calls)
     console.log('[DEBUG] Source-only mode - showing callees');
-    sourceMatchIds.forEach(id => includedNodeIds.add(id));
+    console.log('[DEBUG] sourceMatchIds:', [...sourceMatchIds]);
+    console.log('[DEBUG] maxDepth:', filters.maxDepth);
+    usePathBasedLinkFilter = true;
+    
+    sourceMatchIds.forEach(id => {
+      console.log('[DEBUG] Checking source node:', id, 'modeAllowed:', modeAllowedNodeIds.has(id));
+      if (modeAllowedNodeIds.has(id)) {
+        includedNodeIds.add(id);
+        calleeDepths.set(id, 0);
+      }
+    });
     
     sourceMatchIds.forEach(nodeId => {
-      const callees = getCalleesRecursive(fullGraph, nodeId, filters.maxDepth);
-      callees.forEach(id => includedNodeIds.add(id));
+      if (!modeAllowedNodeIds.has(nodeId)) return;
+      const calleesResult = getCalleesRecursive(traversableGraph, nodeId, filters.maxDepth);
+      console.log('[DEBUG] Callees of', nodeId, ':', [...calleesResult.nodeDepths.entries()].slice(0, 10));
+      calleesResult.nodeIds.forEach(id => includedNodeIds.add(id));
+      // Merge depths (keep minimum depth if node appears multiple times)
+      calleesResult.nodeDepths.forEach((depth, id) => {
+        if (!calleeDepths.has(id) || depth < calleeDepths.get(id)!) {
+          calleeDepths.set(id, depth);
+        }
+      });
     });
+    console.log('[DEBUG] calleeDepths size:', calleeDepths.size);
+    console.log('[DEBUG] calleeDepths sample:', [...calleeDepths.entries()].slice(0, 5));
   } else if (hasSink) {
     // Sink only → show callers (who calls sink)
     console.log('[DEBUG] Sink-only mode - showing callers');
-    sinkMatchIds.forEach(id => includedNodeIds.add(id));
+    usePathBasedLinkFilter = true;
+    
+    sinkMatchIds.forEach(id => {
+      if (modeAllowedNodeIds.has(id)) {
+        includedNodeIds.add(id);
+        callerDepths.set(id, 0);
+      }
+    });
     
     sinkMatchIds.forEach(nodeId => {
-      const callers = getCallersRecursive(fullGraph, nodeId, filters.maxDepth);
-      callers.forEach(id => includedNodeIds.add(id));
+      if (!modeAllowedNodeIds.has(nodeId)) return;
+      const callersResult = getCallersRecursive(traversableGraph, nodeId, filters.maxDepth);
+      callersResult.nodeIds.forEach(id => includedNodeIds.add(id));
+      // Merge depths (keep minimum depth if node appears multiple times)
+      callersResult.nodeDepths.forEach((depth, id) => {
+        if (!callerDepths.has(id) || depth < callerDepths.get(id)!) {
+          callerDepths.set(id, depth);
+        }
+      });
     });
   }
   // If neither source nor sink, show all nodes (no filtering by query)
@@ -108,24 +257,47 @@ export function applyFilters(
     });
   }
 
+  // Filter by function mode (exec/proof/spec)
+  if (!filters.showExecFunctions || !filters.showProofFunctions || !filters.showSpecFunctions) {
+    filteredNodes = filteredNodes.filter(node => {
+      const mode = node.mode || 'exec';  // Default to exec for legacy data
+      if (mode === 'exec' && !filters.showExecFunctions) return false;
+      if (mode === 'proof' && !filters.showProofFunctions) return false;
+      if (mode === 'spec' && !filters.showSpecFunctions) return false;
+      return true;
+    });
+  }
+
   // Apply depth filtering from selected nodes (click-based selection)
   if (filters.maxDepth !== null && filters.selectedNodes.size > 0) {
+    // Use traversable graph to respect mode filters during depth traversal
     const nodesAtDepth = computeDepthFromSelected(
-      fullGraph.nodes,
-      fullGraph.links,
+      traversableGraph.nodes,
+      traversableGraph.links,
       filters.selectedNodes,
       filters.maxDepth,
       hasSource || isSameQuery,  // include callees direction
       hasSink || isSameQuery     // include callers direction
     );
     
-    filteredNodes = fullGraph.nodes.filter(node => nodesAtDepth.has(node.id));
+    filteredNodes = traversableGraph.nodes.filter(node => nodesAtDepth.has(node.id));
     
     // Also apply libsignal filter to depth-expanded nodes
     if (!filters.showLibsignal || !filters.showNonLibsignal) {
       filteredNodes = filteredNodes.filter(node => {
         if (node.is_libsignal && !filters.showLibsignal) return false;
         if (!node.is_libsignal && !filters.showNonLibsignal) return false;
+        return true;
+      });
+    }
+    
+    // Also apply mode filter to depth-expanded nodes
+    if (!filters.showExecFunctions || !filters.showProofFunctions || !filters.showSpecFunctions) {
+      filteredNodes = filteredNodes.filter(node => {
+        const mode = node.mode || 'exec';
+        if (mode === 'exec' && !filters.showExecFunctions) return false;
+        if (mode === 'proof' && !filters.showProofFunctions) return false;
+        if (mode === 'spec' && !filters.showSpecFunctions) return false;
         return true;
       });
     }
@@ -146,6 +318,56 @@ export function applyFilters(
     return validNodeIds.has(sourceId) && validNodeIds.has(targetId);
   });
 
+  // Apply path-based link filtering when depth limit is active
+  // Only show edges that are "on the path" (source_depth + 1 = target_depth for callees,
+  // or target_depth + 1 = source_depth for callers)
+  if (usePathBasedLinkFilter && filters.maxDepth !== null) {
+    console.log('[DEBUG] Applying path-based link filter');
+    console.log('[DEBUG] Links before path filter:', filteredLinks.length);
+    console.log('[DEBUG] calleeDepths size:', calleeDepths.size, 'callerDepths size:', callerDepths.size);
+    
+    let debugCounter = 0;
+    filteredLinks = filteredLinks.filter(link => {
+      const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+      const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+      
+      // Debug first few links
+      if (debugCounter < 5) {
+        console.log('[DEBUG] Link:', sourceId.slice(-30), '→', targetId.slice(-30));
+        console.log('[DEBUG]   calleeDepths.has(source):', calleeDepths.has(sourceId), 
+                    'calleeDepths.has(target):', calleeDepths.has(targetId));
+        if (calleeDepths.has(sourceId)) console.log('[DEBUG]   source depth:', calleeDepths.get(sourceId));
+        if (calleeDepths.has(targetId)) console.log('[DEBUG]   target depth:', calleeDepths.get(targetId));
+        debugCounter++;
+      }
+      
+      // Check if this link is on a callee path (source → target direction)
+      // Valid if source is at depth N and target is at depth N+1
+      if (calleeDepths.has(sourceId) && calleeDepths.has(targetId)) {
+        const sourceDepth = calleeDepths.get(sourceId)!;
+        const targetDepth = calleeDepths.get(targetId)!;
+        if (sourceDepth + 1 === targetDepth) {
+          return true;
+        }
+      }
+      
+      // Check if this link is on a caller path (target → source direction in the graph)
+      // For callers, we traverse backwards: if we're showing callers of X,
+      // a link A → X means A is a caller of X, so A is at depth 1 from X
+      // Valid if target is at depth N and source is at depth N+1
+      if (callerDepths.has(sourceId) && callerDepths.has(targetId)) {
+        const sourceDepth = callerDepths.get(sourceId)!;
+        const targetDepth = callerDepths.get(targetId)!;
+        if (targetDepth + 1 === sourceDepth) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
+    console.log('[DEBUG] Links after path filter:', filteredLinks.length);
+  }
+
   // Filter links by call type (inner, precondition, postcondition)
   filteredLinks = filteredLinks.filter(link => {
     const linkType = link.type || 'inner';  // Default to 'inner' for legacy data
@@ -164,6 +386,23 @@ export function applyFilters(
     // Unknown type - show by default
     return true;
   });
+
+  // Remove isolated nodes (nodes with no incoming or outgoing edges)
+  // But always keep the source/sink query matches even if they have no edges
+  const connectedNodeIds = new Set<string>();
+  for (const link of filteredLinks) {
+    const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+    const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    connectedNodeIds.add(sourceId);
+    connectedNodeIds.add(targetId);
+  }
+  
+  // Keep nodes that are connected OR are source/sink matches
+  filteredNodes = filteredNodes.filter(node => 
+    connectedNodeIds.has(node.id) || 
+    sourceMatchIds.has(node.id) || 
+    sinkMatchIds.has(node.id)
+  );
 
   return {
     nodes: filteredNodes,
@@ -191,63 +430,39 @@ export function applyFilters(
  *   - "u64:mul" → mul in any path containing "u64"
  */
 function matchesQuery(node: D3Node, query: string): boolean {
-  // Check for path-qualified syntax: "path:function"
-  // The colon must not be at the start or end, and there should be no spaces around it
-  const colonIndex = query.indexOf(':');
-  if (colonIndex > 0 && colonIndex < query.length - 1 && !query.includes(' ')) {
-    const pathPart = query.slice(0, colonIndex).toLowerCase();
-    const funcPart = query.slice(colonIndex + 1).toLowerCase();
+  // Check for Rust-style path-qualified syntax: "path::function"
+  // Example: edwards::decompress, ristretto::*compress*
+  const doubleColonIndex = query.indexOf('::');
+  if (doubleColonIndex > 0 && doubleColonIndex < query.length - 2) {
+    const pathPart = query.slice(0, doubleColonIndex);
+    const funcPart = query.slice(doubleColonIndex + 2);
     
-    // Check if path matches (file_name, relative_path, or parent_folder)
+    // Strip .rs extension from file_name for matching
+    // So "edwards" matches "edwards.rs"
+    const fileNameWithoutExt = node.file_name.replace(/\.rs$/, '');
+    
+    // Check if path matches (file_name without .rs, or parent_folder)
+    const pathRegex = globToRegex(pathPart);
     const pathMatches = 
-      node.file_name.toLowerCase().includes(pathPart) ||
-      node.relative_path.toLowerCase().includes(pathPart) ||
-      node.parent_folder.toLowerCase().includes(pathPart);
+      pathRegex.test(fileNameWithoutExt) ||
+      pathRegex.test(node.parent_folder);
     
     if (!pathMatches) {
       return false;
     }
     
-    // Check if function name matches
-    // Support both exact and substring match for the function part
-    if (funcPart.startsWith('"') && funcPart.endsWith('"') && funcPart.length > 2) {
-      // Exact match for function part
-      const exactFunc = funcPart.slice(1, -1);
-      return node.display_name.toLowerCase() === exactFunc;
-    } else {
-      // Substring match for function part
-      const matchesName = node.display_name.toLowerCase().includes(funcPart);
-      const matchesSymbol = node.symbol.toLowerCase().includes(funcPart);
-      return matchesName || matchesSymbol;
-    }
+    // Check if function name matches using glob pattern
+    const funcRegex = globToRegex(funcPart);
+    return funcRegex.test(node.display_name);
   }
   
-  // Check for exact match syntax: "query" (surrounded by quotes)
-  if (query.startsWith('"') && query.endsWith('"') && query.length > 2) {
-    const exactQuery = query.slice(1, -1).toLowerCase();
-    
-    // Check display_name
-    if (node.display_name.toLowerCase() === exactQuery) {
-      return true;
-    }
-    
-    // Also check the function name extracted from symbol
-    // Symbol format varies, but function name is usually after last `/` and before `(`
-    // e.g., "rust-analyzer .../scalar.rs/impl Scalar52/as_bytes()."
-    const symbolLower = node.symbol.toLowerCase();
-    const funcNameMatch = symbolLower.match(/\/([^/(]+)\([^)]*\)[.`]?$/);
-    if (funcNameMatch && funcNameMatch[1] === exactQuery) {
-      return true;
-    }
-    
-    return false;
-  }
-  
-  // Default: substring match
-  const matchesName = node.display_name.toLowerCase().includes(query);
-  const matchesSymbol = node.symbol.toLowerCase().includes(query);
-  const matchesFile = node.file_name.toLowerCase().includes(query);
-  return matchesName || matchesSymbol || matchesFile;
+  // Use glob pattern matching:
+  // - "decompress" (no wildcards) → exact match
+  // - "*decompress*" → contains
+  // - "decompress*" → starts with
+  // - "*decompress" → ends with
+  const regex = globToRegex(query);
+  return regex.test(node.display_name);
 }
 
 /**
@@ -332,14 +547,22 @@ function findPathNodes(
 }
 
 /**
- * Get callees recursively up to maxDepth
+ * Result of depth traversal: node IDs mapped to their depth from start
+ */
+interface DepthTraversalResult {
+  nodeDepths: Map<string, number>;  // nodeId -> depth from start
+  nodeIds: Set<string>;              // convenience set of all node IDs
+}
+
+/**
+ * Get callees recursively up to maxDepth, tracking depth of each node
  */
 function getCalleesRecursive(
   graph: D3Graph,
   startNodeId: string,
   maxDepth: number | null
-): Set<string> {
-  const visited = new Set<string>();
+): DepthTraversalResult {
+  const nodeDepths = new Map<string, number>();
   const queue: Array<{ id: string; depth: number }> = [{ id: startNodeId, depth: 0 }];
   
   // Build adjacency for forward traversal
@@ -353,8 +576,8 @@ function getCalleesRecursive(
   
   while (queue.length > 0) {
     const { id, depth } = queue.shift()!;
-    if (visited.has(id)) continue;
-    visited.add(id);
+    if (nodeDepths.has(id)) continue;
+    nodeDepths.set(id, depth);
     
     if (maxDepth !== null && depth >= maxDepth) continue;
     
@@ -362,24 +585,27 @@ function getCalleesRecursive(
     if (!neighbors) continue;
     
     for (const neighborId of neighbors) {
-      if (!visited.has(neighborId)) {
+      if (!nodeDepths.has(neighborId)) {
         queue.push({ id: neighborId, depth: depth + 1 });
       }
     }
   }
   
-  return visited;
+  return {
+    nodeDepths,
+    nodeIds: new Set(nodeDepths.keys())
+  };
 }
 
 /**
- * Get callers recursively up to maxDepth
+ * Get callers recursively up to maxDepth, tracking depth of each node
  */
 function getCallersRecursive(
   graph: D3Graph,
   startNodeId: string,
   maxDepth: number | null
-): Set<string> {
-  const visited = new Set<string>();
+): DepthTraversalResult {
+  const nodeDepths = new Map<string, number>();
   const queue: Array<{ id: string; depth: number }> = [{ id: startNodeId, depth: 0 }];
   
   // Build adjacency for backward traversal
@@ -393,8 +619,8 @@ function getCallersRecursive(
   
   while (queue.length > 0) {
     const { id, depth } = queue.shift()!;
-    if (visited.has(id)) continue;
-    visited.add(id);
+    if (nodeDepths.has(id)) continue;
+    nodeDepths.set(id, depth);
     
     if (maxDepth !== null && depth >= maxDepth) continue;
     
@@ -402,13 +628,16 @@ function getCallersRecursive(
     if (!neighbors) continue;
     
     for (const neighborId of neighbors) {
-      if (!visited.has(neighborId)) {
+      if (!nodeDepths.has(neighborId)) {
         queue.push({ id: neighborId, depth: depth + 1 });
       }
     }
   }
   
-  return visited;
+  return {
+    nodeDepths,
+    nodeIds: new Set(nodeDepths.keys())
+  };
 }
 
 /**

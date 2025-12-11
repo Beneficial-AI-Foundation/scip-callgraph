@@ -9,6 +9,9 @@ export interface SimilarLemma {
   source: string;  // "project" or "vstd"
 }
 
+/** Verus function mode */
+export type FunctionMode = 'exec' | 'proof' | 'spec';
+
 export interface D3Node {
   id: string;
   display_name: string;
@@ -24,6 +27,7 @@ export interface D3Node {
   caller_count: number;
   callee_count: number;
   similar_lemmas?: SimilarLemma[];
+  mode: FunctionMode;  // Verus function mode: exec, proof, or spec
   // D3-specific properties added during simulation
   x?: number;
   y?: number;
@@ -62,6 +66,12 @@ export interface FilterOptions {
   showInnerCalls: boolean;         // Show calls from function body (default: true)
   showPreconditionCalls: boolean;  // Show calls from requires clauses (default: false)
   showPostconditionCalls: boolean; // Show calls from ensures clauses (default: false)
+  // Function mode filters (Verus)
+  showExecFunctions: boolean;      // Show executable functions (default: true)
+  showProofFunctions: boolean;     // Show proof functions/lemmas (default: true)
+  showSpecFunctions: boolean;      // Show spec functions (default: false)
+  // Pattern-based exclusion (comma-separated substrings to exclude)
+  excludePatterns: string;         // e.g., "_commutative,_associative,lemma_mul"
   maxDepth: number | null;
   sourceQuery: string;  // Source node(s) - shows what they call (callees direction)
   sinkQuery: string;    // Sink node(s) - shows who calls them (callers direction)
