@@ -62,8 +62,16 @@ export function applyFilters(
   fullGraph: D3Graph,
   filters: FilterOptions
 ): D3Graph {
+  // Debug: Check if fullGraph.links have been mutated
+  if (fullGraph.links.length > 0) {
+    const firstLink = fullGraph.links[0];
+    console.log('[DEBUG] First link source type:', typeof firstLink.source, 
+                'value:', typeof firstLink.source === 'string' ? firstLink.source.slice(-30) : (firstLink.source as any)?.id?.slice(-30));
+  }
+  
   let filteredNodes = [...fullGraph.nodes];
   let filteredLinks = [...fullGraph.links];
+  console.log('[DEBUG] Initial: fullGraph.nodes.length:', fullGraph.nodes.length, 'filteredNodes.length:', filteredNodes.length);
 
   const sourceQuery = filters.sourceQuery.trim().toLowerCase();
   const sinkQuery = filters.sinkQuery.trim().toLowerCase();
@@ -245,7 +253,10 @@ export function applyFilters(
 
   // Filter nodes if we have any source/sink constraints
   if (hasSource || hasSink) {
+    console.log('[DEBUG] Before source/sink filter: filteredNodes.length:', filteredNodes.length);
+    console.log('[DEBUG] includedNodeIds.size:', includedNodeIds.size);
     filteredNodes = filteredNodes.filter(node => includedNodeIds.has(node.id));
+    console.log('[DEBUG] After source/sink filter: filteredNodes.length:', filteredNodes.length);
   }
 
   // Filter by libsignal flag
@@ -269,7 +280,8 @@ export function applyFilters(
   }
 
   // Apply depth filtering from selected nodes (click-based selection)
-  if (filters.maxDepth !== null && filters.selectedNodes.size > 0) {
+  // Only apply when there's NO source/sink query - clicking shouldn't override query results
+  if (filters.maxDepth !== null && filters.selectedNodes.size > 0 && !hasSource && !hasSink) {
     // Use traversable graph to respect mode filters during depth traversal
     const nodesAtDepth = computeDepthFromSelected(
       traversableGraph.nodes,
@@ -310,13 +322,27 @@ export function applyFilters(
 
   // Create a set of valid node IDs for efficient lookup
   const validNodeIds = new Set(filteredNodes.map(node => node.id));
+  console.log('[DEBUG] filteredNodes.length before link filter:', filteredNodes.length);
+  console.log('[DEBUG] validNodeIds.size:', validNodeIds.size);
+  console.log('[DEBUG] fullGraph.links.length:', fullGraph.links.length);
 
   // Filter links to only include those between valid nodes
+  let linkDebugCounter = 0;
   filteredLinks = fullGraph.links.filter(link => {
-    const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
-    const targetId = typeof link.target === 'string' ? link.target : link.target.id;
-    return validNodeIds.has(sourceId) && validNodeIds.has(targetId);
+    const sourceId = typeof link.source === 'string' ? link.source : (link.source as any).id;
+    const targetId = typeof link.target === 'string' ? link.target : (link.target as any).id;
+    const passes = validNodeIds.has(sourceId) && validNodeIds.has(targetId);
+    if (passes && linkDebugCounter < 3) {
+      console.log('[DEBUG] Link passes validNodeIds:', 
+        'source type:', typeof link.source, 
+        'sourceId:', sourceId?.slice?.(-40) || sourceId,
+        'target type:', typeof link.target,
+        'targetId:', targetId?.slice?.(-40) || targetId);
+      linkDebugCounter++;
+    }
+    return passes;
   });
+  console.log('[DEBUG] filteredLinks after validNodeIds filter:', filteredLinks.length);
 
   // Apply path-based link filtering when depth limit is active
   // Only show edges that are "on the path" (source_depth + 1 = target_depth for callees,
@@ -404,9 +430,11 @@ export function applyFilters(
     sinkMatchIds.has(node.id)
   );
 
+  // Create fresh copies of nodes and links to prevent D3 from mutating the originals
+  // D3's force simulation modifies link.source/target from string IDs to node references
   return {
-    nodes: filteredNodes,
-    links: filteredLinks,
+    nodes: filteredNodes.map(n => ({ ...n })),
+    links: filteredLinks.map(l => ({ source: l.source, target: l.target, type: l.type })),
     metadata: {
       ...fullGraph.metadata,
       total_nodes: filteredNodes.length,

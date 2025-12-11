@@ -473,15 +473,27 @@ async function autoLoadGraph(): Promise<void> {
  * Load a graph and update the UI
  */
 function loadGraph(graph: D3Graph, message: string): void {
-  state.fullGraph = graph;
-  state.filters = { ...initialFilters };
+  // Deep copy the graph to prevent D3 from mutating original data
+  // D3 modifies link.source/target from string IDs to node object references
+  state.fullGraph = {
+    nodes: graph.nodes.map(n => ({ ...n })),
+    links: graph.links.map(l => ({ ...l })),
+    metadata: { ...graph.metadata },
+  };
+  // Deep copy filters - spread only does shallow copy, so Sets would be shared!
+  state.filters = { 
+    ...initialFilters,
+    selectedNodes: new Set(),
+    expandedNodes: new Set(),
+    hiddenNodes: new Set(),
+  };
   
   // Set GitHub URL from metadata if not already set via URL param
   if (!githubBaseUrl && graph.metadata.github_url) {
     githubBaseUrl = graph.metadata.github_url;
   }
   
-  console.log('[DEBUG] Graph loaded:', graph.nodes.length, 'nodes,', graph.links.length, 'links');
+  console.log('[DEBUG] Graph loaded:', state.fullGraph.nodes.length, 'nodes,', state.fullGraph.links.length, 'links');
   
   // Apply URL filter parameters (if any)
   const urlFilters = parseFiltersFromURL();
@@ -737,9 +749,13 @@ function updateNodeInfo(): void {
  * Reset all filters
  */
 function resetFilters(): void {
-  state.filters = { ...initialFilters };
-  state.filters.selectedNodes.clear();
-  state.filters.hiddenNodes.clear();
+  // Deep copy filters - spread only does shallow copy, so Sets would be shared!
+  state.filters = { 
+    ...initialFilters,
+    selectedNodes: new Set(),
+    expandedNodes: new Set(),
+    hiddenNodes: new Set(),
+  };
   state.selectedNode = null;
   
   // Reset UI controls
