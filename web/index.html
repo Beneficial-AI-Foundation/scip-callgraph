@@ -58,6 +58,42 @@
           </div>
 
           <div class="filter-group">
+            <h3>Function Mode</h3>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-exec-functions" checked />
+              <span class="exec-badge">Exec</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-proof-functions" checked />
+              <span class="proof-badge">Proof</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-spec-functions" />
+              <span class="spec-badge">Spec</span>
+            </label>
+            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+              💡 Verus function modes (spec off by default)
+            </small>
+          </div>
+
+          <div class="filter-group">
+            <h3>🚫 Exclude Patterns</h3>
+            <label class="input-label">
+              <input 
+                type="text" 
+                id="exclude-patterns" 
+                placeholder="e.g., *_comm*, lemma_mul_*" 
+                class="search-input"
+              />
+            </label>
+            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+              💡 Glob patterns: <code>*</code> = any chars, <code>?</code> = one char<br>
+              💡 <code>*_comm*</code> matches <code>lemma_commutativity</code><br>
+              💡 <code>p_*</code> matches <code>p_foo</code> but not <code>step_1</code>
+            </small>
+          </div>
+
+          <div class="filter-group">
             <h3>🔍 Source → Sink</h3>
             <label class="input-label">
               <span>Source (shows callees):</span>
@@ -78,18 +114,18 @@
               />
             </label>
             <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.5rem;">
-              💡 <strong>Source only:</strong> what it calls (uses depth)<br>
-              💡 <strong>Sink only:</strong> who calls it (uses depth)<br>
-              💡 <strong>Both:</strong> all paths between them (ignores depth)<br>
-              💡 Use <code>"quotes"</code> for exact match<br>
-              💡 Use <code>file:func</code> to disambiguate (e.g., <code>edwards:decompress</code>)
+              💡 <strong>Source only:</strong> what it calls<br>
+              💡 <strong>Sink only:</strong> who calls it<br>
+              💡 <strong>Both:</strong> paths between them<br>
+              💡 Glob: <code>decompress</code> = exact, <code>*decomp*</code> = contains<br>
+              💡 Rust-style: <code>edwards::decompress</code> (file::func)
             </small>
           </div>
 
           <div class="filter-group">
-            <h3>Depth Limit</h3>
+            <h3>Depth</h3>
             <label class="slider-label">
-              <span>Max Depth: <strong id="depth-value">1</strong></span>
+              <span>Depth: <strong id="depth-value">1</strong></span>
               <input 
                 type="range" 
                 id="depth-limit" 
@@ -98,7 +134,7 @@
                 value="1" 
                 class="slider"
               />
-              <small>0 = Show all nodes (can be slow for large graphs)</small>
+              <small>How many hops from source/sink to show. 0 = all</small>
             </label>
           </div>
 
@@ -108,6 +144,9 @@
             </button>
             <button id="clear-selection" class="btn btn-secondary">
               ❌ Clear Selection
+            </button>
+            <button id="copy-link" class="btn btn-primary">
+              🔗 Copy Link
             </button>
           </div>
 

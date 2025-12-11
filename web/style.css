@@ -118,7 +118,8 @@ body {
   cursor: pointer;
 }
 
-.libsignal-badge, .other-badge, .inner-badge, .precondition-badge, .postcondition-badge {
+.libsignal-badge, .other-badge, .inner-badge, .precondition-badge, .postcondition-badge,
+.exec-badge, .proof-badge, .spec-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
   font-size: 0.85rem;
@@ -149,6 +150,22 @@ body {
 .postcondition-badge {
   background: #fce4ec;
   color: #c2185b;
+}
+
+/* Function mode badges (Verus) */
+.exec-badge {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.proof-badge {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.spec-badge {
+  background: #fff8e1;
+  color: #f57c00;
 }
 
 /* Input Labels */

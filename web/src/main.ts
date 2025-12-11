@@ -49,6 +49,155 @@ function buildGitHubLink(node: D3Node): string | null {
   return link;
 }
 
+/**
+ * Parse filter state from URL parameters
+ */
+function parseFiltersFromURL(): Partial<FilterOptions> {
+  const params = new URLSearchParams(window.location.search);
+  const filters: Partial<FilterOptions> = {};
+  
+  // String params
+  if (params.has('source')) filters.sourceQuery = params.get('source')!;
+  if (params.has('sink')) filters.sinkQuery = params.get('sink')!;
+  if (params.has('exclude')) filters.excludePatterns = params.get('exclude')!;
+  
+  // Number params
+  if (params.has('depth')) {
+    const depth = parseInt(params.get('depth')!);
+    filters.maxDepth = isNaN(depth) || depth === 0 ? null : depth;
+  }
+  
+  // Boolean params (1/0 or true/false)
+  const parseBool = (key: string): boolean | undefined => {
+    if (!params.has(key)) return undefined;
+    const val = params.get(key)!.toLowerCase();
+    return val === '1' || val === 'true';
+  };
+  
+  const exec = parseBool('exec');
+  const proof = parseBool('proof');
+  const spec = parseBool('spec');
+  const inner = parseBool('inner');
+  const pre = parseBool('pre');
+  const post = parseBool('post');
+  const libsignal = parseBool('libsignal');
+  const external = parseBool('external');
+  
+  if (exec !== undefined) filters.showExecFunctions = exec;
+  if (proof !== undefined) filters.showProofFunctions = proof;
+  if (spec !== undefined) filters.showSpecFunctions = spec;
+  if (inner !== undefined) filters.showInnerCalls = inner;
+  if (pre !== undefined) filters.showPreconditionCalls = pre;
+  if (post !== undefined) filters.showPostconditionCalls = post;
+  if (libsignal !== undefined) filters.showLibsignal = libsignal;
+  if (external !== undefined) filters.showNonLibsignal = external;
+  
+  // Hidden nodes (comma-separated display names, since full IDs are too long)
+  if (params.has('hidden')) {
+    const hiddenNames = params.get('hidden')!.split(',').map(s => s.trim()).filter(s => s);
+    // We'll need to resolve these to IDs after graph loads
+    (filters as any)._hiddenNames = hiddenNames;
+  }
+  
+  return filters;
+}
+
+/**
+ * Generate a shareable URL with current filter state
+ */
+function generateShareableURL(): string {
+  const url = new URL(window.location.href);
+  const params = url.searchParams;
+  
+  // Clear existing filter params (keep json, github, etc.)
+  ['source', 'sink', 'exclude', 'depth', 'exec', 'proof', 'spec', 
+   'inner', 'pre', 'post', 'libsignal', 'external', 'hidden'].forEach(k => params.delete(k));
+  
+  // Add current filter state
+  if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
+  if (state.filters.sinkQuery) params.set('sink', state.filters.sinkQuery);
+  if (state.filters.excludePatterns) params.set('exclude', state.filters.excludePatterns);
+  if (state.filters.maxDepth !== null) params.set('depth', state.filters.maxDepth.toString());
+  
+  // Only include non-default boolean values to keep URL short
+  if (!state.filters.showExecFunctions) params.set('exec', '0');
+  if (!state.filters.showProofFunctions) params.set('proof', '0');
+  if (state.filters.showSpecFunctions) params.set('spec', '1');
+  if (!state.filters.showInnerCalls) params.set('inner', '0');
+  if (state.filters.showPreconditionCalls) params.set('pre', '1');
+  if (state.filters.showPostconditionCalls) params.set('post', '1');
+  if (!state.filters.showLibsignal) params.set('libsignal', '0');
+  if (!state.filters.showNonLibsignal) params.set('external', '0');
+  
+  // Hidden nodes - use display names (shorter than full IDs)
+  if (state.filters.hiddenNodes.size > 0 && state.fullGraph) {
+    const hiddenNames: string[] = [];
+    state.fullGraph.nodes.forEach(node => {
+      if (state.filters.hiddenNodes.has(node.id)) {
+        hiddenNames.push(node.display_name);
+      }
+    });
+    if (hiddenNames.length > 0) {
+      params.set('hidden', hiddenNames.join(','));
+    }
+  }
+  
+  return url.toString();
+}
+
+/**
+ * Apply URL filter params to state and sync UI
+ */
+function applyURLFiltersToState(urlFilters: Partial<FilterOptions>): void {
+  // Merge URL filters with current state
+  Object.assign(state.filters, urlFilters);
+  
+  // Sync UI elements to match
+  const setInput = (id: string, value: string) => {
+    const el = document.getElementById(id) as HTMLInputElement;
+    if (el) el.value = value;
+  };
+  const setCheckbox = (id: string, checked: boolean) => {
+    const el = document.getElementById(id) as HTMLInputElement;
+    if (el) el.checked = checked;
+  };
+  
+  setInput('source-input', state.filters.sourceQuery);
+  setInput('sink-input', state.filters.sinkQuery);
+  setInput('exclude-patterns', state.filters.excludePatterns);
+  
+  const depthEl = document.getElementById('depth-limit') as HTMLInputElement;
+  if (depthEl) {
+    depthEl.value = state.filters.maxDepth?.toString() || '0';
+    document.getElementById('depth-value')!.textContent = 
+      state.filters.maxDepth !== null ? state.filters.maxDepth.toString() : 'All';
+  }
+  
+  setCheckbox('show-exec-functions', state.filters.showExecFunctions);
+  setCheckbox('show-proof-functions', state.filters.showProofFunctions);
+  setCheckbox('show-spec-functions', state.filters.showSpecFunctions);
+  setCheckbox('show-inner-calls', state.filters.showInnerCalls);
+  setCheckbox('show-precondition-calls', state.filters.showPreconditionCalls);
+  setCheckbox('show-postcondition-calls', state.filters.showPostconditionCalls);
+  setCheckbox('show-libsignal', state.filters.showLibsignal);
+  setCheckbox('show-non-libsignal', state.filters.showNonLibsignal);
+}
+
+/**
+ * Resolve hidden node names to IDs (called after graph loads)
+ */
+function resolveHiddenNodeNames(hiddenNames: string[]): void {
+  if (!state.fullGraph || hiddenNames.length === 0) return;
+  
+  for (const name of hiddenNames) {
+    const node = state.fullGraph.nodes.find(n => n.display_name === name);
+    if (node) {
+      state.filters.hiddenNodes.add(node.id);
+    }
+  }
+  updateHiddenNodesUI();
+}
+
 // Initialize state
 const initialFilters: FilterOptions = {
   showLibsignal: true,
@@ -56,6 +205,10 @@ const initialFilters: FilterOptions = {
   showInnerCalls: true,           // Show body calls by default
   showPreconditionCalls: false,   // Hide requires calls by default
   showPostconditionCalls: false,  // Hide ensures calls by default
+  showExecFunctions: true,        // Show exec functions by default
+  showProofFunctions: true,       // Show proof functions by default
+  showSpecFunctions: false,       // Hide spec functions by default
+  excludePatterns: '',            // Comma-separated patterns to exclude
   maxDepth: 1,
   sourceQuery: '',  // Source nodes - shows what they call (callees)
   sinkQuery: '',    // Sink nodes - shows who calls them (callers)
@@ -75,6 +228,43 @@ let state: GraphState = {
 let visualization: CallGraphVisualization | null = null;
 
 /**
+ * Sync input field values to state (handles browser auto-fill after refresh)
+ */
+function syncInputsToState(): void {
+  // Sync text inputs that might have been auto-filled by the browser
+  const sourceInput = document.getElementById('source-input') as HTMLInputElement;
+  const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
+  const excludeInput = document.getElementById('exclude-patterns') as HTMLInputElement;
+  const depthInput = document.getElementById('depth-limit') as HTMLInputElement;
+  
+  if (sourceInput?.value) {
+    state.filters.sourceQuery = sourceInput.value;
+  }
+  if (sinkInput?.value) {
+    state.filters.sinkQuery = sinkInput.value;
+  }
+  if (excludeInput?.value) {
+    state.filters.excludePatterns = excludeInput.value;
+  }
+  if (depthInput?.value) {
+    const value = parseInt(depthInput.value);
+    state.filters.maxDepth = value > 0 ? value : null;
+    document.getElementById('depth-value')!.textContent = 
+      state.filters.maxDepth !== null ? state.filters.maxDepth.toString() : 'All';
+  }
+  
+  // Sync checkboxes
+  state.filters.showLibsignal = (document.getElementById('show-libsignal') as HTMLInputElement)?.checked ?? true;
+  state.filters.showNonLibsignal = (document.getElementById('show-non-libsignal') as HTMLInputElement)?.checked ?? true;
+  state.filters.showInnerCalls = (document.getElementById('show-inner-calls') as HTMLInputElement)?.checked ?? true;
+  state.filters.showPreconditionCalls = (document.getElementById('show-precondition-calls') as HTMLInputElement)?.checked ?? false;
+  state.filters.showPostconditionCalls = (document.getElementById('show-postcondition-calls') as HTMLInputElement)?.checked ?? false;
+  state.filters.showExecFunctions = (document.getElementById('show-exec-functions') as HTMLInputElement)?.checked ?? true;
+  state.filters.showProofFunctions = (document.getElementById('show-proof-functions') as HTMLInputElement)?.checked ?? true;
+  state.filters.showSpecFunctions = (document.getElementById('show-spec-functions') as HTMLInputElement)?.checked ?? false;
+}
+
+/**
  * Initialize the application
  */
 function init(): void {
@@ -89,6 +279,9 @@ function init(): void {
 
   // Set up UI event handlers
   setupUIHandlers();
+  
+  // Sync any auto-filled input values to state
+  syncInputsToState();
 
   // Update stats display
   updateStats();
@@ -133,6 +326,22 @@ function setupUIHandlers(): void {
     applyFiltersAndUpdate();
   });
 
+  // Function mode filters (Verus)
+  document.getElementById('show-exec-functions')?.addEventListener('change', (e) => {
+    state.filters.showExecFunctions = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
+  document.getElementById('show-proof-functions')?.addEventListener('change', (e) => {
+    state.filters.showProofFunctions = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
+  document.getElementById('show-spec-functions')?.addEventListener('change', (e) => {
+    state.filters.showSpecFunctions = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
   document.getElementById('source-input')?.addEventListener('input', (e) => {
     state.filters.sourceQuery = (e.target as HTMLInputElement).value;
     applyFiltersAndUpdate();
@@ -140,6 +349,11 @@ function setupUIHandlers(): void {
 
   document.getElementById('sink-input')?.addEventListener('input', (e) => {
     state.filters.sinkQuery = (e.target as HTMLInputElement).value;
+    applyFiltersAndUpdate();
+  });
+
+  document.getElementById('exclude-patterns')?.addEventListener('input', (e) => {
+    state.filters.excludePatterns = (e.target as HTMLInputElement).value;
     applyFiltersAndUpdate();
   });
 
@@ -163,6 +377,26 @@ function setupUIHandlers(): void {
 
   document.getElementById('show-all-hidden')?.addEventListener('click', () => {
     showAllHiddenNodes();
+  });
+
+  // Copy link button
+  document.getElementById('copy-link')?.addEventListener('click', () => {
+    const url = generateShareableURL();
+    navigator.clipboard.writeText(url).then(() => {
+      // Show feedback
+      const btn = document.getElementById('copy-link') as HTMLButtonElement;
+      const originalText = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.style.background = '#4caf50';
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy link:', err);
+      // Fallback: show URL in a prompt
+      prompt('Copy this link:', url);
+    });
   });
 
   // Window resize
@@ -249,9 +483,17 @@ function loadGraph(graph: D3Graph, message: string): void {
   
   console.log('[DEBUG] Graph loaded:', graph.nodes.length, 'nodes,', graph.links.length, 'links');
   
-  // Debug: check for fermat nodes
-  const fermatNodes = graph.nodes.filter(n => n.display_name.toLowerCase().includes('fermat'));
-  console.log('[DEBUG] Fermat nodes in loaded graph:', fermatNodes.map(n => n.display_name));
+  // Apply URL filter parameters (if any)
+  const urlFilters = parseFiltersFromURL();
+  if (Object.keys(urlFilters).length > 0) {
+    console.log('[DEBUG] Applying URL filters:', urlFilters);
+    applyURLFiltersToState(urlFilters);
+    
+    // Resolve hidden node names to IDs
+    if ((urlFilters as any)._hiddenNames) {
+      resolveHiddenNodeNames((urlFilters as any)._hiddenNames);
+    }
+  }
   
   applyFiltersAndUpdate();
   
@@ -323,6 +565,18 @@ function applyFiltersAndUpdate(): void {
   updateStats();
   updateNodeInfo();
   updateHiddenNodesUI();
+  
+  // Update URL with current filter state (without adding to history)
+  updateURLWithFilters();
+}
+
+/**
+ * Update the browser URL with current filter state
+ * Uses replaceState to avoid polluting browser history
+ */
+function updateURLWithFilters(): void {
+  const url = generateShareableURL();
+  window.history.replaceState({}, '', url);
 }
 
 /**
@@ -332,9 +586,9 @@ function handleStateChange(newState: GraphState, selectionChanged: boolean = fal
   state = newState;
   updateNodeInfo();
   
-  // Only re-apply filters if selection actually changed (not just hover)
-  // This prevents flickering when hovering over nodes while depth filtering is active
-  if (selectionChanged && state.filters.maxDepth !== null && state.filters.selectedNodes.size > 0) {
+  // Re-apply filters if selection/hidden nodes changed (not just hover)
+  // This ensures hidden nodes are properly filtered out
+  if (selectionChanged) {
     applyFiltersAndUpdate();
   }
 }
@@ -494,6 +748,10 @@ function resetFilters(): void {
   (document.getElementById('show-inner-calls') as HTMLInputElement).checked = true;
   (document.getElementById('show-precondition-calls') as HTMLInputElement).checked = false;
   (document.getElementById('show-postcondition-calls') as HTMLInputElement).checked = false;
+  (document.getElementById('show-exec-functions') as HTMLInputElement).checked = true;
+  (document.getElementById('show-proof-functions') as HTMLInputElement).checked = true;
+  (document.getElementById('show-spec-functions') as HTMLInputElement).checked = false;
+  (document.getElementById('exclude-patterns') as HTMLInputElement).value = '';
   (document.getElementById('source-input') as HTMLInputElement).value = '';
   (document.getElementById('sink-input') as HTMLInputElement).value = '';
   (document.getElementById('depth-limit') as HTMLInputElement).value = '1';
