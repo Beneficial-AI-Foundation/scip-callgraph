@@ -39,6 +39,25 @@
           </div>
 
           <div class="filter-group">
+            <h3>Call Types</h3>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-inner-calls" checked />
+              <span class="inner-badge">Body Calls</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-precondition-calls" />
+              <span class="precondition-badge">Requires</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-postcondition-calls" />
+              <span class="postcondition-badge">Ensures</span>
+            </label>
+            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+              💡 Show/hide dependencies from pre/postconditions
+            </small>
+          </div>
+
+          <div class="filter-group">
             <h3>🔍 Source → Sink</h3>
             <label class="input-label">
               <span>Source (shows callees):</span>
@@ -62,7 +81,8 @@
               💡 <strong>Source only:</strong> what it calls (uses depth)<br>
               💡 <strong>Sink only:</strong> who calls it (uses depth)<br>
               💡 <strong>Both:</strong> all paths between them (ignores depth)<br>
-              💡 Use <code>"quotes"</code> for exact match
+              💡 Use <code>"quotes"</code> for exact match<br>
+              💡 Use <code>file:func</code> to disambiguate (e.g., <code>edwards:decompress</code>)
             </small>
           </div>
 

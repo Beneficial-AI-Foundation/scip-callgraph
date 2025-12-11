@@ -146,6 +146,25 @@ export function applyFilters(
     return validNodeIds.has(sourceId) && validNodeIds.has(targetId);
   });
 
+  // Filter links by call type (inner, precondition, postcondition)
+  filteredLinks = filteredLinks.filter(link => {
+    const linkType = link.type || 'inner';  // Default to 'inner' for legacy data
+    
+    // Handle legacy 'calls' type as 'inner'
+    if (linkType === 'calls' || linkType === 'inner') {
+      return filters.showInnerCalls;
+    }
+    if (linkType === 'precondition') {
+      return filters.showPreconditionCalls;
+    }
+    if (linkType === 'postcondition') {
+      return filters.showPostconditionCalls;
+    }
+    
+    // Unknown type - show by default
+    return true;
+  });
+
   return {
     nodes: filteredNodes,
     links: filteredLinks,
@@ -160,13 +179,49 @@ export function applyFilters(
 /**
  * Check if a node matches a search query
  * 
- * Supports two modes:
+ * Supports three modes:
  * - Substring match (default): "foo" matches anything containing "foo"
  * - Exact match: '"foo"' (with quotes) matches only nodes where:
  *   - display_name equals exactly, OR
  *   - the function name part of symbol equals exactly
+ * - Path-qualified match: "path:function" matches functions in files/paths containing "path"
+ *   Examples:
+ *   - "edwards.rs:decompress" → decompress in edwards.rs
+ *   - "edwards:decompress" → decompress in any path containing "edwards"
+ *   - "u64:mul" → mul in any path containing "u64"
  */
 function matchesQuery(node: D3Node, query: string): boolean {
+  // Check for path-qualified syntax: "path:function"
+  // The colon must not be at the start or end, and there should be no spaces around it
+  const colonIndex = query.indexOf(':');
+  if (colonIndex > 0 && colonIndex < query.length - 1 && !query.includes(' ')) {
+    const pathPart = query.slice(0, colonIndex).toLowerCase();
+    const funcPart = query.slice(colonIndex + 1).toLowerCase();
+    
+    // Check if path matches (file_name, relative_path, or parent_folder)
+    const pathMatches = 
+      node.file_name.toLowerCase().includes(pathPart) ||
+      node.relative_path.toLowerCase().includes(pathPart) ||
+      node.parent_folder.toLowerCase().includes(pathPart);
+    
+    if (!pathMatches) {
+      return false;
+    }
+    
+    // Check if function name matches
+    // Support both exact and substring match for the function part
+    if (funcPart.startsWith('"') && funcPart.endsWith('"') && funcPart.length > 2) {
+      // Exact match for function part
+      const exactFunc = funcPart.slice(1, -1);
+      return node.display_name.toLowerCase() === exactFunc;
+    } else {
+      // Substring match for function part
+      const matchesName = node.display_name.toLowerCase().includes(funcPart);
+      const matchesSymbol = node.symbol.toLowerCase().includes(funcPart);
+      return matchesName || matchesSymbol;
+    }
+  }
+  
   // Check for exact match syntax: "query" (surrounded by quotes)
   if (query.startsWith('"') && query.endsWith('"') && query.length > 2) {
     const exactQuery = query.slice(1, -1).toLowerCase();

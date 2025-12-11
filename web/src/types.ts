@@ -33,10 +33,13 @@ export interface D3Node {
   fy?: number | null;
 }
 
+/** The type of a call/dependency link */
+export type LinkType = 'inner' | 'precondition' | 'postcondition';
+
 export interface D3Link {
   source: string | D3Node;
   target: string | D3Node;
-  type: string;
+  type: LinkType | string;  // 'inner' | 'precondition' | 'postcondition' (or legacy 'calls')
 }
 
 export interface D3GraphMetadata {
@@ -56,6 +59,9 @@ export interface D3Graph {
 export interface FilterOptions {
   showLibsignal: boolean;
   showNonLibsignal: boolean;
+  showInnerCalls: boolean;         // Show calls from function body (default: true)
+  showPreconditionCalls: boolean;  // Show calls from requires clauses (default: false)
+  showPostconditionCalls: boolean; // Show calls from ensures clauses (default: false)
   maxDepth: number | null;
   sourceQuery: string;  // Source node(s) - shows what they call (callees direction)
   sinkQuery: string;    // Sink node(s) - shows who calls them (callers direction)
