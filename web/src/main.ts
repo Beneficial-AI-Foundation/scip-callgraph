@@ -53,6 +53,9 @@ function buildGitHubLink(node: D3Node): string | null {
 const initialFilters: FilterOptions = {
   showLibsignal: true,
   showNonLibsignal: true,
+  showInnerCalls: true,           // Show body calls by default
+  showPreconditionCalls: false,   // Hide requires calls by default
+  showPostconditionCalls: false,  // Hide ensures calls by default
   maxDepth: 1,
   sourceQuery: '',  // Source nodes - shows what they call (callees)
   sinkQuery: '',    // Sink nodes - shows who calls them (callers)
@@ -111,6 +114,22 @@ function setupUIHandlers(): void {
 
   document.getElementById('show-non-libsignal')?.addEventListener('change', (e) => {
     state.filters.showNonLibsignal = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
+  // Call type filters
+  document.getElementById('show-inner-calls')?.addEventListener('change', (e) => {
+    state.filters.showInnerCalls = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
+  document.getElementById('show-precondition-calls')?.addEventListener('change', (e) => {
+    state.filters.showPreconditionCalls = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
+  document.getElementById('show-postcondition-calls')?.addEventListener('change', (e) => {
+    state.filters.showPostconditionCalls = (e.target as HTMLInputElement).checked;
     applyFiltersAndUpdate();
   });
 
@@ -472,6 +491,9 @@ function resetFilters(): void {
   // Reset UI controls
   (document.getElementById('show-libsignal') as HTMLInputElement).checked = true;
   (document.getElementById('show-non-libsignal') as HTMLInputElement).checked = true;
+  (document.getElementById('show-inner-calls') as HTMLInputElement).checked = true;
+  (document.getElementById('show-precondition-calls') as HTMLInputElement).checked = false;
+  (document.getElementById('show-postcondition-calls') as HTMLInputElement).checked = false;
   (document.getElementById('source-input') as HTMLInputElement).value = '';
   (document.getElementById('sink-input') as HTMLInputElement).value = '';
   (document.getElementById('depth-limit') as HTMLInputElement).value = '1';

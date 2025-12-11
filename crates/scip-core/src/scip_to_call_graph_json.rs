@@ -101,17 +101,47 @@ pub struct SignatureDocumentation {
     pub position_encoding: i32,
 }
 
+/// Represents where a function call occurs within its caller
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CallLocation {
+    /// Call occurs in a `requires` clause (precondition)
+    Precondition,
+    /// Call occurs in an `ensures` clause (postcondition)
+    Postcondition,
+    /// Call occurs in the function body (after opening brace)
+    Inner,
+}
+
+impl CallLocation {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CallLocation::Precondition => "precondition",
+            CallLocation::Postcondition => "postcondition",
+            CallLocation::Inner => "inner",
+        }
+    }
+}
+
+/// A callee occurrence with its location information
+#[derive(Debug, Clone)]
+pub struct CalleeOccurrence {
+    pub symbol: String,
+    pub line: i32,
+    pub location: Option<CallLocation>, // None until classified after body extraction
+}
+
 /// Represents a node in the call graph
 #[derive(Debug, Clone)]
 pub struct FunctionNode {
     pub symbol: String,
     pub display_name: String,
     pub file_path: String,
-    pub relative_path: String,    // Relative path from project root
-    pub callers: HashSet<String>, // Symbols that call this function
-    pub callees: HashSet<String>, // Symbols that this function calls
-    pub range: Vec<i32>,          // Range of the function in the source file
-    pub body: Option<String>,     // Optional body of the function
+    pub relative_path: String,           // Relative path from project root
+    pub callers: HashSet<String>,        // Symbols that call this function
+    pub callees: HashSet<String>,        // Symbols that this function calls (for backward compat)
+    pub callee_occurrences: Vec<CalleeOccurrence>, // Callees with line info for classification
+    pub range: Vec<i32>,                 // Range of the function in the source file
+    pub body: Option<String>,            // Optional body of the function
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -171,6 +201,149 @@ pub struct D3Graph {
     pub nodes: Vec<D3Node>,
     pub links: Vec<D3Link>,
     pub metadata: D3GraphMetadata,
+}
+
+/// Represents the line ranges of different sections in a Verus function
+#[derive(Debug, Clone, Default)]
+pub struct FunctionSections {
+    /// Line number where the function starts (0-based, as stored in SCIP)
+    pub start_line: i32,
+    /// Line range for `requires` clause (start, end) - 0-based
+    pub requires_range: Option<(i32, i32)>,
+    /// Line range for `ensures` clause (start, end) - 0-based  
+    pub ensures_range: Option<(i32, i32)>,
+    /// Line number where the function body starts (the `{`) - 0-based
+    pub body_start_line: Option<i32>,
+}
+
+/// Parse a function body to find the line ranges for requires, ensures, and body sections.
+/// 
+/// This function analyzes the body text to identify:
+/// - `requires` clauses (preconditions)
+/// - `ensures` clauses (postconditions)
+/// - The actual function body (after the opening `{`)
+///
+/// # Arguments
+/// * `body` - The full function body text (including signature)
+/// * `func_start_line` - The 0-based line number where the function starts
+///
+/// # Returns
+/// A `FunctionSections` struct with the identified line ranges
+pub fn parse_function_sections(body: &str, func_start_line: i32) -> FunctionSections {
+    let mut sections = FunctionSections {
+        start_line: func_start_line,
+        ..Default::default()
+    };
+    
+    let lines: Vec<&str> = body.lines().collect();
+    
+    let mut in_requires = false;
+    let mut in_ensures = false;
+    let mut requires_start: Option<i32> = None;
+    let mut ensures_start: Option<i32> = None;
+    let mut brace_depth: i32 = 0;
+    let mut found_body_start = false;
+    
+    for (i, line) in lines.iter().enumerate() {
+        let line_num = func_start_line + i as i32;
+        let trimmed = line.trim();
+        
+        // Check for section keywords
+        if trimmed.starts_with("requires") && !found_body_start {
+            // End any previous section
+            if in_ensures {
+                if let Some(start) = ensures_start {
+                    sections.ensures_range = Some((start, line_num - 1));
+                }
+                in_ensures = false;
+            }
+            in_requires = true;
+            requires_start = Some(line_num);
+        } else if trimmed.starts_with("ensures") && !found_body_start {
+            // End requires section if active
+            if in_requires {
+                if let Some(start) = requires_start {
+                    sections.requires_range = Some((start, line_num - 1));
+                }
+                in_requires = false;
+            }
+            // End any previous ensures section
+            if in_ensures {
+                if let Some(start) = ensures_start {
+                    sections.ensures_range = Some((start, line_num - 1));
+                }
+            }
+            in_ensures = true;
+            ensures_start = Some(line_num);
+        } else if trimmed.starts_with("decreases") && !found_body_start {
+            // Treat decreases same as ensures (spec section)
+            if in_requires {
+                if let Some(start) = requires_start {
+                    sections.requires_range = Some((start, line_num - 1));
+                }
+                in_requires = false;
+            }
+            if in_ensures {
+                if let Some(start) = ensures_start {
+                    sections.ensures_range = Some((start, line_num - 1));
+                }
+            }
+            in_ensures = true;
+            ensures_start = Some(line_num);
+        }
+        
+        // Track brace depth to find body start
+        for ch in line.chars() {
+            if ch == '{' {
+                if brace_depth == 0 && !found_body_start {
+                    // This is the opening brace of the function body
+                    found_body_start = true;
+                    sections.body_start_line = Some(line_num);
+                    
+                    // End any active spec sections
+                    if in_requires {
+                        if let Some(start) = requires_start {
+                            sections.requires_range = Some((start, line_num - 1));
+                        }
+                        in_requires = false;
+                    }
+                    if in_ensures {
+                        if let Some(start) = ensures_start {
+                            sections.ensures_range = Some((start, line_num - 1));
+                        }
+                        in_ensures = false;
+                    }
+                }
+                brace_depth += 1;
+            } else if ch == '}' {
+                brace_depth = brace_depth.saturating_sub(1);
+            }
+        }
+    }
+    
+    sections
+}
+
+/// Classify a call occurrence based on its line number and the function sections.
+///
+/// Returns the appropriate `CallLocation` based on where the call falls.
+pub fn classify_call_location(call_line: i32, sections: &FunctionSections) -> CallLocation {
+    // Check if call is in requires section
+    if let Some((start, end)) = sections.requires_range {
+        if call_line >= start && call_line <= end {
+            return CallLocation::Precondition;
+        }
+    }
+    
+    // Check if call is in ensures section
+    if let Some((start, end)) = sections.ensures_range {
+        if call_line >= start && call_line <= end {
+            return CallLocation::Postcondition;
+        }
+    }
+    
+    // Default to inner (body) call
+    CallLocation::Inner
 }
 
 /// Parse a SCIP JSON file
@@ -246,6 +419,7 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                         relative_path: rel_path,
                         callers: HashSet::new(),
                         callees: HashSet::new(),
+                        callee_occurrences: Vec::new(),
                         range: Vec::new(), // Will be filled in the second pass
                         body: None,        // Will be filled after ranges are set
                     },
@@ -287,6 +461,13 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                         // Update the caller's callees
                         if let Some(caller_node) = call_graph.get_mut(caller) {
                             caller_node.callees.insert(occurrence.symbol.clone());
+                            // Also store the occurrence with line number for classification
+                            let call_line = occurrence.range.first().copied().unwrap_or(0);
+                            caller_node.callee_occurrences.push(CalleeOccurrence {
+                                symbol: occurrence.symbol.clone(),
+                                line: call_line,
+                                location: None, // Will be classified after body extraction
+                            });
                         }
 
                         // Update the callee's callers
@@ -373,9 +554,21 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                         // Set the body with the collected lines
                         let full_body = body_lines.join("\n");
                         let body_len = full_body.len();
-                        node.body = Some(full_body);
+                        node.body = Some(full_body.clone());
                         let display_name = &node.display_name;
                         debug!("Extracted body for {display_name}, length: {body_len}");
+                        
+                        // Parse function sections and classify callee occurrences
+                        let sections = parse_function_sections(&full_body, node.range[0]);
+                        for occurrence in &mut node.callee_occurrences {
+                            occurrence.location = Some(classify_call_location(occurrence.line, &sections));
+                        }
+                        
+                        debug!(
+                            "Classified {} callee occurrences for {display_name}: {:?}",
+                            node.callee_occurrences.len(),
+                            sections
+                        );
                     }
                 }
             } else {
@@ -383,6 +576,16 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
             }
         }
     }
+    
+    // Fourth pass: For nodes without bodies, default callee occurrences to Inner
+    for node in call_graph.values_mut() {
+        for occurrence in &mut node.callee_occurrences {
+            if occurrence.location.is_none() {
+                occurrence.location = Some(CallLocation::Inner);
+            }
+        }
+    }
+    
     call_graph
 }
 
@@ -556,17 +759,34 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
         })
         .collect();
 
-    // Create links from the callee relationships
+    // Create links from the callee occurrences (with call location classification)
+    // We keep separate links for each type (inner, precondition, postcondition)
+    // but deduplicate links of the same (source, target, type) triple
+    let mut link_set: HashSet<(String, String, String)> = HashSet::new();
     let mut links: Vec<D3Link> = Vec::new();
+    
     for node in call_graph.values() {
-        for callee in &node.callees {
+        // Use callee_occurrences which have location info
+        for occurrence in &node.callee_occurrences {
             // Only add link if the callee exists in the call graph
-            if call_graph.contains_key(callee) {
-                links.push(D3Link {
-                    source: node.symbol.clone(),
-                    target: callee.clone(),
-                    link_type: "calls".to_string(),
-                });
+            if call_graph.contains_key(&occurrence.symbol) {
+                let link_type = occurrence
+                    .location
+                    .as_ref()
+                    .map(|loc| loc.as_str())
+                    .unwrap_or("inner")
+                    .to_string();
+                
+                let key = (node.symbol.clone(), occurrence.symbol.clone(), link_type.clone());
+                
+                // Only add if we haven't seen this exact (source, target, type) before
+                if link_set.insert(key) {
+                    links.push(D3Link {
+                        source: node.symbol.clone(),
+                        target: occurrence.symbol.clone(),
+                        link_type,
+                    });
+                }
             }
         }
     }
@@ -1468,6 +1688,7 @@ mod tests {
                 relative_path: "tmp/foo.rs".to_string(),
                 callers: HashSet::new(),
                 callees: HashSet::new(),
+                callee_occurrences: Vec::new(),
                 range: vec![],
                 body: Some("fn foo() { println!(\"Hello\"); }".to_string()),
             },

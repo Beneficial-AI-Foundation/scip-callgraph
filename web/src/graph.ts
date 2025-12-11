@@ -109,9 +109,21 @@ export class CallGraphVisualization {
       .enter()
       .append('line')
       .attr('class', 'link')
-      .attr('stroke', '#999')
+      .attr('stroke', (d) => {
+        // Color links based on type
+        const linkType = d.type || 'inner';
+        if (linkType === 'precondition') return '#e65100';  // Orange for requires
+        if (linkType === 'postcondition') return '#c2185b'; // Pink for ensures
+        return '#999';  // Default gray for inner/body calls
+      })
       .attr('stroke-opacity', 0.6)
       .attr('stroke-width', 1.5)
+      .attr('stroke-dasharray', (d) => {
+        // Dash pattern for spec links
+        const linkType = d.type || 'inner';
+        if (linkType === 'precondition' || linkType === 'postcondition') return '5,3';
+        return 'none';
+      })
       .attr('marker-end', 'url(#arrowhead)');
 
     this.linkElements = linkEnter.merge(this.linkElements);
