@@ -12,6 +12,9 @@ export interface SimilarLemma {
 /** Verus function mode */
 export type FunctionMode = 'exec' | 'proof' | 'spec';
 
+/** Verification status from Verus verification results */
+export type VerificationStatus = 'verified' | 'failed' | 'unverified';
+
 export interface D3Node {
   id: string;
   display_name: string;
@@ -28,6 +31,7 @@ export interface D3Node {
   callee_count: number;
   similar_lemmas?: SimilarLemma[];
   mode: FunctionMode;  // Verus function mode: exec, proof, or spec
+  verification_status?: VerificationStatus;  // Verification status: verified, failed, unverified
   // D3-specific properties added during simulation
   x?: number;
   y?: number;

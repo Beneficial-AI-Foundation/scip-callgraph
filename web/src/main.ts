@@ -618,8 +618,12 @@ function updateStats(): void {
   }
 
   const filtered = state.filteredGraph || state.fullGraph;
-  const libsignalNodes = filtered.nodes.filter(n => n.is_libsignal).length;
-  const nonLibsignalNodes = filtered.nodes.length - libsignalNodes;
+  
+  // Count verification statuses
+  const verifiedCount = filtered.nodes.filter(n => n.verification_status === 'verified').length;
+  const failedCount = filtered.nodes.filter(n => n.verification_status === 'failed').length;
+  const unverifiedCount = filtered.nodes.filter(n => n.verification_status === 'unverified').length;
+  const unknownCount = filtered.nodes.filter(n => !n.verification_status).length;
 
   statsDiv.innerHTML = `
     <div class="stat-item">
@@ -633,12 +637,20 @@ function updateStats(): void {
       <span class="stat-detail">(of ${state.fullGraph.links.length})</span>
     </div>
     <div class="stat-item">
-      <span class="stat-label">Libsignal:</span>
-      <span class="stat-value" style="color: #4a90e2;">${libsignalNodes}</span>
+      <span class="stat-label">Verified:</span>
+      <span class="stat-value" style="color: #22c55e;">${verifiedCount}</span>
     </div>
     <div class="stat-item">
-      <span class="stat-label">Other:</span>
-      <span class="stat-value" style="color: #7ed321;">${nonLibsignalNodes}</span>
+      <span class="stat-label">Failed:</span>
+      <span class="stat-value" style="color: #ef4444;">${failedCount}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Unverified:</span>
+      <span class="stat-value" style="color: #9ca3af;">${unverifiedCount}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Unknown:</span>
+      <span class="stat-value" style="color: #3b82f6;">${unknownCount}</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Project:</span>
@@ -690,11 +702,28 @@ function updateNodeInfo(): void {
         : `Line ${node.start_line}`)
     : '';
 
+  // Get verification status badge
+  const getVerificationBadge = (status: string | undefined): string => {
+    switch (status) {
+      case 'verified':
+        return '<div class="node-badge badge-verified">✓ Verified</div>';
+      case 'failed':
+        return '<div class="node-badge badge-failed">✗ Failed</div>';
+      case 'unverified':
+        return '<div class="node-badge badge-unverified">○ Unverified</div>';
+      default:
+        return '<div class="node-badge badge-unknown">? Unknown</div>';
+    }
+  };
+
   nodeInfoDiv.innerHTML = `
     <div class="node-detail">
       <h3>${node.display_name}</h3>
-      <div class="node-badge ${node.is_libsignal ? 'badge-libsignal' : 'badge-other'}">
-        ${node.is_libsignal ? 'Libsignal' : 'External'}
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="node-badge ${node.is_libsignal ? 'badge-libsignal' : 'badge-other'}">
+          ${node.is_libsignal ? 'Libsignal' : 'External'}
+        </div>
+        ${getVerificationBadge(node.verification_status)}
       </div>
     </div>
     <div class="node-detail">

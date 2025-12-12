@@ -303,6 +303,28 @@ body {
   margin-left: 0.25rem;
 }
 
+/* Verification Legend */
+.legend-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
 /* Graph Section */
 .graph-section {
   flex: 1;
@@ -427,6 +449,27 @@ body {
 .badge-other {
   background: #f1f8e9;
   color: #558b2f;
+}
+
+/* Verification status badges */
+.badge-verified {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badge-failed {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.badge-unverified {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.badge-unknown {
+  background: #dbeafe;
+  color: #2563eb;
 }
 
 /* Similar Lemmas */

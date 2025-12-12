@@ -121,6 +121,40 @@ uv run python scripts/enrich_graph_with_similar_lemmas.py \
 
 See [docs/guides/INTERACTIVE_VIEWER.md](docs/guides/INTERACTIVE_VIEWER.md) and [docs/SIMILAR_LEMMAS.md](docs/SIMILAR_LEMMAS.md) for details.
 
+#### Optional: Enrich with Verification Status
+
+Add verification status (verified/failed/unverified) to nodes, which colors them in the graph:
+- **Green** - Verified functions
+- **Red** - Failed functions  
+- **Grey** - Unverified functions
+- **Blue** - Unknown (no verification data)
+
+**Step 1:** Generate verification results using [scip-atoms](https://github.com/Beneficial-AI-Foundation/scip-atoms):
+
+```bash
+# In the scip-atoms repository
+scip-atoms verify <path-to-verus-project>
+# This outputs verification_results.json
+```
+
+**Step 2:** Enrich the call graph with verification status:
+
+```bash
+# Copy verification_results.json to scip-callgraph/data/
+cp verification_results.json /path/to/scip-callgraph/data/
+
+# Run the enrichment script
+python3 scripts/add_verification_status.py \
+    --graph web/public/graph.json \
+    --verification data/verification_results.json
+```
+
+The script matches functions by display name and file path, adding a `verification_status` field to each matching node.
+
+> **TODO:** Unify `scip-callgraph` and `scip-atoms` into a single tool or create a unified pipeline that handles SCIP parsing, verification, and visualization in one workflow. Currently they are separate tools that need manual integration via JSON files.
+
+> **TODO:** Use vstd (Verus standard library) verification data to provide verification statuses for external library functions. Currently, lemmas from vstd are marked as "unknown" (blue) because we only have verification results for the project itself. With vstd verification data, these could be marked as "verified" since vstd lemmas are proven.
+
 ---
 
 ## 🆕 Verus Metrics Pipeline
@@ -227,6 +261,14 @@ git push origin v1.0.0
 - [docs/guides/INTERACTIVE_VIEWER.md](docs/guides/INTERACTIVE_VIEWER.md) - Web viewer documentation
 - [docs/guides/GITHUB_PAGES_GUIDE.md](docs/guides/GITHUB_PAGES_GUIDE.md) - Online viewer guide
 - [docs/SIMILAR_LEMMAS.md](docs/SIMILAR_LEMMAS.md) - Similar lemmas feature
+
+## Python Scripts
+
+| Script | Description |
+|--------|-------------|
+| `scripts/add_verification_status.py` | Enrich graph.json with verification status from scip-atoms |
+| `scripts/enrich_graph_with_similar_lemmas.py` | Enrich graph.json with similar lemmas from verus_lemma_finder |
+| `scripts/visualize_metrics.py` | Generate visualization plots from metrics data |
 
 ## License
 
