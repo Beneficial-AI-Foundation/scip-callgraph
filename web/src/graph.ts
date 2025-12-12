@@ -140,7 +140,7 @@ export class CallGraphVisualization {
       .append('circle')
       .attr('class', 'node')
       .attr('r', (d) => Math.max(5, Math.min(15, Math.sqrt(d.caller_count + d.callee_count) * 2)))
-      .attr('fill', (d) => (d.is_libsignal ? '#4a90e2' : '#7ed321'))
+      .attr('fill', (d) => this.getNodeColor(d))
       .attr('stroke', '#fff')
       .attr('stroke-width', 2)
       .style('cursor', 'pointer')
@@ -194,6 +194,26 @@ export class CallGraphVisualization {
 
     // Reheat simulation
     this.simulation.alpha(1).restart();
+  }
+
+  /**
+   * Get node color based on verification status
+   * - verified: green (#22c55e)
+   * - failed: red (#ef4444)
+   * - unverified: grey (#9ca3af)
+   * - unknown (no status): blue (#3b82f6)
+   */
+  private getNodeColor(node: D3Node): string {
+    switch (node.verification_status) {
+      case 'verified':
+        return '#22c55e';  // Green
+      case 'failed':
+        return '#ef4444';  // Red
+      case 'unverified':
+        return '#9ca3af';  // Grey
+      default:
+        return '#3b82f6';  // Blue (unknown/no verification status)
+    }
   }
 
   /**
