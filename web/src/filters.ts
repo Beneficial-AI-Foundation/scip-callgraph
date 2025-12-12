@@ -56,6 +56,30 @@ function parseExcludePatterns(patternsStr: string): RegExp[] {
 }
 
 /**
+ * Parse include file patterns from comma-separated string and convert to regexes
+ * Returns empty array if no patterns (meaning include all files)
+ */
+function parseIncludeFilePatterns(patternsStr: string): RegExp[] {
+  if (!patternsStr.trim()) return [];
+  return patternsStr
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => p.length > 0)
+    .map(p => globToRegex(p));
+}
+
+/**
+ * Check if a node's file matches any of the include patterns
+ * Returns true if node should be INCLUDED
+ * If no patterns specified (empty array), all nodes are included
+ */
+function nodeMatchesIncludeFilePattern(node: D3Node, includePatterns: RegExp[]): boolean {
+  if (includePatterns.length === 0) return true;  // No filter = include all
+  const fileName = node.file_name || '';
+  return includePatterns.some(pattern => pattern.test(fileName));
+}
+
+/**
  * Apply filters to the full graph and return a filtered graph
  */
 export function applyFilters(
@@ -76,22 +100,31 @@ export function applyFilters(
   const sourceQuery = filters.sourceQuery.trim().toLowerCase();
   const sinkQuery = filters.sinkQuery.trim().toLowerCase();
   
-  console.log('[DEBUG] Source query:', JSON.stringify(sourceQuery), 'Sink query:', JSON.stringify(sinkQuery));
-
   // Parse exclude patterns
   const excludePatterns = parseExcludePatterns(filters.excludePatterns);
-  console.log('[DEBUG] Exclude patterns:', excludePatterns);
 
-  // Pre-filter: Create a set of node IDs that pass mode filters AND don't match exclude patterns
-  // AND are not hidden by the user
+  // Parse include file patterns
+  const includeFilePatterns = parseIncludeFilePatterns(filters.includeFiles);
+
+  // Pre-filter: Create a set of node IDs that pass all filters
   // This is used to exclude links to/from filtered-out nodes during traversal
   const modeAllowedNodeIds = new Set<string>(
     fullGraph.nodes
       .filter(node => nodePassesModeFilter(node, filters))
       .filter(node => !nodeMatchesExcludePattern(node, excludePatterns))
+      .filter(node => nodeMatchesIncludeFilePattern(node, includeFilePatterns))
       .filter(node => !filters.hiddenNodes.has(node.id))  // Exclude hidden nodes from traversal
       .map(node => node.id)
   );
+  
+  // Debug: Show filter effects
+  if (excludePatterns.length > 0 || includeFilePatterns.length > 0) {
+    const excludedByPattern = fullGraph.nodes.filter(n => nodeMatchesExcludePattern(n, excludePatterns)).length;
+    const excludedByFile = fullGraph.nodes.filter(n => !nodeMatchesIncludeFilePattern(n, includeFilePatterns)).length;
+    console.log(`[Filter] Exclude patterns: ${excludePatterns.length}, excluded ${excludedByPattern} nodes`);
+    console.log(`[Filter] Include files: ${includeFilePatterns.length}, excluded ${excludedByFile} nodes`);
+    console.log(`[Filter] modeAllowedNodeIds size: ${modeAllowedNodeIds.size} (from ${fullGraph.nodes.length})`);
+  }
   
   // Create a "traversable" graph that respects mode filters
   // This prevents traversal through spec/proof/exec nodes that are filtered out
@@ -249,14 +282,17 @@ export function applyFilters(
       });
     });
   }
-  // If neither source nor sink, show all nodes (no filtering by query)
-
-  // Filter nodes if we have any source/sink constraints
+  
+  // Filter nodes based on source/sink constraints or pre-filters
   if (hasSource || hasSink) {
+    // Apply source/sink traversal results
     console.log('[DEBUG] Before source/sink filter: filteredNodes.length:', filteredNodes.length);
     console.log('[DEBUG] includedNodeIds.size:', includedNodeIds.size);
     filteredNodes = filteredNodes.filter(node => includedNodeIds.has(node.id));
     console.log('[DEBUG] After source/sink filter: filteredNodes.length:', filteredNodes.length);
+  } else {
+    // No source/sink query - apply pre-filters (mode, exclude patterns, include files)
+    filteredNodes = filteredNodes.filter(node => modeAllowedNodeIds.has(node.id));
   }
 
   // Filter by libsignal flag
@@ -283,13 +319,14 @@ export function applyFilters(
   // Only apply when there's NO source/sink query - clicking shouldn't override query results
   if (filters.maxDepth !== null && filters.selectedNodes.size > 0 && !hasSource && !hasSink) {
     // Use traversable graph to respect mode filters during depth traversal
+    // When clicking (no query), explore BOTH directions to show full neighborhood
     const nodesAtDepth = computeDepthFromSelected(
       traversableGraph.nodes,
       traversableGraph.links,
       filters.selectedNodes,
       filters.maxDepth,
-      hasSource || isSameQuery,  // include callees direction
-      hasSink || isSameQuery     // include callers direction
+      true,  // include callees direction
+      true   // include callers direction
     );
     
     filteredNodes = traversableGraph.nodes.filter(node => nodesAtDepth.has(node.id));

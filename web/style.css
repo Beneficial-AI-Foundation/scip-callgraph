@@ -325,6 +325,80 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
+/* File List Panel */
+.file-list-details {
+  margin-top: 0.5rem;
+}
+
+.file-list-details summary {
+  cursor: pointer;
+  padding: 0.5rem;
+  background: #f5f5f5;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.file-list-details summary:hover {
+  background: #eee;
+}
+
+.file-list-details[open] summary {
+  border-radius: 4px 4px 0 0;
+}
+
+.file-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  background: white;
+}
+
+.file-list-item {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.file-list-item:last-child {
+  border-bottom: none;
+}
+
+.file-list-item:hover {
+  background: #e8f4fd;
+}
+
+.file-list-item.selected {
+  background: #d4edfa;
+  font-weight: 500;
+}
+
+.file-list-item .file-icon {
+  color: #888;
+  font-size: 0.75rem;
+}
+
+.file-list-item .file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-list-item .file-count {
+  font-size: 0.7rem;
+  color: #999;
+  background: #f0f0f0;
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+}
+
 /* Graph Section */
 .graph-section {
   flex: 1;
