@@ -800,7 +800,7 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
             let mode = node.body.as_ref()
                 .map(|b| detect_function_mode(b))
                 .unwrap_or(FunctionMode::Exec);
-            
+
             D3Node {
                 id: node.symbol.clone(),
                 display_name: node.display_name.clone(),
@@ -842,11 +842,11 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
                 
                 // Only add if we haven't seen this exact (source, target, type) before
                 if link_set.insert(key) {
-                    links.push(D3Link {
-                        source: node.symbol.clone(),
+                links.push(D3Link {
+                    source: node.symbol.clone(),
                         target: occurrence.symbol.clone(),
                         link_type,
-                    });
+                });
                 }
             }
         }

@@ -60,6 +60,7 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (params.has('source')) filters.sourceQuery = params.get('source')!;
   if (params.has('sink')) filters.sinkQuery = params.get('sink')!;
   if (params.has('exclude')) filters.excludePatterns = params.get('exclude')!;
+  if (params.has('files')) filters.includeFiles = params.get('files')!;
   
   // Number params
   if (params.has('depth')) {
@@ -110,13 +111,14 @@ function generateShareableURL(): string {
   const params = url.searchParams;
   
   // Clear existing filter params (keep json, github, etc.)
-  ['source', 'sink', 'exclude', 'depth', 'exec', 'proof', 'spec', 
+  ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec', 
    'inner', 'pre', 'post', 'libsignal', 'external', 'hidden'].forEach(k => params.delete(k));
   
   // Add current filter state
   if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
   if (state.filters.sinkQuery) params.set('sink', state.filters.sinkQuery);
   if (state.filters.excludePatterns) params.set('exclude', state.filters.excludePatterns);
+  if (state.filters.includeFiles) params.set('files', state.filters.includeFiles);
   if (state.filters.maxDepth !== null) params.set('depth', state.filters.maxDepth.toString());
   
   // Only include non-default boolean values to keep URL short
@@ -165,6 +167,10 @@ function applyURLFiltersToState(urlFilters: Partial<FilterOptions>): void {
   setInput('source-input', state.filters.sourceQuery);
   setInput('sink-input', state.filters.sinkQuery);
   setInput('exclude-patterns', state.filters.excludePatterns);
+  setInput('include-files', state.filters.includeFiles);
+  
+  // Update file list selection to match
+  updateFileListSelection();
   
   const depthEl = document.getElementById('depth-limit') as HTMLInputElement;
   if (depthEl) {
@@ -209,6 +215,7 @@ const initialFilters: FilterOptions = {
   showProofFunctions: true,       // Show proof functions by default
   showSpecFunctions: false,       // Hide spec functions by default
   excludePatterns: '',            // Comma-separated patterns to exclude
+  includeFiles: '',               // Comma-separated file patterns to include (empty = all)
   maxDepth: 1,
   sourceQuery: '',  // Source nodes - shows what they call (callees)
   sinkQuery: '',    // Sink nodes - shows who calls them (callers)
@@ -235,6 +242,7 @@ function syncInputsToState(): void {
   const sourceInput = document.getElementById('source-input') as HTMLInputElement;
   const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
   const excludeInput = document.getElementById('exclude-patterns') as HTMLInputElement;
+  const includeFilesInput = document.getElementById('include-files') as HTMLInputElement;
   const depthInput = document.getElementById('depth-limit') as HTMLInputElement;
   
   if (sourceInput?.value) {
@@ -245,6 +253,9 @@ function syncInputsToState(): void {
   }
   if (excludeInput?.value) {
     state.filters.excludePatterns = excludeInput.value;
+  }
+  if (includeFilesInput?.value) {
+    state.filters.includeFiles = includeFilesInput.value;
   }
   if (depthInput?.value) {
     const value = parseInt(depthInput.value);
@@ -354,6 +365,12 @@ function setupUIHandlers(): void {
 
   document.getElementById('exclude-patterns')?.addEventListener('input', (e) => {
     state.filters.excludePatterns = (e.target as HTMLInputElement).value;
+    applyFiltersAndUpdate();
+  });
+
+  document.getElementById('include-files')?.addEventListener('input', (e) => {
+    state.filters.includeFiles = (e.target as HTMLInputElement).value;
+    updateFileListSelection();  // Update file list checkmarks
     applyFiltersAndUpdate();
   });
 
@@ -494,6 +511,9 @@ function loadGraph(graph: D3Graph, message: string): void {
   }
   
   console.log('[DEBUG] Graph loaded:', state.fullGraph.nodes.length, 'nodes,', state.fullGraph.links.length, 'links');
+  
+  // Populate the file list panel
+  populateFileList();
   
   // Apply URL filter parameters (if any)
   const urlFilters = parseFiltersFromURL();
@@ -775,6 +795,118 @@ function updateNodeInfo(): void {
 }
 
 /**
+ * Populate the file list panel with unique files from the graph
+ */
+function populateFileList(): void {
+  if (!state.fullGraph) return;
+  
+  const fileListDiv = document.getElementById('file-list');
+  const fileCountSpan = document.getElementById('file-count');
+  if (!fileListDiv) return;
+
+  // Get unique files with counts
+  const fileCounts = new Map<string, number>();
+  state.fullGraph.nodes.forEach(node => {
+    const fileName = node.file_name || 'unknown';
+    fileCounts.set(fileName, (fileCounts.get(fileName) || 0) + 1);
+  });
+
+  // Sort files alphabetically
+  const sortedFiles = [...fileCounts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
+  // Update count
+  if (fileCountSpan) {
+    fileCountSpan.textContent = sortedFiles.length.toString();
+  }
+
+  // Build file list HTML
+  fileListDiv.innerHTML = sortedFiles.map(([fileName, count]) => `
+    <div class="file-list-item" data-file="${escapeHtml(fileName)}">
+      <span class="file-icon">📄</span>
+      <span class="file-name">${escapeHtml(fileName)}</span>
+      <span class="file-count">${count}</span>
+    </div>
+  `).join('');
+
+  // Add click handlers to toggle file selection
+  fileListDiv.querySelectorAll('.file-list-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const fileName = item.getAttribute('data-file');
+      if (fileName) {
+        toggleFileInFilter(fileName);
+      }
+    });
+  });
+
+  // Update selection state based on current filter
+  updateFileListSelection();
+}
+
+/**
+ * Toggle a file in the include filter
+ */
+function toggleFileInFilter(fileName: string): void {
+  const input = document.getElementById('include-files') as HTMLInputElement;
+  if (!input) return;
+
+  const currentPatterns = input.value
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+
+  const fileIndex = currentPatterns.indexOf(fileName);
+  if (fileIndex >= 0) {
+    // Remove the file
+    currentPatterns.splice(fileIndex, 1);
+  } else {
+    // Add the file
+    currentPatterns.push(fileName);
+  }
+
+  // Update input and filter
+  input.value = currentPatterns.join(', ');
+  state.filters.includeFiles = input.value;
+  updateFileListSelection();
+  applyFiltersAndUpdate();
+}
+
+/**
+ * Update the file list to show which files are currently selected
+ */
+function updateFileListSelection(): void {
+  const fileListDiv = document.getElementById('file-list');
+  if (!fileListDiv) return;
+
+  const currentPatterns = state.filters.includeFiles
+    .split(',')
+    .map(p => p.trim().toLowerCase())
+    .filter(p => p.length > 0);
+
+  fileListDiv.querySelectorAll('.file-list-item').forEach(item => {
+    const fileName = item.getAttribute('data-file')?.toLowerCase() || '';
+    const isSelected = currentPatterns.some(pattern => {
+      // Simple matching: exact match or glob pattern match
+      if (pattern.includes('*') || pattern.includes('?')) {
+        // Convert glob to regex for matching
+        const regexStr = pattern
+          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+          .replace(/\*/g, '.*')
+          .replace(/\?/g, '.');
+        return new RegExp('^' + regexStr + '$', 'i').test(fileName);
+      }
+      return fileName === pattern;
+    });
+    
+    if (currentPatterns.length === 0) {
+      // No filter = nothing selected (all shown)
+      item.classList.remove('selected');
+    } else {
+      item.classList.toggle('selected', isSelected);
+    }
+  });
+}
+
+/**
  * Reset all filters
  */
 function resetFilters(): void {
@@ -797,10 +929,14 @@ function resetFilters(): void {
   (document.getElementById('show-proof-functions') as HTMLInputElement).checked = true;
   (document.getElementById('show-spec-functions') as HTMLInputElement).checked = false;
   (document.getElementById('exclude-patterns') as HTMLInputElement).value = '';
+  (document.getElementById('include-files') as HTMLInputElement).value = '';
   (document.getElementById('source-input') as HTMLInputElement).value = '';
   (document.getElementById('sink-input') as HTMLInputElement).value = '';
   (document.getElementById('depth-limit') as HTMLInputElement).value = '1';
   document.getElementById('depth-value')!.textContent = '1';
+  
+  // Update file list selection to clear all
+  updateFileListSelection();
   
   applyFiltersAndUpdate();
 }

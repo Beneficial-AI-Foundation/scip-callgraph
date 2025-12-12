@@ -76,6 +76,8 @@ export interface FilterOptions {
   showSpecFunctions: boolean;      // Show spec functions (default: false)
   // Pattern-based exclusion (comma-separated substrings to exclude)
   excludePatterns: string;         // e.g., "_commutative,_associative,lemma_mul"
+  // File-based inclusion (comma-separated file names or glob patterns)
+  includeFiles: string;            // e.g., "edwards.rs, decompress*.rs" - empty means all files
   maxDepth: number | null;
   sourceQuery: string;  // Source node(s) - shows what they call (callees direction)
   sinkQuery: string;    // Sink node(s) - shows who calls them (callers direction)
