@@ -1,6 +1,139 @@
 import * as d3 from 'd3';
 import { D3Graph, D3Node, D3Link, GraphState } from './types';
 
+/**
+ * Compute topological depth for each node in the graph.
+ * Nodes with no incoming edges (callers) are at depth 0.
+ * Depth increases as we follow call edges.
+ * Returns a Map from node id to depth.
+ */
+function computeTopologicalDepth(nodes: D3Node[], links: D3Link[]): Map<string, number> {
+  const depths = new Map<string, number>();
+  const nodeIds = new Set(nodes.map(n => n.id));
+  
+  // Build adjacency lists
+  const incomingEdges = new Map<string, string[]>();  // node -> list of nodes that call it
+  const outgoingEdges = new Map<string, string[]>();  // node -> list of nodes it calls
+  
+  for (const node of nodes) {
+    incomingEdges.set(node.id, []);
+    outgoingEdges.set(node.id, []);
+  }
+  
+  for (const link of links) {
+    const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+    const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    
+    // Only consider edges between nodes in our current graph
+    if (nodeIds.has(sourceId) && nodeIds.has(targetId)) {
+      outgoingEdges.get(sourceId)?.push(targetId);
+      incomingEdges.get(targetId)?.push(sourceId);
+    }
+  }
+  
+  // Find root nodes (no incoming edges) - these are "entry points"
+  const roots: string[] = [];
+  for (const node of nodes) {
+    if (incomingEdges.get(node.id)?.length === 0) {
+      roots.push(node.id);
+    }
+  }
+  
+  // If no roots found (cycles?), use nodes with lowest in-degree
+  if (roots.length === 0) {
+    const nodesByInDegree = [...nodes].sort((a, b) => 
+      (incomingEdges.get(a.id)?.length || 0) - (incomingEdges.get(b.id)?.length || 0)
+    );
+    if (nodesByInDegree.length > 0) {
+      roots.push(nodesByInDegree[0].id);
+    }
+  }
+  
+  // BFS to compute depths
+  const queue: Array<{ id: string; depth: number }> = roots.map(id => ({ id, depth: 0 }));
+  
+  while (queue.length > 0) {
+    const { id, depth } = queue.shift()!;
+    
+    // Take max depth if already visited (handles DAG correctly)
+    const currentDepth = depths.get(id);
+    if (currentDepth !== undefined && currentDepth >= depth) {
+      continue;
+    }
+    
+    depths.set(id, depth);
+    
+    // Process callees (outgoing edges)
+    for (const calleeId of outgoingEdges.get(id) || []) {
+      queue.push({ id: calleeId, depth: depth + 1 });
+    }
+  }
+  
+  // Handle any unvisited nodes (disconnected components)
+  for (const node of nodes) {
+    if (!depths.has(node.id)) {
+      depths.set(node.id, 0);
+    }
+  }
+  
+  return depths;
+}
+
+/**
+ * Assign initial positions based on topological order.
+ * X position is based on depth (layers from left to right).
+ * Y position spreads nodes evenly within each layer.
+ */
+function assignTopologicalPositions(
+  nodes: D3Node[],
+  links: D3Link[],
+  width: number,
+  height: number
+): void {
+  const depths = computeTopologicalDepth(nodes, links);
+  
+  // Group nodes by depth
+  const nodesByDepth = new Map<number, D3Node[]>();
+  let maxDepth = 0;
+  
+  for (const node of nodes) {
+    const depth = depths.get(node.id) || 0;
+    maxDepth = Math.max(maxDepth, depth);
+    
+    if (!nodesByDepth.has(depth)) {
+      nodesByDepth.set(depth, []);
+    }
+    nodesByDepth.get(depth)!.push(node);
+  }
+  
+  // Sort nodes within each depth by their display name for consistency
+  for (const [depth, nodesAtDepth] of nodesByDepth) {
+    nodesAtDepth.sort((a, b) => a.display_name.localeCompare(b.display_name));
+    nodesByDepth.set(depth, nodesAtDepth);
+  }
+  
+  // Assign positions
+  const padding = 100;
+  const usableWidth = width - 2 * padding;
+  const usableHeight = height - 2 * padding;
+  
+  // Calculate x spacing based on number of depths
+  const xSpacing = maxDepth > 0 ? usableWidth / maxDepth : usableWidth / 2;
+  
+  for (const [depth, nodesAtDepth] of nodesByDepth) {
+    // X position based on depth (left to right)
+    const x = padding + depth * xSpacing;
+    
+    // Y positions spread evenly
+    const ySpacing = usableHeight / (nodesAtDepth.length + 1);
+    
+    nodesAtDepth.forEach((node, index) => {
+      node.x = x;
+      node.y = padding + (index + 1) * ySpacing;
+    });
+  }
+}
+
 export class CallGraphVisualization {
   private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private g: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -81,18 +214,40 @@ export class CallGraphVisualization {
     const nodes = filteredGraph.nodes.map(node => ({ ...node }));
     const links = filteredGraph.links.map(link => ({ ...link }));
 
-    // Create force simulation
+    // Assign initial positions based on topological order
+    // This ensures consistent, deterministic layout
+    assignTopologicalPositions(nodes, links, this.width, this.height);
+
+    // Compute target X positions for each node based on depth (for x-force)
+    const depths = computeTopologicalDepth(nodes, links);
+    const maxDepth = Math.max(...depths.values(), 1);
+    const padding = 100;
+    const usableWidth = this.width - 2 * padding;
+    const xSpacing = maxDepth > 0 ? usableWidth / maxDepth : usableWidth / 2;
+    
+    // Store target x position for each node
+    const targetX = new Map<string, number>();
+    for (const node of nodes) {
+      const depth = depths.get(node.id) || 0;
+      targetX.set(node.id, padding + depth * xSpacing);
+    }
+
+    // Create force simulation with layered layout
     this.simulation = d3
       .forceSimulation<D3Node>(nodes)
       .force(
         'link',
         d3.forceLink<D3Node, D3Link>(links)
           .id(d => d.id)
-          .distance(100)
+          .distance(80)
+          .strength(0.5)
       )
-      .force('charge', d3.forceManyBody().strength(-300))
-      .force('center', d3.forceCenter(this.width / 2, this.height / 2))
-      .force('collision', d3.forceCollide().radius(30));
+      .force('charge', d3.forceManyBody().strength(-200))
+      // Use forceX to keep nodes at their topological layer
+      .force('x', d3.forceX<D3Node>(d => targetX.get(d.id) || this.width / 2).strength(0.8))
+      // Use forceY to center vertically with some spread
+      .force('y', d3.forceY(this.height / 2).strength(0.05))
+      .force('collision', d3.forceCollide().radius(35));
 
     // Update links
     this.linkElements = this.g
@@ -350,8 +505,9 @@ export class CallGraphVisualization {
     this.svg.attr('viewBox', `0 0 ${width} ${height}`);
     
     if (this.simulation) {
+      // Update the y-centering force for new height
       this.simulation
-        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('y', d3.forceY(height / 2).strength(0.05))
         .alpha(0.3)
         .restart();
     }

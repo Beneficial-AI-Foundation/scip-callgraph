@@ -80,6 +80,19 @@ function nodeMatchesIncludeFilePattern(node: D3Node, includePatterns: RegExp[]):
 }
 
 /**
+ * Check if a node is from a build artifact directory (target/, build/, etc.)
+ * Returns true if node should be EXCLUDED
+ */
+function nodeIsFromBuildArtifact(node: D3Node): boolean {
+  const path = node.relative_path || '';
+  // Common build artifact directories
+  return path.startsWith('target/') || 
+         path.startsWith('build/') ||
+         path.includes('/target/') ||
+         path.includes('/build/');
+}
+
+/**
  * Apply filters to the full graph and return a filtered graph
  */
 export function applyFilters(
@@ -113,6 +126,7 @@ export function applyFilters(
       .filter(node => nodePassesModeFilter(node, filters))
       .filter(node => !nodeMatchesExcludePattern(node, excludePatterns))
       .filter(node => nodeMatchesIncludeFilePattern(node, includeFilePatterns))
+      .filter(node => !nodeIsFromBuildArtifact(node))  // Exclude build artifacts (target/, build/)
       .filter(node => !filters.hiddenNodes.has(node.id))  // Exclude hidden nodes from traversal
       .map(node => node.id)
   );
@@ -450,9 +464,10 @@ export function applyFilters(
     return true;
   });
 
-  // Remove isolated nodes (nodes with no incoming or outgoing edges)
-  // But always keep the source/sink query matches even if they have no edges
+  // Remove isolated nodes (nodes with no edges in the filtered graph)
+  // This includes query matches - if a sink has no callers, don't show it
   const connectedNodeIds = new Set<string>();
+  
   for (const link of filteredLinks) {
     const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
     const targetId = typeof link.target === 'string' ? link.target : link.target.id;
@@ -460,12 +475,8 @@ export function applyFilters(
     connectedNodeIds.add(targetId);
   }
   
-  // Keep nodes that are connected OR are source/sink matches
-  filteredNodes = filteredNodes.filter(node => 
-    connectedNodeIds.has(node.id) || 
-    sourceMatchIds.has(node.id) || 
-    sinkMatchIds.has(node.id)
-  );
+  // Only keep nodes that have at least one edge
+  filteredNodes = filteredNodes.filter(node => connectedNodeIds.has(node.id));
 
   // Create fresh copies of nodes and links to prevent D3 from mutating the originals
   // D3's force simulation modifies link.source/target from string IDs to node references

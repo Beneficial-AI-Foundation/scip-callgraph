@@ -409,6 +409,87 @@ pub fn parse_scip_json(file_path: &str) -> Result<ScipIndex, Box<dyn std::error:
     Ok(index)
 }
 
+/// Extract display name from an external symbol
+/// Example: "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/CompressedEdwardsY#decompress()."
+/// -> "decompress"
+fn extract_display_name_from_symbol(symbol: &str) -> String {
+    // Try to find the function name after the last '#'
+    if let Some(hash_pos) = symbol.rfind('#') {
+        let after_hash = &symbol[hash_pos + 1..];
+        // Remove trailing "()" and "."
+        let name = after_hash
+            .trim_end_matches('.')
+            .trim_end_matches("()")
+            .trim_end_matches('.');
+        if !name.is_empty() {
+            return name.to_string();
+        }
+    }
+    
+    // Fallback: try to find between last '/' and first '(' or end
+    if let Some(slash_pos) = symbol.rfind('/') {
+        let after_slash = &symbol[slash_pos + 1..];
+        if let Some(paren_pos) = after_slash.find('(') {
+            return after_slash[..paren_pos].to_string();
+        }
+        return after_slash.trim_end_matches('.').to_string();
+    }
+    
+    // Last resort: use the whole symbol (truncated)
+    symbol.chars().take(50).collect()
+}
+
+/// Extract path info from an external symbol for UI grouping
+/// Example: "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/CompressedEdwardsY#decompress()."
+/// -> (relative_path: "curve25519-dalek/edwards", file_name: "edwards", parent_folder: "curve25519-dalek")
+fn extract_path_info_from_symbol(symbol: &str) -> (String, String, String) {
+    // Pattern: "rust-analyzer cargo <crate> <version> <path>#<method>"
+    let parts: Vec<&str> = symbol.split_whitespace().collect();
+    
+    // Skip "rust-analyzer cargo" and get crate name
+    let crate_name = if parts.len() >= 3 {
+        parts[2].to_string()  // e.g., "curve25519-dalek"
+    } else {
+        "external".to_string()
+    };
+    
+    // Try to find the path part (after version, before #)
+    let path_part = if let Some(version_end) = symbol.find(char::is_numeric) {
+        // Find the space after the version number
+        if let Some(space_after_version) = symbol[version_end..].find(' ') {
+            let after_version = &symbol[version_end + space_after_version + 1..];
+            // Take everything before '#'
+            if let Some(hash_pos) = after_version.find('#') {
+                after_version[..hash_pos].to_string()
+            } else {
+                after_version.to_string()
+            }
+        } else {
+            crate_name.clone()
+        }
+    } else {
+        crate_name.clone()
+    };
+    
+    // Extract file_name and parent_folder from path_part
+    // Example: "edwards/CompressedEdwardsY" -> file_name: "CompressedEdwardsY", parent_folder: "edwards"
+    let path_segments: Vec<&str> = path_part.split('/').collect();
+    let (file_name, parent_folder) = match path_segments.len() {
+        0 => ("unknown".to_string(), crate_name.clone()),
+        1 => (path_segments[0].to_string(), crate_name.clone()),
+        _ => {
+            let file = path_segments.last().unwrap_or(&"unknown").to_string();
+            let parent = path_segments.get(path_segments.len() - 2).unwrap_or(&"unknown").to_string();
+            (file, parent)
+        }
+    };
+    
+    // Build relative_path as crate/module/file
+    let relative_path = format!("{}/{}", crate_name, path_part);
+    
+    (relative_path, file_name, parent_folder)
+}
+
 /// Build a call graph from SCIP JSON data
 pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> {
     let mut call_graph: HashMap<String, FunctionNode> = HashMap::new();
@@ -439,25 +520,26 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
         symbol_to_def_file.len()
     );
 
-    // First pass: identify all function symbols and their containing files
+    // First pass: identify all LOCAL function symbols and their containing files
+    // A symbol is LOCAL if it has a definition in the project (symbol_to_def_file)
+    // External symbols (from dependencies) appear in doc.symbols but have no local definition
     for doc in &scip_data.documents {
         for symbol in &doc.symbols {
             // Check if this is a function-like symbol (kind 12, 17, 80 etc.)
             if is_function_like(symbol.kind) {
-                function_symbols.insert(symbol.symbol.clone());
-
-                // Use the DEFINITION location if available, otherwise fall back to symbols array location
+                // Only include LOCAL functions - those with a definition in the project
+                // External symbols (from dependencies like curve25519-dalek) will be handled later
                 let (abs_path, rel_path) =
                     if let Some((def_abs, def_rel)) = symbol_to_def_file.get(&symbol.symbol) {
+                        // This symbol has a local definition - it's a local function
                         (def_abs.clone(), def_rel.clone())
                     } else {
-                        // Fallback: use the document where the symbol appears in symbols array
-                        let project_root = &scip_data.metadata.project_root;
-                        let rel_path = doc.relative_path.trim_start_matches('/');
-                        let abs_path = format!("{project_root}/{rel_path}");
-                        (abs_path, rel_path.to_string())
+                        // No local definition - this is an EXTERNAL symbol
+                        // Skip it here, it will be handled in pass 1.5
+                        continue;
                     };
-
+                
+                function_symbols.insert(symbol.symbol.clone());
                 symbol_to_file.insert(symbol.symbol.clone(), abs_path.clone());
                 symbol_to_kind.insert(symbol.symbol.clone(), symbol.kind);
 
@@ -482,6 +564,93 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
             }
         }
     }
+    
+    debug!(
+        "First pass: Found {} local function symbols",
+        function_symbols.len()
+    );
+
+    // Pass 1.5: Identify external function symbols
+    // These are symbols that are referenced but not defined in local source files
+    // (e.g., functions from dependencies like curve25519-dalek)
+    // They can appear in two places:
+    // 1. In doc.symbols array (function-like symbols without local definition)
+    // 2. In doc.occurrences array (references to external functions)
+    let mut external_function_symbols: HashSet<String> = HashSet::new();
+    let mut external_display_names: HashMap<String, String> = HashMap::new();
+    
+    // 1. Get external symbols from doc.symbols (already function-like, but no local def)
+    for doc in &scip_data.documents {
+        for symbol in &doc.symbols {
+            if is_function_like(symbol.kind) && !function_symbols.contains(&symbol.symbol) {
+                external_function_symbols.insert(symbol.symbol.clone());
+                // Store the display_name if provided
+                if let Some(name) = &symbol.display_name {
+                    external_display_names.insert(symbol.symbol.clone(), name.clone());
+                }
+            }
+        }
+    }
+    
+    // 2. Get external symbols from occurrences (references to functions)
+    for doc in &scip_data.documents {
+        for occurrence in &doc.occurrences {
+            let is_definition = occurrence.symbol_roles.unwrap_or(0) & 1 == 1;
+            let symbol = &occurrence.symbol;
+            
+            // Skip if it's a definition or already a known function
+            if is_definition || function_symbols.contains(symbol) || external_function_symbols.contains(symbol) {
+                continue;
+            }
+            
+            // Check if this looks like a function symbol (ends with "()" or "().")
+            // External symbols typically have patterns like:
+            // "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/CompressedEdwardsY#decompress()."
+            if (symbol.contains("()") || symbol.ends_with(".")) && (symbol.contains('#') || symbol.contains('/')) {
+                external_function_symbols.insert(symbol.clone());
+            }
+        }
+    }
+    
+    debug!(
+        "Pass 1.5: Found {} external function symbols",
+        external_function_symbols.len()
+    );
+    
+    // Create placeholder nodes for external functions
+    for symbol in &external_function_symbols {
+        // Use display name from doc.symbols if available, otherwise extract from symbol
+        let display_name = external_display_names
+            .get(symbol)
+            .cloned()
+            .unwrap_or_else(|| extract_display_name_from_symbol(symbol));
+        
+        // Extract a pseudo file path from the symbol for grouping
+        // Example: "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/CompressedEdwardsY#..."
+        // -> relative_path: "curve25519-dalek/edwards/CompressedEdwardsY"
+        let (relative_path, _file_name, _parent_folder) = extract_path_info_from_symbol(symbol);
+        
+        call_graph.insert(
+            symbol.clone(),
+            FunctionNode {
+                symbol: symbol.clone(),
+                display_name,
+                file_path: format!("external:{}", symbol),  // Mark as external
+                relative_path,
+                callers: HashSet::new(),
+                callees: HashSet::new(),
+                callee_occurrences: Vec::new(),
+                range: Vec::new(),
+                body: None,  // External functions don't have body
+            },
+        );
+    }
+    
+    // Combine local and external function symbols for call tracking
+    let all_function_symbols: HashSet<String> = function_symbols
+        .union(&external_function_symbols)
+        .cloned()
+        .collect();
 
     // Second pass: analyze occurrences to build the call graph
     for doc in &scip_data.documents {
@@ -508,8 +677,8 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
                 }
             }
 
-            // If this is a function call and we're inside a function
-            if !is_definition && function_symbols.contains(&occurrence.symbol) {
+            // If this is a function call (to local OR external function) and we're inside a function
+            if !is_definition && all_function_symbols.contains(&occurrence.symbol) {
                 if let Some(caller) = &current_function {
                     if caller != &occurrence.symbol {
                         // Avoid self-calls for recursion

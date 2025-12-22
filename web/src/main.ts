@@ -10,6 +10,60 @@ let githubBaseUrl: string | null = import.meta.env.VITE_GITHUB_URL || null;
 // (e.g., "curve25519-dalek" if repo structure is repo/curve25519-dalek/src/...)
 let githubPathPrefix: string = import.meta.env.VITE_GITHUB_PATH_PREFIX || '';
 
+// Performance threshold: if graph has more links than this, start with empty view
+// to avoid browser freeze. User must filter first.
+const LARGE_GRAPH_LINK_THRESHOLD = 10000;
+
+// File size threshold (in bytes) - files larger than this won't auto-load
+// 5MB is roughly the size where JSON.parse starts to noticeably freeze the browser
+const LARGE_FILE_SIZE_THRESHOLD = 5 * 1024 * 1024;
+
+// Track if we're deferring load due to large file
+let deferredGraphUrl: string | null = null;
+
+// Debounce timer for search inputs
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const SEARCH_DEBOUNCE_MS = 300; // Wait 300ms after user stops typing
+
+/**
+ * Debounced version of applyFiltersAndUpdate for large graphs.
+ * Prevents UI freeze from filtering on every keystroke.
+ */
+function debouncedApplyFilters(): void {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+  }
+  searchDebounceTimer = setTimeout(() => {
+    applyFiltersAndUpdate();
+  }, SEARCH_DEBOUNCE_MS);
+}
+
+/**
+ * Show a message in the stats panel for large graphs that need filtering
+ */
+function showLargeGraphPrompt(fileSize: number): void {
+  const statsDiv = document.getElementById('stats');
+  if (statsDiv) {
+    const sizeMB = (fileSize / (1024 * 1024)).toFixed(1);
+    statsDiv.innerHTML = `
+      <div style="background: #fff3e0; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
+        <div style="color: #e65100; font-weight: bold; margin-bottom: 8px;">📊 Large Graph Detected (${sizeMB} MB)</div>
+        <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: #333;">
+          Enter a <strong>Source</strong> or <strong>Sink</strong> query, then press <strong>Enter</strong> or click <strong>Load & Search</strong>.
+        </p>
+        <button id="load-graph-btn" style="background: #1976d2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+          Load & Search
+        </button>
+      </div>
+    `;
+    
+    // Add click handler for the button
+    document.getElementById('load-graph-btn')?.addEventListener('click', () => {
+      loadDeferredGraph();
+    });
+  }
+}
+
 /**
  * Get a short snippet from function body (first few lines)
  */
@@ -355,12 +409,54 @@ function setupUIHandlers(): void {
 
   document.getElementById('source-input')?.addEventListener('input', (e) => {
     state.filters.sourceQuery = (e.target as HTMLInputElement).value;
-    applyFiltersAndUpdate();
+    // Only auto-apply if graph is already loaded, use debounce for large graphs
+    if (state.fullGraph) {
+      if (isLargeGraph(state.fullGraph)) {
+        debouncedApplyFilters();
+      } else {
+        applyFiltersAndUpdate();
+      }
+    }
+  });
+  
+  // Handle Enter key to trigger immediate filter or deferred graph loading
+  document.getElementById('source-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (deferredGraphUrl) {
+        loadDeferredGraph();
+      } else if (state.fullGraph) {
+        // Cancel debounce and apply immediately
+        if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+        applyFiltersAndUpdate();
+      }
+    }
   });
 
   document.getElementById('sink-input')?.addEventListener('input', (e) => {
     state.filters.sinkQuery = (e.target as HTMLInputElement).value;
-    applyFiltersAndUpdate();
+    // Only auto-apply if graph is already loaded, use debounce for large graphs
+    if (state.fullGraph) {
+      if (isLargeGraph(state.fullGraph)) {
+        debouncedApplyFilters();
+      } else {
+        applyFiltersAndUpdate();
+      }
+    }
+  });
+  
+  // Handle Enter key to trigger immediate filter or deferred graph loading
+  document.getElementById('sink-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (deferredGraphUrl) {
+        loadDeferredGraph();
+      } else if (state.fullGraph) {
+        // Cancel debounce and apply immediately
+        if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+        applyFiltersAndUpdate();
+      }
+    }
   });
 
   document.getElementById('exclude-patterns')?.addEventListener('input', (e) => {
@@ -447,8 +543,19 @@ async function autoLoadGraph(): Promise<void> {
   if (jsonUrl) {
     try {
       console.log('Loading graph from URL:', jsonUrl);
-      const response = await fetch(jsonUrl);
       
+      // Check file size first with HEAD request
+      const headResponse = await fetch(jsonUrl, { method: 'HEAD' });
+      const contentLength = parseInt(headResponse.headers.get('Content-Length') || '0');
+      
+      if (contentLength > LARGE_FILE_SIZE_THRESHOLD) {
+        console.log(`Large file detected (${(contentLength / 1024 / 1024).toFixed(1)} MB), deferring load`);
+        deferredGraphUrl = jsonUrl;
+        showLargeGraphPrompt(contentLength);
+        return;
+      }
+      
+      const response = await fetch(jsonUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
       }
@@ -468,6 +575,19 @@ async function autoLoadGraph(): Promise<void> {
   
   // Fall back to local graph.json
   try {
+    // Check file size first with HEAD request
+    const headResponse = await fetch('./graph.json', { method: 'HEAD' });
+    const contentLength = parseInt(headResponse.headers.get('Content-Length') || '0');
+    
+    console.log(`graph.json size: ${(contentLength / 1024 / 1024).toFixed(1)} MB`);
+    
+    if (contentLength > LARGE_FILE_SIZE_THRESHOLD) {
+      console.log(`Large file detected, deferring load until user searches`);
+      deferredGraphUrl = './graph.json';
+      showLargeGraphPrompt(contentLength);
+      return;
+    }
+    
     // Use relative path to work with GitHub Pages base URL
     const response = await fetch('./graph.json');
     
@@ -484,6 +604,60 @@ async function autoLoadGraph(): Promise<void> {
     console.log('Could not auto-load graph.json:', error);
     // Silently fail - user can still manually load a file
   }
+}
+
+/**
+ * Load a deferred graph (for large files that weren't auto-loaded)
+ * Only called when user explicitly requests it after entering a search query
+ */
+async function loadDeferredGraph(): Promise<void> {
+  if (!deferredGraphUrl) return;
+  
+  // Check if user has entered a search query
+  if (!hasSearchFilters()) {
+    showError('Please enter a Source or Sink query first to filter the large graph.');
+    return;
+  }
+  
+  const statsDiv = document.getElementById('stats');
+  if (statsDiv) {
+    statsDiv.innerHTML = `
+      <div style="padding: 1rem; text-align: center;">
+        <div style="margin-bottom: 0.5rem;">⏳ Loading and filtering graph...</div>
+        <div style="font-size: 0.8rem; color: #666;">This may take a few seconds...</div>
+      </div>
+    `;
+  }
+  
+  try {
+    const response = await fetch(deferredGraphUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    const graph: D3Graph = JSON.parse(text);
+    
+    deferredGraphUrl = null; // Clear the deferred URL
+    loadGraph(graph, 'Loaded from deferred graph');
+  } catch (error) {
+    console.error('Failed to load deferred graph:', error);
+    showError(`Failed to load graph: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Check if graph is too large to render without filters
+ */
+function isLargeGraph(graph: D3Graph): boolean {
+  return graph.links.length > LARGE_GRAPH_LINK_THRESHOLD;
+}
+
+/**
+ * Check if user has specified meaningful filters (source or sink query)
+ */
+function hasSearchFilters(): boolean {
+  return state.filters.sourceQuery.trim() !== '' || state.filters.sinkQuery.trim() !== '';
 }
 
 /**
@@ -510,7 +684,8 @@ function loadGraph(graph: D3Graph, message: string): void {
     githubBaseUrl = graph.metadata.github_url;
   }
   
-  console.log('[DEBUG] Graph loaded:', state.fullGraph.nodes.length, 'nodes,', state.fullGraph.links.length, 'links');
+  const isLarge = isLargeGraph(state.fullGraph);
+  console.log('[DEBUG] Graph loaded:', state.fullGraph.nodes.length, 'nodes,', state.fullGraph.links.length, 'links', isLarge ? '(LARGE - requires filter)' : '');
   
   // Populate the file list panel
   populateFileList();
@@ -539,12 +714,19 @@ function loadGraph(graph: D3Graph, message: string): void {
   const statsDiv = document.getElementById('stats');
   if (statsDiv && graph.nodes.length > 0) {
     const successMsg = document.createElement('div');
-    successMsg.style.cssText = 'background: #4caf50; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
-    successMsg.textContent = `✓ ${message}`;
-    statsDiv.insertBefore(successMsg, statsDiv.firstChild);
     
-    // Remove message after 5 seconds
-    setTimeout(() => successMsg.remove(), 5000);
+    if (isLarge && !hasSearchFilters()) {
+      // Show warning for large graphs
+      successMsg.style.cssText = 'background: #ff9800; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
+      successMsg.innerHTML = `⚠️ Large graph (${graph.nodes.length.toLocaleString()} nodes, ${graph.links.length.toLocaleString()} links). Use <strong>Source</strong> or <strong>Sink</strong> filters to search.`;
+    } else {
+      successMsg.style.cssText = 'background: #4caf50; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
+      successMsg.textContent = `✓ ${message}`;
+      // Remove success message after 5 seconds (but keep warning visible)
+      setTimeout(() => successMsg.remove(), 5000);
+    }
+    
+    statsDiv.insertBefore(successMsg, statsDiv.firstChild);
   }
 }
 
@@ -584,6 +766,9 @@ async function handleFileLoad(event: Event): Promise<void> {
   }
 }
 
+// Maximum nodes to render to prevent D3 from freezing
+const MAX_RENDERED_NODES = 200;
+
 /**
  * Apply filters and update visualization
  */
@@ -591,10 +776,48 @@ function applyFiltersAndUpdate(): void {
   if (!state.fullGraph) return;
 
   console.log('[DEBUG] applyFiltersAndUpdate called with source:', JSON.stringify(state.filters.sourceQuery), 'sink:', JSON.stringify(state.filters.sinkQuery));
-  state.filteredGraph = applyFilters(state.fullGraph, state.filters);
-  console.log('[DEBUG] Filtered graph:', state.filteredGraph.nodes.length, 'nodes,', state.filteredGraph.links.length, 'links');
+  
+  // For large graphs, require a search filter to render anything
+  if (isLargeGraph(state.fullGraph) && !hasSearchFilters()) {
+    console.log('[DEBUG] Large graph without search filters - showing empty view');
+    state.filteredGraph = { nodes: [], links: [], metadata: state.fullGraph.metadata };
+    visualization?.update(state.filteredGraph);
+    updateStats();
+    updateNodeInfo();
+    updateHiddenNodesUI();
+    updateURLWithFilters();
+    return;
+  }
+  
+  let filtered = applyFilters(state.fullGraph, state.filters);
+  console.log('[DEBUG] Filtered graph:', filtered.nodes.length, 'nodes,', filtered.links.length, 'links');
+  
+  // Limit rendered nodes for large results to prevent D3 freeze
+  let wasTruncated = false;
+  if (filtered.nodes.length > MAX_RENDERED_NODES) {
+    console.log(`[DEBUG] Truncating from ${filtered.nodes.length} to ${MAX_RENDERED_NODES} nodes`);
+    wasTruncated = true;
+    
+    // Keep nodes with highest connectivity (most relevant)
+    const sortedNodes = [...filtered.nodes].sort((a, b) => 
+      (b.caller_count + b.callee_count) - (a.caller_count + a.callee_count)
+    );
+    const keptNodes = sortedNodes.slice(0, MAX_RENDERED_NODES);
+    const keptNodeIds = new Set(keptNodes.map(n => n.id));
+    
+    // Filter links to only include those between kept nodes
+    const keptLinks = filtered.links.filter(link => {
+      const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+      const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+      return keptNodeIds.has(sourceId) && keptNodeIds.has(targetId);
+    });
+    
+    filtered = { nodes: keptNodes, links: keptLinks, metadata: filtered.metadata };
+  }
+  
+  state.filteredGraph = filtered;
   visualization?.update(state.filteredGraph);
-  updateStats();
+  updateStats(wasTruncated ? filtered.nodes.length : undefined);
   updateNodeInfo();
   updateHiddenNodesUI();
   
@@ -627,8 +850,9 @@ function handleStateChange(newState: GraphState, selectionChanged: boolean = fal
 
 /**
  * Update statistics display
+ * @param truncatedTo - if provided, indicates results were truncated to this count
  */
-function updateStats(): void {
+function updateStats(truncatedTo?: number): void {
   const statsDiv = document.getElementById('stats');
   if (!statsDiv) return;
 
@@ -638,6 +862,9 @@ function updateStats(): void {
   }
 
   const filtered = state.filteredGraph || state.fullGraph;
+  const isLarge = isLargeGraph(state.fullGraph);
+  const needsFilter = isLarge && !hasSearchFilters();
+  const wasTruncated = truncatedTo !== undefined;
   
   // Count verification statuses
   const verifiedCount = filtered.nodes.filter(n => n.verification_status === 'verified').length;
@@ -646,15 +873,31 @@ function updateStats(): void {
   const unknownCount = filtered.nodes.filter(n => !n.verification_status).length;
 
   statsDiv.innerHTML = `
+    ${needsFilter ? `
+    <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+      <span style="color: #e65100; font-weight: bold;">📊 Large Graph</span>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
+        Enter a <strong>Source</strong> or <strong>Sink</strong> query to explore the call graph.
+      </p>
+    </div>
+    ` : ''}
+    ${wasTruncated ? `
+    <div class="stat-item" style="background: #e3f2fd; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+      <span style="color: #1565c0; font-weight: bold;">✂️ Results Limited</span>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
+        Showing top ${truncatedTo} nodes by connectivity. Use a more specific query or reduce <strong>Depth</strong> to narrow results.
+      </p>
+    </div>
+    ` : ''}
     <div class="stat-item">
       <span class="stat-label">Total Nodes:</span>
       <span class="stat-value">${filtered.nodes.length}</span>
-      <span class="stat-detail">(of ${state.fullGraph.nodes.length})</span>
+      <span class="stat-detail">(of ${state.fullGraph.nodes.length.toLocaleString()})</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Total Edges:</span>
       <span class="stat-value">${filtered.links.length}</span>
-      <span class="stat-detail">(of ${state.fullGraph.links.length})</span>
+      <span class="stat-detail">(of ${state.fullGraph.links.length.toLocaleString()})</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Verified:</span>
