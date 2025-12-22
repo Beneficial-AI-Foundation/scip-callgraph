@@ -17,7 +17,10 @@ scip-callgraph/
 ├── crates/
 │   ├── scip-core/           # Core SCIP parsing library
 │   ├── verus-metrics/       # Halstead metrics for Verus specs/proofs
-│   └── metrics-cli/         # All command-line tools (36 binaries)
+│   └── metrics-cli/         # All command-line tools (37 binaries, including pipeline)
+├── external/                # Git submodules
+│   ├── scip-atoms/          # Verification analysis (github.com/Beneficial-AI-Foundation/scip-atoms)
+│   └── verus_lemma_finder/  # Similar lemma search (github.com/Beneficial-AI-Foundation/verus_lemma_finder)
 ├── web/                     # Interactive web viewer
 ├── examples/                # Example data and test projects
 ├── docs/                    # Detailed documentation
@@ -55,7 +58,7 @@ All binaries are in the `metrics-cli` package:
 
 ```bash
 # General syntax
-cargo run -p metrics-cli --bin <binary-name> -- <args>
+cargo run --bin <binary-name> -- <args>
 
 # Or use the built binaries directly
 ./target/debug/<binary-name> <args>
@@ -68,7 +71,7 @@ cargo run -p metrics-cli --bin <binary-name> -- <args>
 ### 1. Generate Full Call Graph
 
 ```bash
-cargo run -p metrics-cli --bin generate_call_graph_dot -- <path_to_scip_json>
+cargo run --bin generate_call_graph_dot -- <path_to_scip_json>
 ```
 
 Outputs: `call_graph.json`, `call_graph.dot`, `call_graph.svg`, `call_graph.png`
@@ -76,14 +79,14 @@ Outputs: `call_graph.json`, `call_graph.dot`, `call_graph.svg`, `call_graph.png`
 ### 2. Generate File Subgraph
 
 ```bash
-cargo run -p metrics-cli --bin generate_files_subgraph_dot -- \
+cargo run --bin generate_files_subgraph_dot -- \
   <input-scip-json> <output-dot-file> <file-path1> [<file-path2> ...]
 ```
 
 ### 3. Generate Function Subgraph
 
 ```bash
-cargo run -p metrics-cli --bin generate_function_subgraph_dot -- \
+cargo run --bin generate_function_subgraph_dot -- \
   <input-scip-json> <output-dot-file> <function-name> \
   [--include-callees] [--include-callers] [--depth <n>]
 ```
@@ -92,68 +95,82 @@ cargo run -p metrics-cli --bin generate_function_subgraph_dot -- \
 
 **Online:** Visit https://beneficial-ai-foundation.github.io/scip-callgraph/
 
-**Local:**
+**Local (Unified Pipeline - Recommended):**
+
+The `pipeline` command generates a fully enriched call graph in one step:
+
+```bash
+# First time setup (clone with submodules)
+git clone --recurse-submodules https://github.com/Beneficial-AI-Foundation/scip-callgraph.git
+cd scip-callgraph
+
+# Build the workspace
+cargo build --release --workspace
+
+# Optional: Setup Python for similar lemmas feature
+uv sync --extra enrich
+cd external/verus_lemma_finder && uv tool run maturin develop --release && cd ../..
+
+# Run the full pipeline on your Verus project
+cargo run --release --bin pipeline -- /path/to/verus-project
+
+# Start the web viewer
+cd web && npm install && npm run dev
+```
+
+Open http://localhost:5173 to explore your call graph interactively.
+
+The pipeline automatically:
+1. **Generates SCIP index** from your Verus project
+2. **Exports call graph** in D3 format
+3. **Runs verification** and enriches nodes with status (verified/failed/unverified)
+4. **Adds similar lemmas** from vstd (if Python is set up)
+
+#### Pipeline Options
+
+```bash
+# Skip verification (faster, no Verus needed)
+cargo run --release --bin pipeline -- /path/to/project --skip-verification
+
+# Skip similar lemmas (no Python needed)
+cargo run --release --bin pipeline -- /path/to/project --skip-similar-lemmas
+
+# Force regenerate SCIP
+cargo run --release --bin pipeline -- /path/to/project --regenerate-scip
+
+# For workspace projects
+cargo run --release --bin pipeline -- /path/to/project -p my-crate
+```
+
+#### Verification Status Colors
+
+- **Green** - Verified functions (passed verification, no assume/admit)
+- **Red** - Failed functions (verification errors)
+- **Grey** - Unverified functions (contains assume/admit)
+- **Blue** - Unknown (no verification data)
+
+#### Manual Steps (Alternative)
+
+If you prefer manual control, you can still run each step separately:
+
 ```bash
 # Step 1: Export call graph from SCIP JSON
 cargo run --release --bin export_call_graph_d3 -- \
     path/to/index_scip.json \
     -o web/public/graph.json
 
-# Step 2: Start the web viewer
-cd web && npm install && npm run dev
-```
-
-Open http://localhost:5173 to explore your call graph interactively.
-
-#### Optional: Enrich with Similar Lemmas
-
-If you have [verus_lemma_finder](https://github.com/Beneficial-AI-Foundation/verus_lemma_finder) set up:
-
-```bash
-# Setup (first time only)
-uv sync --extra enrich
-
-# Enrich graph with similar lemmas
-uv run python scripts/enrich_graph_with_similar_lemmas.py \
-    --graph web/public/graph.json \
-    --index /path/to/lemma_index.json
-```
-
-See [docs/guides/INTERACTIVE_VIEWER.md](docs/guides/INTERACTIVE_VIEWER.md) and [docs/SIMILAR_LEMMAS.md](docs/SIMILAR_LEMMAS.md) for details.
-
-#### Optional: Enrich with Verification Status
-
-Add verification status (verified/failed/unverified) to nodes, which colors them in the graph:
-- **Green** - Verified functions
-- **Red** - Failed functions  
-- **Grey** - Unverified functions
-- **Blue** - Unknown (no verification data)
-
-**Step 1:** Generate verification results using [scip-atoms](https://github.com/Beneficial-AI-Foundation/scip-atoms):
-
-```bash
-# In the scip-atoms repository
-scip-atoms verify <path-to-verus-project>
-# This outputs verification_results.json
-```
-
-**Step 2:** Enrich the call graph with verification status:
-
-```bash
-# Copy verification_results.json to scip-callgraph/data/
-cp verification_results.json /path/to/scip-callgraph/data/
-
-# Run the enrichment script
+# Step 2: Enrich with verification status (optional)
 python3 scripts/add_verification_status.py \
     --graph web/public/graph.json \
     --verification data/verification_results.json
+
+# Step 3: Enrich with similar lemmas (optional)
+uv run python scripts/enrich_graph_with_similar_lemmas.py \
+    --graph web/public/graph.json \
+    --index external/verus_lemma_finder/data/vstd_lemma_index.json
 ```
 
-The script matches functions by display name and file path, adding a `verification_status` field to each matching node.
-
-> **TODO:** Unify `scip-callgraph` and `scip-atoms` into a single tool or create a unified pipeline that handles SCIP parsing, verification, and visualization in one workflow. Currently they are separate tools that need manual integration via JSON files.
-
-> **TODO:** Use vstd (Verus standard library) verification data to provide verification statuses for external library functions. Currently, lemmas from vstd are marked as "unknown" (blue) because we only have verification results for the project itself. With vstd verification data, these could be marked as "verified" since vstd lemmas are proven.
+See [docs/guides/INTERACTIVE_VIEWER.md](docs/guides/INTERACTIVE_VIEWER.md) and [docs/SIMILAR_LEMMAS.md](docs/SIMILAR_LEMMAS.md) for details
 
 ---
 
@@ -168,23 +185,23 @@ Compute complexity metrics for Verus-verified Rust code, including:
 
 ```bash
 # Step 1: Generate atoms from SCIP
-cargo run -p metrics-cli --bin write_atoms -- \
+cargo run --bin write_atoms -- \
   index_scip.json atoms.json
 
 # Step 2: Compute spec metrics
-cargo run -p metrics-cli --bin compute_metrics -- \
+cargo run --bin compute_metrics -- \
   atoms.json atoms_with_metrics.json
 
 # Step 3: Compute proof metrics (with transitive lemma analysis)
-cargo run -p metrics-cli --bin compute_proof_metrics -- \
+cargo run --bin compute_proof_metrics -- \
   atoms_with_metrics.json atoms_complete.json
 
 # Step 4: Enrich CSV with code metrics (from rust-code-analysis)
-cargo run -p metrics-cli --bin enrich_csv_with_metrics -- \
+cargo run --bin enrich_csv_with_metrics -- \
   functions.csv rca_output_dir/ functions_enriched.csv
 
 # Step 5: Add spec + proof metrics to CSV
-cargo run -p metrics-cli --bin enrich_csv_complete -- \
+cargo run --bin enrich_csv_complete -- \
   atoms_complete.json functions_enriched.csv functions_COMPLETE.csv
 ```
 

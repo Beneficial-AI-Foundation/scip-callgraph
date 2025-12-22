@@ -1,0 +1,6 @@
+[submodule "external/scip-atoms"]
+	path = external/scip-atoms
+	url = https://github.com/Beneficial-AI-Foundation/scip-atoms.git
+[submodule "external/verus_lemma_finder"]
+	path = external/verus_lemma_finder
+	url = https://github.com/Beneficial-AI-Foundation/verus_lemma_finder.git

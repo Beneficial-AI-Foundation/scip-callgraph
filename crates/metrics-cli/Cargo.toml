@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 scip-core = { path = "../scip-core" }
 verus-metrics = { path = "../verus-metrics" }
+scip-atoms = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -173,3 +174,7 @@ path = "src/bin/write_atoms.rs"
 [[bin]]
 name = "write_atoms_to_svg"
 path = "src/bin/write_atoms_to_svg.rs"
+
+[[bin]]
+name = "pipeline"
+path = "src/bin/pipeline.rs"

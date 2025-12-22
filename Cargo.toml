@@ -4,6 +4,11 @@ members = [
     "crates/scip-core",
     "crates/verus-metrics", 
     "crates/metrics-cli",
+    "external/scip-atoms",
+]
+# Exclude verus_lemma_finder's Rust code - it's built separately via maturin/PyO3
+exclude = [
+    "external/verus_lemma_finder/rust",
 ]
 
 [workspace.package]
@@ -45,6 +50,18 @@ chrono = "0.4"
 # Logging
 log = "0.4"
 env_logger = "0.11"
+
+# File system
+walkdir = "2.4"
+
+# Interval trees (for line span lookup)
+rust-lapper = "1.1"
+
+# Process execution
+proc-macro2 = { version = "1.0", features = ["span-locations"] }
+
+# Internal crates
+scip-atoms = { path = "external/scip-atoms" }
 
 [workspace.dev-dependencies]
 tempfile = "3.5.0"
