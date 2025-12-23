@@ -606,7 +606,11 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
             // Check if this looks like a function symbol (ends with "()" or "().")
             // External symbols typically have patterns like:
             // "rust-analyzer cargo curve25519-dalek 4.1.3 edwards/CompressedEdwardsY#decompress()."
-            if (symbol.contains("()") || symbol.ends_with(".")) && (symbol.contains('#') || symbol.contains('/')) {
+            // BUT exclude parameter symbols like "func().(self)" which contain "().("
+            if (symbol.contains("()") || symbol.ends_with(".")) 
+                && (symbol.contains('#') || symbol.contains('/'))
+                && !symbol.contains("().(")  // Exclude parameters
+            {
                 external_function_symbols.insert(symbol.clone());
             }
         }
@@ -942,18 +946,32 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
     let nodes: Vec<D3Node> = call_graph
         .values()
         .map(|node| {
-            let parent_folder = Path::new(&node.file_path)
-                .parent()
-                .and_then(|p| p.file_name())
-                .and_then(|name| name.to_str())
-                .unwrap_or("unknown")
-                .to_string();
-
-            let file_name = Path::new(&node.file_path)
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_string();
+            // Handle external nodes differently - they have file_path like "external:rust-analyzer cargo crate_name ..."
+            let is_external = node.file_path.starts_with("external:");
+            
+            let (file_name, parent_folder) = if is_external {
+                // Extract crate name from external symbol
+                // Format: "external:rust-analyzer cargo <crate_name> <version> ..."
+                let crate_name = node.file_path
+                    .strip_prefix("external:")
+                    .and_then(|s| s.split_whitespace().nth(2))  // Get crate name (3rd word)
+                    .unwrap_or("external")
+                    .to_string();
+                (crate_name.clone(), crate_name)
+            } else {
+                let parent = Path::new(&node.file_path)
+                    .parent()
+                    .and_then(|p| p.file_name())
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+                let file = Path::new(&node.file_path)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                (file, parent)
+            };
 
             // Extract line numbers from range (SCIP uses 0-based, convert to 1-based)
             // SCIP range format:
