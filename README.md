@@ -275,11 +275,45 @@ git push origin v1.0.0
 
 ---
 
+## CI Integration for Verus Projects
+
+To automatically generate call graphs for a Verus project, one can use our reusable GitHub Actions workflow:
+
+```yaml
+# .github/workflows/deploy-callgraph.yml
+name: Deploy Call Graph
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  callgraph:
+    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    with:
+      github_url: https://github.com/YOUR_ORG/YOUR_REPO
+```
+
+The interactive call graph will be deployed to GitHub Pages.
+
+See [docs/guides/CALLGRAPH_CI_INTEGRATION.md](docs/guides/CALLGRAPH_CI_INTEGRATION.md) for advanced options including:
+- Subpath deployment for existing GitHub Pages sites
+- Workspace support
+- Customizing verification and similar lemmas
+
+---
+
 ## Documentation
 
 - [METRICS_PIPELINE.md](METRICS_PIPELINE.md) - Verus metrics pipeline guide
 - [docs/guides/INTERACTIVE_VIEWER.md](docs/guides/INTERACTIVE_VIEWER.md) - Web viewer documentation
 - [docs/guides/GITHUB_PAGES_GUIDE.md](docs/guides/GITHUB_PAGES_GUIDE.md) - Online viewer guide
+- [docs/guides/CALLGRAPH_CI_INTEGRATION.md](docs/guides/CALLGRAPH_CI_INTEGRATION.md) - CI integration for Verus projects
 - [docs/SIMILAR_LEMMAS.md](docs/SIMILAR_LEMMAS.md) - Similar lemmas feature
 
 ## Python Scripts

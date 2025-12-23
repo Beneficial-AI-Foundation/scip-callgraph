@@ -1,0 +1,236 @@
+# Reusable workflow for generating enriched call graphs from Verus projects
+# 
+# Usage in your project:
+#   jobs:
+#     callgraph:
+#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+#       with:
+#         github_url: https://github.com/your-org/your-repo
+#
+name: Generate Call Graph
+
+on:
+  workflow_call:
+    inputs:
+      project_path:
+        description: 'Path to the Verus project (relative to repo root)'
+        required: false
+        default: '.'
+        type: string
+      github_url:
+        description: 'GitHub repository URL for source code links'
+        required: true
+        type: string
+      github_path_prefix:
+        description: 'Path prefix for source files (e.g., "curve25519-dalek" if repo has subdirectory)'
+        required: false
+        default: ''
+        type: string
+      package:
+        description: 'Cargo package name (for workspaces)'
+        required: false
+        default: ''
+        type: string
+      skip_verification:
+        description: 'Skip Verus verification step'
+        required: false
+        default: false
+        type: boolean
+      skip_similar_lemmas:
+        description: 'Skip similar lemmas enrichment'
+        required: false
+        default: false
+        type: boolean
+      deploy_mode:
+        description: 'Deployment mode: "subpath" (for existing sites) or "standalone" (full site)'
+        required: false
+        default: 'standalone'
+        type: string
+      subpath:
+        description: 'Subpath for deployment (only used when deploy_mode is "subpath")'
+        required: false
+        default: 'callgraph'
+        type: string
+
+jobs:
+  build:
+    name: Build Call Graph
+    runs-on: ubuntu-latest
+    
+    outputs:
+      artifact_name: callgraph-viewer
+    
+    steps:
+      - name: Checkout calling repository
+        uses: actions/checkout@v4
+        with:
+          path: project
+
+      - name: Checkout scip-callgraph
+        uses: actions/checkout@v4
+        with:
+          repository: Beneficial-AI-Foundation/scip-callgraph
+          path: scip-callgraph
+          submodules: recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python and uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install verus-analyzer
+        run: |
+          VERUS_URL=$(curl -s https://api.github.com/repos/verus-lang/verus-analyzer/releases/latest | jq -r '.assets[] | select(.name == "verus-analyzer-x86_64-unknown-linux-gnu.gz") | .browser_download_url')
+          wget "$VERUS_URL" -O verus-analyzer.gz
+          gunzip verus-analyzer.gz
+          chmod +x verus-analyzer
+          sudo mv verus-analyzer /usr/local/bin/
+          verus-analyzer --version
+
+      - name: Install scip CLI
+        run: |
+          SCIP_URL=$(curl -s https://api.github.com/repos/sourcegraph/scip/releases/latest | jq -r '.assets[] | select(.name == "scip-linux-amd64.tar.gz") | .browser_download_url')
+          wget "$SCIP_URL" -O scip-linux.tar.gz
+          tar -xzf scip-linux.tar.gz
+          chmod +x scip
+          sudo mv scip /usr/local/bin/
+          scip --version
+
+      - name: Build scip-callgraph pipeline
+        working-directory: scip-callgraph
+        run: cargo build --release --bin pipeline
+
+      - name: Setup Python environment for similar lemmas
+        if: ${{ !inputs.skip_similar_lemmas }}
+        working-directory: scip-callgraph
+        run: |
+          uv sync --extra enrich
+          cd external/verus_lemma_finder && uv tool run maturin develop --release && cd ../..
+
+      # Step 1: Generate SCIP index
+      - name: Generate SCIP index
+        working-directory: project/${{ inputs.project_path }}
+        run: |
+          echo "Generating SCIP index..."
+          verus-analyzer scip .
+          echo "Converting SCIP to JSON..."
+          scip print --json index.scip > index.scip.json
+          echo "✓ SCIP JSON generated"
+          ls -la index.scip*
+
+      # Step 2: Run the pipeline
+      - name: Run call graph pipeline
+        env:
+          PROJECT_PATH: ${{ github.workspace }}/project/${{ inputs.project_path }}
+          SCIP_JSON: ${{ github.workspace }}/project/${{ inputs.project_path }}/index.scip.json
+          OUTPUT_PATH: ${{ github.workspace }}/scip-callgraph/web/public/graph.json
+          GITHUB_URL: ${{ inputs.github_url }}
+          SKIP_VERIFICATION: ${{ inputs.skip_verification }}
+          SKIP_SIMILAR_LEMMAS: ${{ inputs.skip_similar_lemmas }}
+          PACKAGE: ${{ inputs.package }}
+        working-directory: scip-callgraph
+        run: |
+          ARGS="--use-cached-scip"
+          
+          if [ -n "$GITHUB_URL" ]; then
+            ARGS="$ARGS --github-url $GITHUB_URL"
+          fi
+          
+          if [ "$SKIP_VERIFICATION" = "true" ]; then
+            ARGS="$ARGS --skip-verification"
+          fi
+          
+          if [ "$SKIP_SIMILAR_LEMMAS" = "true" ]; then
+            ARGS="$ARGS --skip-similar-lemmas"
+          fi
+          
+          if [ -n "$PACKAGE" ]; then
+            ARGS="$ARGS --package $PACKAGE"
+          fi
+          
+          echo "Running pipeline with: $ARGS"
+          ./target/release/pipeline "$PROJECT_PATH" $ARGS
+
+      # Step 3: Build web viewer
+      - name: Build web viewer
+        working-directory: scip-callgraph/web
+        env:
+          VITE_GITHUB_URL: ${{ inputs.github_url }}
+          VITE_GITHUB_PATH_PREFIX: ${{ inputs.github_path_prefix }}
+        run: |
+          npm ci
+          
+          # Set base path for subpath deployment
+          if [ "${{ inputs.deploy_mode }}" = "subpath" ]; then
+            echo "Building for subpath: /${{ inputs.subpath }}/"
+            npx vite build --base=/${{ inputs.subpath }}/
+          else
+            npx vite build
+          fi
+
+      # Step 4: Prepare artifact
+      - name: Prepare deployment artifact
+        run: |
+          mkdir -p artifact
+          cp -r scip-callgraph/web/dist/* artifact/
+          # Ensure graph.json is in the artifact
+          cp scip-callgraph/web/public/graph.json artifact/
+          
+          echo "Artifact contents:"
+          ls -la artifact/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: callgraph-viewer
+          path: artifact
+          retention-days: 7
+
+      # For standalone mode, also upload as pages artifact
+      - name: Upload Pages artifact (standalone mode)
+        if: ${{ inputs.deploy_mode == 'standalone' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: artifact
+
+  # Deploy job for standalone mode (full GitHub Pages site)
+  deploy-standalone:
+    name: Deploy (Standalone)
+    if: ${{ inputs.deploy_mode == 'standalone' }}
+    needs: build
+    runs-on: ubuntu-latest
+    
+    permissions:
+      pages: write
+      id-token: write
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
