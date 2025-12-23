@@ -298,7 +298,22 @@ export function applyFilters(
   }
   
   // Filter nodes based on source/sink constraints or pre-filters
-  if (hasSource || hasSink) {
+  const queryEntered = sourceQuery !== '' || sinkQuery !== '';
+  const queryMatched = hasSource || hasSink;
+  
+  if (queryEntered && !queryMatched) {
+    // Query was entered but matched nothing - return empty graph
+    console.log('[DEBUG] Query entered but no matches found, returning empty graph');
+    return {
+      nodes: [],
+      links: [],
+      metadata: {
+        ...fullGraph.metadata,
+        total_nodes: 0,
+        total_edges: 0,
+      },
+    };
+  } else if (queryMatched) {
     // Apply source/sink traversal results
     console.log('[DEBUG] Before source/sink filter: filteredNodes.length:', filteredNodes.length);
     console.log('[DEBUG] includedNodeIds.size:', includedNodeIds.size);
