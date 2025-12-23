@@ -40,9 +40,9 @@ struct Args {
     #[arg(long)]
     skip_similar_lemmas: bool,
 
-    /// Force regenerate SCIP index
+    /// Use cached SCIP JSON if available (default: regenerate fresh)
     #[arg(long)]
-    regenerate_scip: bool,
+    use_cached_scip: bool,
 
     /// Verus package name (for workspaces)
     #[arg(short, long)]
@@ -51,6 +51,11 @@ struct Args {
     /// Enable debug logging
     #[arg(short, long)]
     debug: bool,
+
+    /// GitHub repository URL for source code links in the web viewer
+    /// (e.g., https://github.com/user/repo)
+    #[arg(long)]
+    github_url: Option<String>,
 }
 
 
@@ -58,39 +63,11 @@ fn check_command_exists(cmd: &str) -> bool {
     which::which(cmd).is_ok()
 }
 
-/// Generate SCIP index and JSON for a project
-fn generate_scip(project: &Path, regenerate: bool) -> Result<PathBuf, String> {
-    let data_dir = project.join("data");
-    let cached_scip_path = data_dir.join("index.scip");
-    let cached_json_path = data_dir.join("index.scip.json");
-
-    // Use cached JSON if available and not regenerating
-    if cached_json_path.exists() && !regenerate {
-        info!(
-            "Using existing SCIP JSON at {}",
-            cached_json_path.display()
-        );
-        return Ok(cached_json_path);
-    }
-
-    // Check for generated SCIP in project root (from previous run)
-    let root_json_path = project.join("index.scip.json");
-    if root_json_path.exists() && !regenerate {
-        info!(
-            "Using existing SCIP JSON at {}",
-            root_json_path.display()
-        );
-        return Ok(root_json_path);
-    }
-
-    // Need to generate - check prerequisites
+/// Run verus-analyzer scip to generate a new SCIP binary
+fn generate_new_scip(project: &Path) -> Result<PathBuf, String> {
+    // Check prerequisites
     if !check_command_exists("verus-analyzer") {
         return Err("verus-analyzer not found in PATH. Install with: rustup component add verus-analyzer".to_string());
-    }
-    if !check_command_exists("scip") {
-        return Err(
-            "scip not found in PATH. Install with: cargo install scip-cli".to_string(),
-        );
     }
 
     info!("Generating SCIP index for {}...", project.display());
@@ -118,11 +95,41 @@ fn generate_scip(project: &Path, regenerate: bool) -> Result<PathBuf, String> {
     }
 
     info!("✓ SCIP index generated");
+    Ok(generated_scip_path)
+}
+
+/// Generate SCIP index and JSON for a project
+/// 
+/// By default, always regenerates fresh SCIP data.
+/// If `use_cached` is true, uses existing index.scip.json if available.
+fn generate_scip(project: &Path, use_cached: bool) -> Result<PathBuf, String> {
+    let root_json_path = project.join("index.scip.json");
+
+    // If caching is enabled, check for existing JSON
+    if use_cached {
+        if root_json_path.exists() {
+            info!(
+                "Using cached SCIP JSON: {}",
+                root_json_path.display()
+            );
+            return Ok(root_json_path);
+        } else {
+            info!("No cached SCIP JSON found, generating fresh...");
+        }
+    }
+
+    // Generate fresh SCIP binary
+    let scip_path = generate_new_scip(project)?;
 
     // Convert SCIP to JSON
+    if !check_command_exists("scip") {
+        return Err(
+            "scip not found in PATH. Install with: cargo install scip-cli".to_string(),
+        );
+    }
     info!("Converting SCIP to JSON...");
     let scip_output = Command::new("scip")
-        .args(["print", "--json", generated_scip_path.to_str().unwrap()])
+        .args(["print", "--json", scip_path.to_str().unwrap()])
         .output()
         .map_err(|e| format!("Failed to run scip: {}", e))?;
 
@@ -133,21 +140,12 @@ fn generate_scip(project: &Path, regenerate: bool) -> Result<PathBuf, String> {
         ));
     }
 
-    // Save to data/ if it exists, otherwise project root
-    let output_json_path = if data_dir.exists() {
-        // Also move the index.scip to data/
-        let _ = std::fs::rename(&generated_scip_path, &cached_scip_path);
-        std::fs::write(&cached_json_path, &scip_output.stdout)
-            .map_err(|e| format!("Failed to write SCIP JSON: {}", e))?;
-        cached_json_path
-    } else {
-        std::fs::write(&root_json_path, &scip_output.stdout)
-            .map_err(|e| format!("Failed to write SCIP JSON: {}", e))?;
-        root_json_path
-    };
+    // Write JSON to project root
+    std::fs::write(&root_json_path, &scip_output.stdout)
+        .map_err(|e| format!("Failed to write SCIP JSON: {}", e))?;
 
-    info!("✓ SCIP JSON saved to {}", output_json_path.display());
-    Ok(output_json_path)
+    info!("✓ SCIP JSON saved to: {}", root_json_path.display());
+    Ok(root_json_path)
 }
 
 /// Export call graph to D3 format
@@ -165,6 +163,29 @@ fn export_call_graph(scip_json: &Path, output: &Path) -> Result<(), String> {
         .map_err(|e| format!("Failed to export call graph: {}", e))?;
 
     info!("✓ Call graph exported to {}", output.display());
+    Ok(())
+}
+
+/// Set the GitHub URL in the graph metadata
+fn set_github_url(graph_path: &Path, github_url: &str) -> Result<(), String> {
+    info!("Setting GitHub URL in graph metadata...");
+    
+    let graph_content = std::fs::read_to_string(graph_path)
+        .map_err(|e| format!("Failed to read graph: {}", e))?;
+    let mut graph: serde_json::Value =
+        serde_json::from_str(&graph_content).map_err(|e| format!("Failed to parse graph: {}", e))?;
+    
+    // Set the github_url in metadata
+    if let Some(metadata) = graph.get_mut("metadata").and_then(|m| m.as_object_mut()) {
+        metadata.insert("github_url".to_string(), serde_json::json!(github_url));
+    }
+    
+    // Write back
+    let json = serde_json::to_string_pretty(&graph)
+        .map_err(|e| format!("Failed to serialize graph: {}", e))?;
+    std::fs::write(graph_path, json).map_err(|e| format!("Failed to write graph: {}", e))?;
+    
+    info!("✓ GitHub URL set to: {}", github_url);
     Ok(())
 }
 
@@ -405,7 +426,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 1: Generate SCIP
     println!("─── Step 1: Generate SCIP Index ───────────────────────────────");
-    let scip_json = match generate_scip(&args.project, args.regenerate_scip) {
+    let scip_json = match generate_scip(&args.project, args.use_cached_scip) {
         Ok(path) => path,
         Err(e) => {
             error!("Failed to generate SCIP: {}", e);
@@ -425,6 +446,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(e) = export_call_graph(&scip_json, &args.output) {
         error!("Failed to export call graph: {}", e);
         std::process::exit(1);
+    }
+    
+    // Set GitHub URL if provided
+    if let Some(ref github_url) = args.github_url {
+        if let Err(e) = set_github_url(&args.output, github_url) {
+            warn!("Failed to set GitHub URL: {}", e);
+        }
     }
     println!();
 

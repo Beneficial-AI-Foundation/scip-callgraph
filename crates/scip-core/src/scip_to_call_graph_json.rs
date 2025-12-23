@@ -956,10 +956,20 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
                 .to_string();
 
             // Extract line numbers from range (SCIP uses 0-based, convert to 1-based)
-            let (start_line, end_line) = if node.range.len() >= 3 {
+            // SCIP range format:
+            // - Single-line: [line, start_char, end_char] (3 elements)
+            // - Multi-line:  [start_line, start_char, end_line, end_char] (4 elements)
+            let (start_line, end_line) = if node.range.len() >= 4 {
+                // Multi-line span: range[2] is end_line
                 (
                     Some(node.range[0] as usize + 1),
                     Some(node.range[2] as usize + 1),
+                )
+            } else if !node.range.is_empty() {
+                // Single-line span: end_line = start_line
+                (
+                    Some(node.range[0] as usize + 1),
+                    Some(node.range[0] as usize + 1),
                 )
             } else {
                 (None, None)

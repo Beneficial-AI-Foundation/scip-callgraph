@@ -95,7 +95,8 @@ function buildGitHubLink(node: D3Node): string | null {
   
   if (node.start_line) {
     link += `#L${node.start_line}`;
-    if (node.end_line && node.end_line !== node.start_line) {
+    // Only add end line if it's greater than start line (sanity check)
+    if (node.end_line && node.end_line > node.start_line) {
       link += `-L${node.end_line}`;
     }
   }

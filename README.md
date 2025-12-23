@@ -135,8 +135,11 @@ cargo run --release --bin pipeline -- /path/to/project --skip-verification
 # Skip similar lemmas (no Python needed)
 cargo run --release --bin pipeline -- /path/to/project --skip-similar-lemmas
 
-# Force regenerate SCIP
-cargo run --release --bin pipeline -- /path/to/project --regenerate-scip
+# Use cached SCIP JSON if available (default: regenerate fresh)
+cargo run --release --bin pipeline -- /path/to/project --use-cached-scip
+
+# Add GitHub URL for source code links in the web viewer
+cargo run --release --bin pipeline -- /path/to/project --github-url https://github.com/user/repo
 
 # For workspace projects
 cargo run --release --bin pipeline -- /path/to/project -p my-crate
