@@ -74,7 +74,7 @@ jobs:
           submodules: recursive
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.91.0
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -107,6 +107,18 @@ jobs:
           chmod +x verus-analyzer
           sudo mv verus-analyzer /usr/local/bin/
           verus-analyzer --version
+
+      - name: Install Verus (for verification)
+        if: ${{ !inputs.skip_verification }}
+        run: |
+          # Use specific Verus version compatible with Rust 1.91.0
+          # Same as dalek-lite CI: https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/.github/workflows/ci.yml
+          wget https://github.com/verus-lang/verus/releases/download/release%2F0.2025.11.23.41c5885/verus-0.2025.11.23.41c5885-x86-linux.zip
+          unzip verus-0.2025.11.23.41c5885-x86-linux.zip
+          mv verus-x86-linux ~/.cargo/bin
+          cd ~/.cargo/bin
+          ln -s verus-x86-linux/cargo-verus
+          echo "Verus installed"
 
       - name: Install scip CLI
         run: |

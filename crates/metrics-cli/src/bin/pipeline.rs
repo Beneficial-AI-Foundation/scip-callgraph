@@ -214,6 +214,38 @@ fn run_verification(
         }
         AnalysisStatus::CompilationFailed => {
             warn!("⚠ Compilation failed");
+            // Show compilation errors for debugging
+            if !result.compilation.errors.is_empty() {
+                warn!("  Compilation errors ({}):", result.compilation.errors.len());
+                for (i, err) in result.compilation.errors.iter().enumerate() {
+                    if let (Some(file), Some(line)) = (&err.file, err.line) {
+                        warn!("  {}. {}:{} - {}", i + 1, file, line, err.message);
+                    } else {
+                        warn!("  {}. {}", i + 1, err.message);
+                    }
+                    // Show full message for first few errors
+                    if i < 3 {
+                        for msg_line in &err.full_message {
+                            warn!("     {}", msg_line);
+                        }
+                    }
+                }
+                if result.compilation.errors.len() > 3 {
+                    warn!("  ... and {} more errors", result.compilation.errors.len() - 3);
+                }
+            } else {
+                // No parsed errors - might be a different issue
+                warn!("  No specific compilation errors parsed.");
+                warn!("  This could indicate:");
+                warn!("    - cargo verus is not installed");
+                warn!("    - Project doesn't have Verus configured");
+                warn!("    - Other build issues");
+                // Show raw output snippet for debugging
+                warn!("  Raw output (first 50 lines):");
+                for line in output.lines().take(50) {
+                    warn!("    {}", line);
+                }
+            }
         }
         AnalysisStatus::FunctionsOnly => {
             info!("  Functions parsed (no verification run)");
