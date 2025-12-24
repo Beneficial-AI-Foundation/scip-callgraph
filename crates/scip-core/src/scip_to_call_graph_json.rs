@@ -220,15 +220,16 @@ pub struct D3Node {
     pub relative_path: String,
     pub file_name: String,
     pub parent_folder: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub body: Option<String>,
+    // Note: body removed - use start_line/end_line to fetch code on demand
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start_line: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_line: Option<usize>,
     pub is_libsignal: bool,
-    pub caller_count: usize,
-    pub callee_count: usize,
+    /// Functions this function calls (outgoing edges) - scip_names for O(1) lookup
+    pub dependencies: Vec<String>,
+    /// Functions that call this function (incoming edges) - scip_names for O(1) lookup  
+    pub dependents: Vec<String>,
     /// Verus function mode: exec, proof, or spec
     pub mode: FunctionMode,
 }
@@ -1006,12 +1007,11 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
                 relative_path: node.relative_path.clone(),
                 file_name,
                 parent_folder,
-                body: node.body.clone(),
                 start_line,
                 end_line,
                 is_libsignal: is_libsignal_node(node),
-                caller_count: node.callers.len(),
-                callee_count: node.callees.len(),
+                dependencies: node.callees.iter().cloned().collect(),
+                dependents: node.callers.iter().cloned().collect(),
                 mode,
             }
         })

@@ -64,16 +64,6 @@ function showLargeGraphPrompt(fileSize: number): void {
   }
 }
 
-/**
- * Get a short snippet from function body (first few lines)
- */
-function getBodySnippet(body: string, maxLines: number = 5): string {
-  const lines = body.split('\n');
-  if (lines.length <= maxLines) {
-    return body;
-  }
-  return lines.slice(0, maxLines).join('\n') + '\n// ...';
-}
 
 /**
  * Build a GitHub link to the source code
@@ -801,7 +791,7 @@ function applyFiltersAndUpdate(): void {
     
     // Keep nodes with highest connectivity (most relevant)
     const sortedNodes = [...filtered.nodes].sort((a, b) => 
-      (b.caller_count + b.callee_count) - (a.caller_count + a.callee_count)
+      (b.dependents.length + b.dependencies.length) - (a.dependents.length + a.dependencies.length)
     );
     const keptNodes = sortedNodes.slice(0, MAX_RENDERED_NODES);
     const keptNodeIds = new Set(keptNodes.map(n => n.id));
@@ -1027,12 +1017,6 @@ function updateNodeInfo(): void {
             </li>
           `).join('')}
         </ul>
-      </div>
-    ` : ''}
-    ${node.body ? `
-      <div class="node-detail">
-        <strong>Code Preview:</strong>
-        <pre class="code-block"><code>${escapeHtml(getBodySnippet(node.body, 8))}</code></pre>
       </div>
     ` : ''}
   `;

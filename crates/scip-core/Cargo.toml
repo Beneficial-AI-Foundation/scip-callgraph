@@ -6,6 +6,7 @@ description = "Core SCIP parsing and call graph generation library"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+scip-atoms = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

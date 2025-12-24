@@ -14,8 +14,9 @@
 use clap::Parser;
 use log::{error, info, warn};
 use scip_atoms::verification::{AnalysisResult, AnalysisStatus, VerificationAnalyzer, VerusRunner};
+use scip_atoms::{build_call_graph, convert_to_atoms_with_lines, parse_scip_json};
+use scip_core::atoms_to_d3::atoms_to_d3_graph;
 use scip_core::logging::init_logger;
-use scip_core::scip_to_call_graph_json::{build_call_graph, parse_scip_json};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -148,44 +149,36 @@ fn generate_scip(project: &Path, use_cached: bool) -> Result<PathBuf, String> {
     Ok(root_json_path)
 }
 
-/// Export call graph to D3 format
-fn export_call_graph(scip_json: &Path, output: &Path) -> Result<(), String> {
-    info!("Building call graph from SCIP data...");
+/// Export call graph to D3 format using scip-atoms' unique name resolution
+fn export_call_graph(scip_json: &Path, output: &Path, project_root: &str, github_url: Option<String>) -> Result<(), String> {
+    info!("Building call graph from SCIP data (using scip-atoms)...");
 
     let scip_data = parse_scip_json(scip_json.to_str().unwrap())
         .map_err(|e| format!("Failed to parse SCIP JSON: {}", e))?;
 
-    let call_graph = build_call_graph(&scip_data);
+    let (call_graph, symbol_to_display_name) = build_call_graph(&scip_data);
     info!("  Call graph contains {} functions", call_graph.len());
 
+    info!("Converting to atoms with unique scip_names...");
+    let atoms = convert_to_atoms_with_lines(&call_graph, &symbol_to_display_name);
+    
+    // Convert to HashMap keyed by scip_name for the D3 converter
+    let atoms_map: HashMap<String, _> = atoms
+        .into_iter()
+        .map(|atom| (atom.scip_name.clone(), atom))
+        .collect();
+    info!("  Generated {} atoms with unique names", atoms_map.len());
+
     info!("Exporting to D3 format...");
-    scip_core::scip_to_call_graph_json::export_call_graph_d3(&call_graph, &scip_data, output)
-        .map_err(|e| format!("Failed to export call graph: {}", e))?;
+    let d3_graph = atoms_to_d3_graph(&atoms_map, &call_graph, project_root, github_url);
+    
+    let json = serde_json::to_string_pretty(&d3_graph)
+        .map_err(|e| format!("Failed to serialize D3 graph: {}", e))?;
+    std::fs::write(output, json)
+        .map_err(|e| format!("Failed to write output: {}", e))?;
 
     info!("✓ Call graph exported to {}", output.display());
-    Ok(())
-}
-
-/// Set the GitHub URL in the graph metadata
-fn set_github_url(graph_path: &Path, github_url: &str) -> Result<(), String> {
-    info!("Setting GitHub URL in graph metadata...");
-    
-    let graph_content = std::fs::read_to_string(graph_path)
-        .map_err(|e| format!("Failed to read graph: {}", e))?;
-    let mut graph: serde_json::Value =
-        serde_json::from_str(&graph_content).map_err(|e| format!("Failed to parse graph: {}", e))?;
-    
-    // Set the github_url in metadata
-    if let Some(metadata) = graph.get_mut("metadata").and_then(|m| m.as_object_mut()) {
-        metadata.insert("github_url".to_string(), serde_json::json!(github_url));
-    }
-    
-    // Write back
-    let json = serde_json::to_string_pretty(&graph)
-        .map_err(|e| format!("Failed to serialize graph: {}", e))?;
-    std::fs::write(graph_path, json).map_err(|e| format!("Failed to write graph: {}", e))?;
-    
-    info!("✓ GitHub URL set to: {}", github_url);
+    info!("  {} nodes, {} edges", d3_graph.nodes.len(), d3_graph.links.len());
     Ok(())
 }
 
@@ -475,16 +468,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::fs::create_dir_all(parent)?;
     }
     
-    if let Err(e) = export_call_graph(&scip_json, &args.output) {
+    let project_root = args.project.to_string_lossy().to_string();
+    if let Err(e) = export_call_graph(&scip_json, &args.output, &project_root, args.github_url.clone()) {
         error!("Failed to export call graph: {}", e);
         std::process::exit(1);
-    }
-    
-    // Set GitHub URL if provided
-    if let Some(ref github_url) = args.github_url {
-        if let Err(e) = set_github_url(&args.output, github_url) {
-            warn!("Failed to set GitHub URL: {}", e);
-        }
     }
     println!();
 

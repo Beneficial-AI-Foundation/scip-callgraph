@@ -23,12 +23,13 @@ export interface D3Node {
   relative_path: string;
   file_name: string;
   parent_folder: string;
-  body?: string;
+  // Note: body removed - use start_line/end_line to fetch code on demand
   start_line?: number;
   end_line?: number;
   is_libsignal: boolean;
-  caller_count: number;
-  callee_count: number;
+  // Pre-computed for O(1) lookups in browser
+  dependencies: string[];   // scip_names of functions this calls (outgoing)
+  dependents: string[];     // scip_names of functions that call this (incoming)
   similar_lemmas?: SimilarLemma[];
   mode: FunctionMode;  // Verus function mode: exec, proof, or spec
   verification_status?: VerificationStatus;  // Verification status: verified, failed, unverified

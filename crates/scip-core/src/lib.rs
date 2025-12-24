@@ -10,8 +10,10 @@
 //! - [`scip_call_graph`]: Call graph data structures and operations
 //! - [`scip_utils`]: Utility functions for SCIP data manipulation
 //! - [`call_graph_svg`]: SVG visualization of call graphs
+//! - [`atoms_to_d3`]: Convert scip-atoms output to D3.js graph format
 //! - [`logging`]: Logging utilities
 
+pub mod atoms_to_d3;
 pub mod call_graph_svg;
 pub mod scip_call_graph;
 pub mod scip_reader;
