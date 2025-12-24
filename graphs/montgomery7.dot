@@ -1,0 +1,282 @@
+digraph function_subgraph {
+  rankdir=LR;
+  node [shape=box, style=filled, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "dalek_benchmarks.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/montgomery_ladder()." [label="montgomery_ladder", tooltip="    fn montgomery_ladder<M: Measurement>(c: &mut BenchmarkGroup<M>) {         c.bench_function(' Montgomery pseudomultiplication' , |b| {             let B = constants::X25519_BASEPOINT;             l...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/consttime_variable_base_scalar_mul()." [label="consttime_variable_base_scalar_mul", tooltip="    fn consttime_variable_base_scalar_mul<M: Measurement>(c: &mut BenchmarkGroup<M>) {         let B = &constants::ED25519_BASEPOINT_POINT;         let s = Scalar::from(897987897u64).invert();        ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/consttime_fixed_base_scalar_mul()." [label="consttime_fixed_base_scalar_mul", tooltip="    fn consttime_fixed_base_scalar_mul<M: Measurement>(c: &mut BenchmarkGroup<M>) {         let s = Scalar::from(897987897u64).invert();         c.bench_function(' Constant-time fixed-base scalar mul'...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_benches()." [label="scalar_benches", tooltip="    pub(crate) fn scalar_benches() {         let mut c = Criterion::default();         let mut g = c.benchmark_group(' scalar benches' );          scalar_arith(&mut g);         batch_scalar_inversion(...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/batch_scalar_inversion()." [label="batch_scalar_inversion", tooltip="    fn batch_scalar_inversion<M: Measurement>(c: &mut BenchmarkGroup<M>) {         for batch_size in &BATCH_SIZES {             c.bench_with_input(                 BenchmarkId::new(' Batch scalar inve...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/consttime_fixed_base_scalar_mul()." [label="consttime_fixed_base_scalar_mul", tooltip="    fn consttime_fixed_base_scalar_mul<M: Measurement>(c: &mut BenchmarkGroup<M>) {         let s = Scalar::from(897987897u64).invert();         c.bench_function(' Constant-time fixed-base scalar mul'...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/montgomery_benches()." [label="montgomery_benches", tooltip="    pub(crate) fn montgomery_benches() {         let mut c = Criterion::default();         let mut g = c.benchmark_group(' montgomery benches' );          montgomery_ladder(&mut g);         consttime_...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_arith()." [label="scalar_arith", tooltip="    fn scalar_arith<M: Measurement>(c: &mut BenchmarkGroup<M>) {         let mut rng = thread_rng();          c.bench_function(' Scalar inversion' , |b| {             let s = Scalar::from(897987897u64...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/edwards_benches()." [label="edwards_benches", tooltip="    pub(crate) fn edwards_benches() {         let mut c = Criterion::default();         let mut g = c.benchmark_group(' edwards benches' );          compress(&mut g);         decompress(&mut g);      ...", fillcolor=white]
+  }
+  subgraph cluster_1 {
+    label = "pippenger.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/scalar_mul/pippenger/test/test_vartime_pippenger()." [label="test_vartime_pippenger", tooltip="    fn test_vartime_pippenger() {         // Reuse points across different tests         let mut n = 512;         let x = Scalar::from(2128506u64).invert();         let y = Scalar::from(4443282u64).in...", fillcolor=white]
+  }
+  subgraph cluster_2 {
+    label = "scalar.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." [label="batch_invert", tooltip="    pub fn batch_invert(inputs: &mut [Scalar]) -> Scalar {         // This code is essentially identical to the FieldElement         // implementation, and is documented there.  Unfortunately,        ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_consistency()." [label="batch_invert_consistency", tooltip="    fn batch_invert_consistency() {         let mut x = Scalar::from(1u64);         let mut v1: Vec<_> = (0..16)             .map(|_| {                 let tmp = x;                 x = x + x;         ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()." [label="montgomery_invert", tooltip="    pub fn montgomery_invert(&self) -> UnpackedScalar {         // Uses the addition chain from         // https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion         l...", fillcolor=lightblue]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/invert()." [label="invert", tooltip="    fn invert() {         let inv_X = X.invert();         assert_eq!(inv_X, XINV);         let should_be_one = inv_X * X;         assert_eq!(should_be_one, Scalar::ONE);     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()." [label="invert", tooltip="    pub fn invert(&self) -> Scalar {         self.unpack().invert().pack()     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/test_pippenger_radix()." [label="test_pippenger_radix", tooltip="    fn test_pippenger_radix() {         use core::iter;         // For each valid radix it tests that 1000 random-ish scalars can be restored         // from the produced representation precisely.    ...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_with_a_zero_input_panics()." [label="batch_invert_with_a_zero_input_panics", tooltip="    fn batch_invert_with_a_zero_input_panics() {         let mut xs = vec![Scalar::ONE; 16];         xs[3] = Scalar::ZERO;         // This should panic in debug mode.         Scalar::batch_invert(&mut...", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." [label="invert", tooltip="    pub fn invert(&self) -> UnpackedScalar {         self.as_montgomery().montgomery_invert().from_montgomery()     }", fillcolor=white]
+    "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_empty()." [label="batch_invert_empty", tooltip="    fn batch_invert_empty() {         assert_eq!(Scalar::ONE, Scalar::batch_invert(&mut []));     }", fillcolor=white]
+  }
+  subgraph cluster_3 {
+    label = "zkgroup.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSendEndorsement_CallLinkParams_ToToken()." [label="GroupSendEndorsement_CallLinkParams_ToToken", tooltip="fn GroupSendEndorsement_CallLinkParams_ToToken(     endorsement: &[u8],     call_link_secret_params_serialized: &[u8], ) -> Vec<u8> {     let call_link_params =         zkgroup::deserialize::<CallLink...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSecretParams_DecryptServiceId()." [label="GroupSecretParams_DecryptServiceId", tooltip="fn GroupSecretParams_DecryptServiceId(     params: Serialized<GroupSecretParams>,     ciphertext: Serialized<UuidCiphertext>, ) -> Result<ServiceId, ZkGroupVerificationFailure> {     params.decrypt_se...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSendDerivedKeyPair_ForExpiration()." [label="GroupSendDerivedKeyPair_ForExpiration", tooltip="fn GroupSendDerivedKeyPair_ForExpiration(     expiration: Timestamp,     server_params: &ServerSecretParams, ) -> Vec<u8> {     zkgroup::serialize(&GroupSendDerivedKeyPair::for_expiration(         exp...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkSecretParams_DecryptUserId()." [label="CallLinkSecretParams_DecryptUserId", tooltip="fn CallLinkSecretParams_DecryptUserId(     params_bytes: &[u8],     user_id: Serialized<UuidCiphertext>, ) -> Result<Aci, ZkGroupVerificationFailure> {     let params = zkgroup::deserialize::<CallLink...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSendEndorsement_ToToken()." [label="GroupSendEndorsement_ToToken", tooltip="fn GroupSendEndorsement_ToToken(     endorsement: &[u8],     group_params: Serialized<GroupSecretParams>, ) -> Vec<u8> {     let endorsement = zkgroup::deserialize::<GroupSendEndorsement>(endorsement)...", fillcolor=white]
+    "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSecretParams_DecryptProfileKey()." [label="GroupSecretParams_DecryptProfileKey", tooltip="fn GroupSecretParams_DecryptProfileKey(     params: Serialized<GroupSecretParams>,     profile_key: Serialized<ProfileKeyCiphertext>,     user_id: Aci, ) -> Result<Serialized<ProfileKey>, ZkGroupVerif...", fillcolor=white]
+  }
+  subgraph cluster_4 {
+    label = "ppss_ops.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-net 0.1.0 svrb/ppss_ops/do_restore()." [label="do_restore", tooltip="pub async fn do_restore<Env: PpssSetup>(     connect_results: impl IntoConnectionResults,     password: &[u8], ) -> Result<Secret, Error> {     let mut rng = OsRng.unwrap_err();     let ConnectionCont...", fillcolor=white]
+    "rust-analyzer cargo libsignal-net 0.1.0 svrb/ppss_ops/test/do_restore_fails_with_the_first_error()." [label="do_restore_fails_with_the_first_error", tooltip="    async fn do_restore_fails_with_the_first_error() {         let result = do_restore::<TestEnv>(NotConnectedResults, b' ' ).await;         assert_matches!(result, Err(crate::svrb::Error::ConnectionT...", fillcolor=white]
+  }
+  subgraph cluster_5 {
+    label = "traits.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-net 0.1.0 svrb/traits/impl#[T][Restore]restore()." [label="restore", tooltip="    async fn restore(&self, password: &[u8]) -> Result<Secret, Error> {         ppss_ops::do_restore::<T::Env>(self.connect().await, password).await     }", fillcolor=white]
+  }
+  subgraph cluster_6 {
+    label = "lib.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo libsignal-svrb 0.1.0 test/full_create_restore()." [label="full_create_restore", tooltip="    fn full_create_restore() {         let mut rng = OsRng.unwrap_err();         let server_ids = vec![1u64, 2u64, 3u64];         let mut servers = server_ids             .iter()             .map(|_| ...", fillcolor=white]
+    "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[`Restore1<'a>`]restore2()." [label="restore2", tooltip="    pub fn restore2<R: Rng + CryptoRng>(         self,         responses1_bytes: &[Vec<u8>],         handshake_hashes: &[&[u8]],         rng: &mut R,     ) -> Result<Restore2<'a>, Error> {         if ...", fillcolor=white]
+  }
+  subgraph cluster_7 {
+    label = "endorsements.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 key_derivation()." [label="key_derivation", tooltip="fn key_derivation(c: &mut Criterion) {     let root_key = ServerRootKeyPair::generate([42; RANDOMNESS_LEN]);      let mut info_sho = poksho::ShoHmacSha256::new(b' ExampleEndorsements' );     info_sho....", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." [label="endorsement_flow", tooltip="fn endorsement_flow(c: &mut Criterion) {     let mut group = c.benchmark_group(' endorsements' );      let mut input_sho = poksho::ShoSha256::new(b' test' );     let inputs: Vec<RistrettoPoint> = (0.....", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 benches()." [label="benches", tooltip="criterion_group!(benches, endorsement_flow, key_derivation); criterion_main!(benches);", fillcolor=white]
+  }
+  subgraph cluster_8 {
+    label = "zkcredential_benchmarks.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 attribute_key_inversion()." [label="attribute_key_inversion", tooltip="fn attribute_key_inversion(c: &mut Criterion) {     let mut sho = poksho::ShoSha256::new(b' test' );     let key_pair = KeyPair::<ExampleDomain>::derive_from(&mut sho);      c.bench_function(' KeyPair...", fillcolor=white]
+  }
+  subgraph cluster_9 {
+    label = "attributes.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 attributes/impl#[`KeyPair<D>`]inverse_of()." [label="inverse_of", tooltip="    pub fn inverse_of<D2: Domain>(other: &KeyPair<D2>) -> Self {         assert_ne!(             D::ID,             D2::ID,             ' You must provide a new domain for an inverse key'          ); ...", fillcolor=white]
+  }
+  subgraph cluster_10 {
+    label = "endorsements.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/default_is_identity()." [label="default_is_identity", tooltip="    fn default_is_identity() {         assert_eq!(Endorsement::combine([]).R, Endorsement::default().R);          let mut input_sho = poksho::ShoSha256::new(b' test' );         let root_key = ServerRo...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/combining_endorsements()." [label="combining_endorsements", tooltip="    fn combining_endorsements() {         let mut input_sho = poksho::ShoSha256::new(b' test' );         let root_key = ServerRootKeyPair::generate([42; RANDOMNESS_LEN]);          // Client          l...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()." [label="from_blinding_scalar", tooltip="    pub fn from_blinding_scalar(scalar: Scalar) -> Self {         Self {             a_inv: scalar.invert(),         }     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/default_flow()." [label="default_flow", tooltip="    fn default_flow() {         let mut input_sho = poksho::ShoSha256::new(b' test' );         let root_key = ServerRootKeyPair::generate([42; RANDOMNESS_LEN]);          // Client          let client_...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/round_trip()." [label="round_trip", tooltip="        fn round_trip<T: Serialize + for<'a> Deserialize<'a> + PartialDefault>(             value: &T,             expected_len: usize,         ) {             let bincode_options = bincode::DefaultOp...", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]for_first_point_of_attribute()." [label="for_first_point_of_attribute", tooltip="    pub fn for_first_point_of_attribute<D>(key_pair: &crate::attributes::KeyPair<D>) -> Self {         Self::from_blinding_scalar(key_pair.a1)     }", fillcolor=white]
+    "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()." [label="derive_key", tooltip="    pub fn derive_key(&self, mut tag_info: impl ShoApi) -> ServerDerivedKeyPair {         let t = tag_info.get_scalar();         ServerDerivedKeyPair {             sk_prime: (self.sk + t).invert(),   ...", fillcolor=white]
+  }
+  subgraph cluster_11 {
+    label = "serialization.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 benches()." [label="benches", tooltip="criterion_group!(benches, bench_server_param_serialization,); criterion_main!(benches);", fillcolor=white]
+  }
+  subgraph cluster_12 {
+    label = "zkgroup_benchmarks.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_auth()." [label="benchmark_integration_auth", tooltip="fn benchmark_integration_auth(c: &mut Criterion) {     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);     let server_public_params = server_secret_params.get...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_profile()." [label="benchmark_integration_profile", tooltip="pub fn benchmark_integration_profile(c: &mut Criterion) {     // SERVER     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);     let server_public_params = ser...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 benchmark_group_send_endorsements()." [label="benchmark_group_send_endorsements", tooltip="pub fn benchmark_group_send_endorsements(c: &mut Criterion) {     const DAY_ALIGNED_TIMESTAMP: zkgroup::Timestamp =         zkgroup::Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 U...", fillcolor=white]
+  }
+  subgraph cluster_13 {
+    label = "params.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/call_links/params/impl#[CallLinkSecretParams]decrypt_uid()." [label="decrypt_uid", tooltip="    pub fn decrypt_uid(         &self,         ciphertext: api::groups::UuidCiphertext,     ) -> Result<libsignal_core::Aci, ZkGroupVerificationFailure> {         let uid = crypto::uid_encryption::Uid...", fillcolor=white]
+  }
+  subgraph cluster_14 {
+    label = "group_params.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_profile_key()." [label="decrypt_profile_key", tooltip="    pub fn decrypt_profile_key(         &self,         ciphertext: api::groups::ProfileKeyCiphertext,         user_id: libsignal_core::Aci,     ) -> Result<api::profiles::ProfileKey, ZkGroupVerificati...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_service_id()." [label="decrypt_service_id", tooltip="    pub fn decrypt_service_id(         &self,         ciphertext: api::groups::UuidCiphertext,     ) -> Result<libsignal_core::ServiceId, ZkGroupVerificationFailure> {         crypto::uid_encryption::...", fillcolor=white]
+  }
+  subgraph cluster_15 {
+    label = "group_send_endorsement.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendEndorsement]to_token()." [label="to_token", tooltip="    pub fn to_token<T: AsRef<uid_encryption::KeyPair>>(&self, key_pair: T) -> GroupSendToken {         let client_key =             zkcredential::endorsements::ClientDecryptionKey::for_first_point_of_...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendDerivedKeyPair]for_expiration()." [label="for_expiration", tooltip="    pub fn for_expiration(         expiration: Timestamp,         root: impl AsRef<zkcredential::endorsements::ServerRootKeyPair>,     ) -> Self {         Self {             reserved: ReservedByte::de...", fillcolor=white]
+  }
+  subgraph cluster_16 {
+    label = "profile_key_encryption.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/profile_key_encryption/tests/test_profile_key_encryption()." [label="test_profile_key_encryption", tooltip="    fn test_profile_key_encryption() {         let master_key = TEST_ARRAY_32_1;         let mut sho = Sho::new(b' Test_Profile_Key_Encryption' , &master_key);          //let system = SystemParams::ge...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/profile_key_encryption/impl#[ProfileKeyEncryptionDomain]decrypt()." [label="decrypt", tooltip="    pub(crate) fn decrypt(         key_pair: &KeyPair,         ciphertext: &Ciphertext,         uid_bytes: UidBytes,     ) -> Result<profile_key_struct::ProfileKeyStruct, ZkGroupVerificationFailure> {...", fillcolor=white]
+  }
+  subgraph cluster_17 {
+    label = "uid_encryption.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/impl#[UidEncryptionDomain]decrypt()." [label="decrypt", tooltip="    pub(crate) fn decrypt(         key_pair: &KeyPair,         ciphertext: &Ciphertext,     ) -> Result<libsignal_core::ServiceId, ZkGroupVerificationFailure> {         let M2 = key_pair             ....", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/tests/test_uid_encryption()." [label="test_uid_encryption", tooltip="    fn test_uid_encryption() {         let master_key = TEST_ARRAY_32;         let mut sho = Sho::new(b' Test_Uid_Encryption' , &master_key);          //let system = SystemParams::generate();         ...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/tests/test_pni_encryption()." [label="test_pni_encryption", tooltip="    fn test_pni_encryption() {         let mut sho = Sho::new(b' Test_Pni_Encryption' , &[]);         let key_pair = KeyPair::derive_from(sho.as_mut());          let pni = libsignal_core::Pni::from_uu...", fillcolor=white]
+  }
+  subgraph cluster_18 {
+    label = "zkcredential_examples.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_inverse_key()." [label="test_inverse_key", tooltip="fn test_inverse_key() {     let aci = libsignal_core::Aci::from_uuid_bytes(TEST_ARRAY_16);     let uid = UidStruct::from_service_id(aci.into());      let mut sho = Sho::new(b' test_inverse_key' , b' '...", fillcolor=white]
+  }
+  subgraph cluster_19 {
+    label = "call_link_flow.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential()." [label="test_auth_credential", tooltip="fn test_auth_credential() {     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];     let randomness3: RandomnessBytes = [0x...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_request_response()." [label="test_create_call_link_request_response", tooltip="fn test_create_call_link_request_response() {     let randomness0: RandomnessBytes = [0x42u8; RANDOMNESS_LEN];     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let randomness2: Ran...", fillcolor=white]
+  }
+  subgraph cluster_20 {
+    label = "group_send_endorsements.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 test_client_rejects_bad_expirations()." [label="test_client_rejects_bad_expirations", tooltip="fn test_client_rejects_bad_expirations() {     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];     let randomness3: Random...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 test_endorsement()." [label="test_endorsement", tooltip="fn test_endorsement() {     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];     let randomness3: RandomnessBytes = [0x45u8...", fillcolor=white]
+    "rust-analyzer cargo zkgroup 0.9.0 test_single_member_group()." [label="test_single_member_group", tooltip="fn test_single_member_group() {     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];     let randomness3: RandomnessBytes =...", fillcolor=white]
+  }
+  subgraph cluster_21 {
+    label = "integration_tests.rs";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo zkgroup 0.9.0 test_integration_expiring_profile()." [label="test_integration_expiring_profile", tooltip="fn test_integration_expiring_profile() {     // SERVER     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);     let server_public_params = server_secret_params...", fillcolor=white]
+  }
+
+  "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendEndorsement]to_token()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]for_first_point_of_attribute()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/montgomery_ladder()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_client_rejects_bad_expirations()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendDerivedKeyPair]for_expiration()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/consttime_variable_base_scalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkcredential 0.1.0 attributes/impl#[`KeyPair<D>`]inverse_of()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSendEndorsement_CallLinkParams_ToToken()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendEndorsement]to_token()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/impl#[UidEncryptionDomain]decrypt()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/profile_key_encryption/tests/test_profile_key_encryption()." -> "rust-analyzer cargo zkgroup 0.9.0 crypto/profile_key_encryption/impl#[ProfileKeyEncryptionDomain]decrypt()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_endorsement()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendEndorsement]to_token()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_endorsement()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendDerivedKeyPair]for_expiration()."
+  "rust-analyzer cargo zkcredential 0.1.0 key_derivation()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/profile_key_encryption/impl#[ProfileKeyEncryptionDomain]decrypt()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_consistency()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_consistency()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()."
+  "rust-analyzer cargo libsignal-svrb 0.1.0 test/full_create_restore()." -> "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[`Restore1<'a>`]restore2()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendDerivedKeyPair]for_expiration()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/default_is_identity()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_profile_key()." -> "rust-analyzer cargo zkgroup 0.9.0 crypto/profile_key_encryption/impl#[ProfileKeyEncryptionDomain]decrypt()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/tests/test_uid_encryption()." -> "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/impl#[UidEncryptionDomain]decrypt()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_service_id()." -> "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/impl#[UidEncryptionDomain]decrypt()."
+  "rust-analyzer cargo libsignal-net 0.1.0 svrb/ppss_ops/do_restore()." -> "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[`Restore1<'a>`]restore2()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/consttime_fixed_base_scalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkcredential 0.1.0 benches()." -> "rust-analyzer cargo zkcredential 0.1.0 attribute_key_inversion()."
+  "rust-analyzer cargo zkcredential 0.1.0 benches()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsement_flow()."
+  "rust-analyzer cargo zkcredential 0.1.0 benches()." -> "rust-analyzer cargo zkcredential 0.1.0 key_derivation()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_auth()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_service_id()."
+  "rust-analyzer cargo libsignal-svrb 0.1.0 impl#[`Restore1<'a>`]restore2()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSecretParams_DecryptServiceId()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_service_id()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_auth_credential()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/params/impl#[CallLinkSecretParams]decrypt_uid()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/tests/test_pni_encryption()." -> "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/impl#[UidEncryptionDomain]decrypt()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/combining_endorsements()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/combining_endorsements()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSendDerivedKeyPair_ForExpiration()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendDerivedKeyPair]for_expiration()."
+  "rust-analyzer cargo libsignal-net 0.1.0 svrb/traits/impl#[T][Restore]restore()." -> "rust-analyzer cargo libsignal-net 0.1.0 svrb/ppss_ops/do_restore()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/test_pippenger_radix()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_benches()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/edwards_benches()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_benches()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/batch_scalar_inversion()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_benches()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_arith()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_benches()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/montgomery_benches()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_integration_expiring_profile()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_service_id()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_integration_expiring_profile()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_profile_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 api/call_links/params/impl#[CallLinkSecretParams]decrypt_uid()." -> "rust-analyzer cargo zkgroup 0.9.0 crypto/uid_encryption/impl#[UidEncryptionDomain]decrypt()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/default_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/default_flow()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_profile()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_profile_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_profile()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_service_id()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/CallLinkSecretParams_DecryptUserId()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/params/impl#[CallLinkSecretParams]decrypt_uid()."
+  "rust-analyzer cargo zkgroup 0.9.0 benches()." -> "rust-analyzer cargo zkgroup 0.9.0 benchmark_group_send_endorsements()."
+  "rust-analyzer cargo zkgroup 0.9.0 benches()." -> "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_profile()."
+  "rust-analyzer cargo zkgroup 0.9.0 benches()." -> "rust-analyzer cargo zkgroup 0.9.0 benchmark_integration_auth()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSendEndorsement_ToToken()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendEndorsement]to_token()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/batch_scalar_inversion()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/round_trip()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/tests/round_trip()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()."
+  "rust-analyzer cargo zkgroup 0.9.0 crypto/zkcredential_examples/test_inverse_key()." -> "rust-analyzer cargo zkcredential 0.1.0 attributes/impl#[`KeyPair<D>`]inverse_of()."
+  "rust-analyzer cargo zkgroup 0.9.0 benchmark_group_send_endorsements()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendDerivedKeyPair]for_expiration()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/consttime_fixed_base_scalar_mul()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo libsignal-net 0.1.0 svrb/ppss_ops/test/do_restore_fails_with_the_first_error()." -> "rust-analyzer cargo libsignal-net 0.1.0 svrb/ppss_ops/do_restore()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/montgomery_benches()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/consttime_fixed_base_scalar_mul()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/montgomery_benches()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 montgomery_benches/montgomery_ladder()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]for_first_point_of_attribute()." -> "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ClientDecryptionKey]from_blinding_scalar()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar_benches/scalar_arith()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo zkcredential 0.1.0 attribute_key_inversion()." -> "rust-analyzer cargo zkcredential 0.1.0 attributes/impl#[`KeyPair<D>`]inverse_of()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 backend/serial/scalar_mul/pippenger/test/test_vartime_pippenger()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_with_a_zero_input_panics()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_create_call_link_request_response()." -> "rust-analyzer cargo zkgroup 0.9.0 api/call_links/params/impl#[CallLinkSecretParams]decrypt_uid()."
+  "rust-analyzer cargo libsignal-bridge 0.1.0 zkgroup/GroupSecretParams_DecryptProfileKey()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_params/impl#[GroupSecretParams]decrypt_profile_key()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/edwards_benches()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/consttime_variable_base_scalar_mul()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/edwards_benches()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 edwards_benches/consttime_fixed_base_scalar_mul()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]invert()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[`backend::serial::u64::scalar::Scalar52`]montgomery_invert()."
+  "rust-analyzer cargo zkcredential 0.1.0 endorsements/impl#[ServerRootKeyPair]derive_key()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]invert()."
+  "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/test/batch_invert_empty()." -> "rust-analyzer cargo curve25519-dalek 4.1.3 scalar/impl#[Scalar]batch_invert()."
+  "rust-analyzer cargo zkgroup 0.9.0 test_single_member_group()." -> "rust-analyzer cargo zkgroup 0.9.0 api/groups/group_send_endorsement/impl#[GroupSendDerivedKeyPair]for_expiration()."
+}

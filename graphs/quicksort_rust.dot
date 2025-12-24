@@ -1,0 +1,14 @@
+digraph call_graph {
+  rankdir=LR;
+  node [shape=box, style=filled, fillcolor=lightblue, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "quicksort_rust/src";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo quicksort_rust 0.1.0 main()." [label="main", tooltip=""]
+  }
+
+}

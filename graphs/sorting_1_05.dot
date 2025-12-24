@@ -1,0 +1,322 @@
+digraph call_graph {
+  rankdir=LR;
+  node [shape=box, style=filled, fillcolor=lightblue, fontname=Helvetica];
+  edge [color=gray];
+
+  subgraph cluster_0 {
+    label = "sorting_rs/benches";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo sorting_rs 1.2.10 bench()." [label="bench", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 benches()." [label="benches", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 get_random_vec()." [label="get_random_vec", tooltip=""]
+  }
+  subgraph cluster_1 {
+    label = "sorting_rs/src";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/flip()." [label="flip", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 ksort/tests/test_ksort_len1()." [label="test_ksort_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/tests/test_insertion()." [label="test_insertion", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_batcher_empty()." [label="test_oddeven_batcher_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/tests/test_cocktail()." [label="test_cocktail", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/tests/test_cocktail_empty()." [label="test_cocktail_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_sort()." [label="oddeven_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_double()." [label="test_selection_double", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/hbu_leaf_search()." [label="hbu_leaf_search", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/test/test_shell_empty()." [label="test_shell_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/tests/test_smooth_01()." [label="test_smooth_01", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 ksort/ksort_lr()." [label="ksort_lr", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_empty()." [label="test_quick_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/impl#[GapSequence][Iterator]next()." [label="next", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/tests/test_slow_empty()." [label="test_slow_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/get_child_trees()." [label="get_child_trees", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/test/test_shell()." [label="test_shell", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/stooge_sort()." [label="stooge_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/tests/test_slow()." [label="test_slow", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_sort()." [label="oddeven_batcher_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_dual_longer()." [label="test_quick_dual_longer", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_bu_empty()." [label="test_merge_bu_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_bottom_up_sort()." [label="merge_bottom_up_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/nheap_sort()." [label="nheap_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bitonic_sort()." [label="bitonic_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_sort()." [label="selection_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_sort_ranges()." [label="oddeven_batcher_sort_ranges", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_empty()." [label="test_oddeven_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/hbu_sift()." [label="hbu_sift", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_up_sort()." [label="gnome_up_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick()." [label="test_quick", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/tests/test_bubble_empty()." [label="test_bubble_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/comb_sort()." [label="comb_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/tests/test_heap()." [label="test_heap", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/shell_sort()." [label="shell_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_up_empty()." [label="test_gnome_up_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_dual_len1()." [label="test_quick_dual_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_len1()." [label="test_bitonic_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/tests/test_smooth()." [label="test_smooth", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/tests/test_stooge()." [label="test_stooge", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/test/test_shell_len1()." [label="test_shell_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_len1()." [label="test_oddeven_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/tests/test_bubble()." [label="test_bubble", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_two_elem()." [label="test_quick_two_elem", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/get_min_max()." [label="get_min_max", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/tests/test_bingo_len1()." [label="test_bingo_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/tests/test_heap_len1()." [label="test_heap_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_bottom_up_len1()." [label="test_heap_bottom_up_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/tests/test_comb()." [label="test_comb", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/bubble_sort()." [label="bubble_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_len1()." [label="test_quick_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/tests/test_insertion_empty()." [label="test_insertion_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/tests/test_heap_01()." [label="test_heap_01", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_sort()." [label="weak_heap_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_empty()." [label="test_bitonic_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_up()." [label="test_gnome_up", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/tests/test_cycle_len1()." [label="test_cycle_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/sub_sort()." [label="sub_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_bool()." [label="test_bitonic_bool", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/tests/test_slow_empty()." [label="test_slow_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_sort()." [label="merge_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/get_flag()." [label="get_flag", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/tests/test_insertion_len1()." [label="test_insertion_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/bingo_sort()." [label="bingo_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_bottom_up()." [label="test_heap_bottom_up", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_len1()." [label="test_gnome_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_double_sort()." [label="selection_double_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_dual_empty()." [label="test_quick_dual_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_empty()." [label="test_selection_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/cocktail_sort()." [label="cocktail_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bit_sort()." [label="bit_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/restore_heap()." [label="restore_heap", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/lomuto_partition()." [label="lomuto_partition", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/tests/test_pancake_len1()." [label="test_pancake_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/smooth_sort()." [label="smooth_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/dual_pivot()." [label="dual_pivot", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven()." [label="test_oddeven", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/tests/test_heap_empty()." [label="test_heap_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/stooge_sort_sorting()." [label="stooge_sort_sorting", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_batcher()." [label="test_oddeven_batcher", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_empty()." [label="test_gnome_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/cycle_sort()." [label="cycle_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge()." [label="test_merge", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/compare_and_swap()." [label="compare_and_swap", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_sort()." [label="heap_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/tests/test_smooth_len1()." [label="test_smooth_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_batcher_len1()." [label="test_oddeven_batcher_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/nheap_sift()." [label="nheap_sift", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_len1()." [label="test_merge_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_weak_heap_small()." [label="test_weak_heap_small", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_up_len1()." [label="test_gnome_up_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/tests/test_pancake()." [label="test_pancake", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/largest_pancake()." [label="largest_pancake", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome()." [label="test_gnome", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/insertion_sort()." [label="insertion_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/tests/test_slow_len1()." [label="test_slow_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_weak_heap_big()." [label="test_weak_heap_big", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_usize_pow_2()." [label="test_bitonic_usize_pow_2", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/tests/test_pancake_empty()." [label="test_pancake_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 ksort/tests/test_ksort_empty()." [label="test_ksort_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_double_empty()." [label="test_selection_double_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_dual()." [label="test_quick_dual", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_empty()." [label="test_heap_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_bottom_up_empty()." [label="test_heap_bottom_up_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/tests/test_smooth_empty()." [label="test_smooth_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_bu_len1()." [label="test_merge_bu_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tog_flag()." [label="tog_flag", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_merge()." [label="oddeven_batcher_merge", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_len1()." [label="test_heap_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_weak_heap_empty()." [label="test_weak_heap_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/tests/test_cocktail_len1()." [label="test_cocktail_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/slow_sort()." [label="slow_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_bottom_up_sort()." [label="heap_bottom_up_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/impl#[GapSequence]new()." [label="new", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_max()." [label="heap_max", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/tests/test_buble_len()." [label="test_buble_len", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 ksort/tests/test_ksort()." [label="test_ksort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_sort()." [label="quick_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/tests/test_bingo_empty()." [label="test_bingo_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/tests/test_slow_len1()." [label="test_slow_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_bu()." [label="test_merge_bu", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_sort()." [label="gnome_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/tests/test_cycle_empty()." [label="test_cycle_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_usize()." [label="test_bitonic_usize", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/tests/test_bingo()." [label="test_bingo", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_weak_heap_len1()." [label="test_weak_heap_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/pancake_sort()." [label="pancake_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 ksort/ksort()." [label="ksort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge()." [label="merge", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 ksort/tests/test_ksort_01()." [label="test_ksort_01", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_merge()." [label="weak_heap_merge", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/tests/test_comb_len1()." [label="test_comb_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/tests/test_cycle()." [label="test_cycle", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/slow_sort_sorting()." [label="slow_sort_sorting", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/test/test_correct_gap_sequence()." [label="test_correct_gap_sequence", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_dual_sort()." [label="quick_dual_sort", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap()." [label="test_heap", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection()." [label="test_selection", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_double_len1()." [label="test_selection_double_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/tests/test_comb_empty()." [label="test_comb_empty", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_char()." [label="test_bitonic_char", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_len1()." [label="test_selection_len1", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_empty()." [label="test_merge_empty", tooltip=""]
+  }
+  subgraph cluster_2 {
+    label = "sorting_rs/src/bin";
+    style=filled;
+    color=lightgrey;
+    fontname=Helvetica;
+    "rust-analyzer cargo sorting_rs 1.2.10 leonardo_generate()." [label="leonardo_generate", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 main()." [label="main", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 calculate_fibonacci()." [label="calculate_fibonacci", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 calculate_powers_of_two()." [label="calculate_powers_of_two", tooltip=""]
+    "rust-analyzer cargo sorting_rs 1.2.10 calculate_leonardo()." [label="calculate_leonardo", tooltip=""]
+  }
+
+  "rust-analyzer cargo sorting_rs 1.2.10 ksort/tests/test_ksort_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 ksort/ksort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/tests/test_insertion()." -> "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/insertion_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_batcher_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/tests/test_cocktail()." -> "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/cocktail_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/tests/test_cocktail_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/cocktail_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_double()." -> "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_double_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/test/test_shell_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/shell_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/tests/test_smooth_01()." -> "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/smooth_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/tests/test_slow_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/stooge_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/test/test_shell()." -> "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/shell_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/stooge_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/stooge_sort_sorting()."
+  "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/tests/test_slow()." -> "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/slow_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_sort_ranges()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_dual_longer()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_dual_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_bu_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_bottom_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_bottom_up_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge()."
+  "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/nheap_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/nheap_sift()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bitonic_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bit_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_sort_ranges()." -> "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_merge()."
+  "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/pancake_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/shell_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/cocktail_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_bottom_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/bubble_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_bottom_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/cycle_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/smooth_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/bingo_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/nheap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_double_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_dual_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/comb_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 ksort/ksort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/insertion_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bitonic_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bench()." -> "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/hbu_sift()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/hbu_leaf_search()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/tests/test_bubble_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/bubble_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/tests/test_heap()." -> "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/nheap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/shell_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/impl#[GapSequence]new()."
+  "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_up_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_dual_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_dual_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bitonic_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/tests/test_smooth()." -> "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/smooth_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/tests/test_stooge()." -> "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/stooge_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/test/test_shell_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/shell_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/tests/test_bubble()." -> "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/bubble_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_two_elem()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_dual_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/tests/test_bingo_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/bingo_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/tests/test_heap_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/nheap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_bottom_up_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_bottom_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/tests/test_comb()." -> "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/comb_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/tests/test_insertion_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/insertion_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/tests/test_heap_01()." -> "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/nheap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/get_flag()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_merge()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bitonic_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_up()." -> "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/tests/test_cycle_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/cycle_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/sub_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/compare_and_swap()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_bool()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bitonic_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/tests/test_slow_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/slow_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/tests/test_insertion_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 insertion_sort/insertion_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/bingo_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/get_min_max()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_bottom_up()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_bottom_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_dual_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_dual_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bit_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/sub_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/restore_heap()." -> "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/get_child_trees()."
+  "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/tests/test_pancake_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/pancake_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/smooth_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/restore_heap()."
+  "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/smooth_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/get_child_trees()."
+  "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven()." -> "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/tests/test_heap_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 nheap_sort/nheap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_batcher()." -> "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 main()." -> "rust-analyzer cargo sorting_rs 1.2.10 calculate_powers_of_two()."
+  "rust-analyzer cargo sorting_rs 1.2.10 main()." -> "rust-analyzer cargo sorting_rs 1.2.10 calculate_leonardo()."
+  "rust-analyzer cargo sorting_rs 1.2.10 main()." -> "rust-analyzer cargo sorting_rs 1.2.10 calculate_fibonacci()."
+  "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge()." -> "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 calculate_fibonacci()." -> "rust-analyzer cargo sorting_rs 1.2.10 leonardo_generate()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_max()."
+  "rust-analyzer cargo sorting_rs 1.2.10 calculate_leonardo()." -> "rust-analyzer cargo sorting_rs 1.2.10 leonardo_generate()."
+  "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/tests/test_smooth_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/smooth_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/tests/test_oddeven_batcher_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 oddeven_sort/oddeven_batcher_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 benches()." -> "rust-analyzer cargo sorting_rs 1.2.10 bench()."
+  "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_weak_heap_small()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome_up_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/tests/test_pancake()." -> "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/pancake_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/tests/test_gnome()." -> "rust-analyzer cargo sorting_rs 1.2.10 gnome_sort/gnome_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/tests/test_slow_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/slow_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_weak_heap_big()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_usize_pow_2()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bitonic_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/tests/test_pancake_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/pancake_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 ksort/tests/test_ksort_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 ksort/ksort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_double_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_double_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/tests/test_quick_dual()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_dual_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_bottom_up_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_bottom_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/tests/test_smooth_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 smooth_sort/smooth_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_bu_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_bottom_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_weak_heap_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/tests/test_cocktail_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 cocktail_sort/cocktail_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/slow_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 slow_sort/slow_sort_sorting()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_bottom_up_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/hbu_sift()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/tests/test_buble_len()." -> "rust-analyzer cargo sorting_rs 1.2.10 bubble_sort/bubble_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 ksort/tests/test_ksort()." -> "rust-analyzer cargo sorting_rs 1.2.10 ksort/ksort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/lomuto_partition()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/tests/test_bingo_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/bingo_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/tests/test_slow_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 stooge_sort/stooge_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_bu()." -> "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_bottom_up_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/tests/test_cycle_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/cycle_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_usize()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bitonic_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/tests/test_bingo()." -> "rust-analyzer cargo sorting_rs 1.2.10 bingo_sort/bingo_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_weak_heap_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/pancake_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/largest_pancake()."
+  "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/pancake_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 pancake_sort/flip()."
+  "rust-analyzer cargo sorting_rs 1.2.10 ksort/ksort()." -> "rust-analyzer cargo sorting_rs 1.2.10 ksort/ksort_lr()."
+  "rust-analyzer cargo sorting_rs 1.2.10 ksort/tests/test_ksort_01()." -> "rust-analyzer cargo sorting_rs 1.2.10 ksort/ksort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/weak_heap_merge()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tog_flag()."
+  "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/tests/test_comb_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/comb_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/tests/test_cycle()." -> "rust-analyzer cargo sorting_rs 1.2.10 cycle_sort/cycle_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/test/test_correct_gap_sequence()." -> "rust-analyzer cargo sorting_rs 1.2.10 shell_sort/impl#[GapSequence]new()."
+  "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/quick_dual_sort()." -> "rust-analyzer cargo sorting_rs 1.2.10 quick_sort/dual_pivot()."
+  "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/tests/test_heap()." -> "rust-analyzer cargo sorting_rs 1.2.10 heap_sort/heap_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection()." -> "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_double_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_double_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/tests/test_comb_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 comb_sort/comb_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/tests/test_bitonic_char()." -> "rust-analyzer cargo sorting_rs 1.2.10 bitonic_sort/bitonic_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/tests/test_selection_len1()." -> "rust-analyzer cargo sorting_rs 1.2.10 selection_sort/selection_sort()."
+  "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/tests/test_merge_empty()." -> "rust-analyzer cargo sorting_rs 1.2.10 merge_sort/merge_sort()."
+}
