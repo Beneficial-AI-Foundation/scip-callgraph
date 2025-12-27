@@ -312,6 +312,7 @@ See [docs/guides/CALLGRAPH_CI_INTEGRATION.md](docs/guides/CALLGRAPH_CI_INTEGRATI
 
 - [METRICS_PIPELINE.md](METRICS_PIPELINE.md) - Verus metrics pipeline guide
 - [docs/guides/INTERACTIVE_VIEWER.md](docs/guides/INTERACTIVE_VIEWER.md) - Web viewer documentation
+- [docs/guides/VSCODE_EXTENSION.md](docs/guides/VSCODE_EXTENSION.md) - Embedding in VS Code extensions
 - [docs/guides/GITHUB_PAGES_GUIDE.md](docs/guides/GITHUB_PAGES_GUIDE.md) - Online viewer guide
 - [docs/guides/CALLGRAPH_CI_INTEGRATION.md](docs/guides/CALLGRAPH_CI_INTEGRATION.md) - CI integration for Verus projects
 - [docs/SIMILAR_LEMMAS.md](docs/SIMILAR_LEMMAS.md) - Similar lemmas feature

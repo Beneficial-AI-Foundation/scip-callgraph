@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc && vite build",
+    "build:vscode": "tsc && vite build --config vite.config.vscode.js",
     "dev": "vite",
     "preview": "vite preview",
     "type-check": "tsc --noEmit"
