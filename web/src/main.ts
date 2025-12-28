@@ -1,6 +1,72 @@
 import { D3Graph, D3Node, GraphState, FilterOptions } from './types';
-import { applyFilters, getCallers, getCallees } from './filters';
+import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
+
+// ============================================================================
+// VS Code Integration
+// ============================================================================
+
+/**
+ * VS Code API interface for webview communication
+ */
+interface VSCodeAPI {
+  postMessage(message: any): void;
+  getState(): any;
+  setState(state: any): void;
+}
+
+/**
+ * Check if running inside VS Code webview
+ */
+function isVSCodeEnvironment(): boolean {
+  return typeof (window as any).acquireVsCodeApi === 'function';
+}
+
+/**
+ * Get VS Code API if available
+ */
+let vscodeApi: VSCodeAPI | null = null;
+function getVSCodeAPI(): VSCodeAPI | null {
+  if (vscodeApi) return vscodeApi;
+  if (isVSCodeEnvironment()) {
+    vscodeApi = (window as any).acquireVsCodeApi();
+    return vscodeApi;
+  }
+  return null;
+}
+
+/**
+ * Send a message to the VS Code extension
+ */
+function postMessageToExtension(message: any): void {
+  const api = getVSCodeAPI();
+  if (api) {
+    api.postMessage(message);
+  }
+}
+
+/**
+ * Navigate to a file in VS Code (or GitHub in web mode)
+ */
+function navigateToSource(node: D3Node): void {
+  const api = getVSCodeAPI();
+  if (api) {
+    // In VS Code: send message to extension to open the file
+    api.postMessage({
+      type: 'navigate',
+      relativePath: node.relative_path,
+      startLine: node.start_line,
+      endLine: node.end_line,
+      displayName: node.display_name
+    });
+  } else {
+    // In web mode: open GitHub link if available
+    const githubLink = buildGitHubLink(node);
+    if (githubLink) {
+      window.open(githubLink, '_blank');
+    }
+  }
+}
 
 // GitHub URL for source code links (configurable via env var, URL param, or graph metadata)
 // Priority: URL param > graph metadata > env var
@@ -24,6 +90,10 @@ let deferredGraphUrl: string | null = null;
 // Debounce timer for search inputs
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const SEARCH_DEBOUNCE_MS = 300; // Wait 300ms after user stops typing
+
+// VS Code: Selected node ID for exact matching
+// When set, filters will match only this exact node instead of all nodes with the same display name
+let selectedNodeId: string | null = null;
 
 /**
  * Debounced version of applyFiltersAndUpdate for large graphs.
@@ -366,8 +436,13 @@ function init(): void {
   updateStats();
   updateNodeInfo();
 
-  // Try to auto-load graph.json if it exists
-  autoLoadGraph();
+  // Setup VS Code integration if running in webview
+  setupVSCodeIntegration();
+
+  // Try to auto-load graph.json if it exists (skipped in VS Code mode)
+  if (!isVSCodeEnvironment()) {
+    autoLoadGraph();
+  }
 }
 
 /**
@@ -475,6 +550,8 @@ function setupUIHandlers(): void {
 
   document.getElementById('source-input')?.addEventListener('input', (e) => {
     state.filters.sourceQuery = (e.target as HTMLInputElement).value;
+    // Clear exact node selection when user manually types (allows normal query matching)
+    selectedNodeId = null;
     // Only auto-apply if graph is already loaded, use debounce for large graphs
     if (state.fullGraph) {
       if (isLargeGraph(state.fullGraph)) {
@@ -501,6 +578,8 @@ function setupUIHandlers(): void {
 
   document.getElementById('sink-input')?.addEventListener('input', (e) => {
     state.filters.sinkQuery = (e.target as HTMLInputElement).value;
+    // Clear exact node selection when user manually types (allows normal query matching)
+    selectedNodeId = null;
     // Only auto-apply if graph is already loaded, use debounce for large graphs
     if (state.fullGraph) {
       if (isLargeGraph(state.fullGraph)) {
@@ -837,6 +916,9 @@ function applyFiltersAndUpdate(): void {
   if (!state.fullGraph) return;
 
   console.log('[DEBUG] applyFiltersAndUpdate called with source:', JSON.stringify(state.filters.sourceQuery), 'sink:', JSON.stringify(state.filters.sinkQuery));
+  if (selectedNodeId) {
+    console.log('[DEBUG] Using exact node ID for filtering:', selectedNodeId.slice(-60));
+  }
   
   // For large graphs, require a search filter to render anything
   if (isLargeGraph(state.fullGraph) && !hasSearchFilters()) {
@@ -850,7 +932,9 @@ function applyFiltersAndUpdate(): void {
     return;
   }
   
-  let filtered = applyFilters(state.fullGraph, state.filters);
+  // Pass selectedNodeId for exact matching (VS Code integration)
+  const nodeOptions: SelectedNodeOptions = { selectedNodeId };
+  let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions);
   console.log('[DEBUG] Filtered graph:', filtered.nodes.length, 'nodes,', filtered.links.length, 'links');
   
   // Limit rendered nodes for large results to prevent D3 freeze
@@ -1058,13 +1142,11 @@ function updateNodeInfo(): void {
       <strong>Path:</strong> 
       <code class="code-block">${node.relative_path}</code>
     </div>
-    ${githubLink ? `
-      <div class="node-detail">
-        <a href="${githubLink}" target="_blank" rel="noopener noreferrer" class="github-link">
-          📂 View on GitHub
-        </a>
-      </div>
-    ` : ''}
+    <div class="node-detail">
+      <button id="navigate-to-source-btn" class="github-link" style="background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; color: inherit;">
+        ${isVSCodeEnvironment() ? '📂 Open in Editor' : (githubLink ? '📂 View on GitHub' : '')}
+      </button>
+    </div>
     <div class="node-detail">
       <strong>Callers (${allCallers.length}):</strong>
       <ul class="node-list">${callersHtml}</ul>
@@ -1090,6 +1172,14 @@ function updateNodeInfo(): void {
       </div>
     ` : ''}
   `;
+  
+  // Add click handler for navigate button
+  const navigateBtn = document.getElementById('navigate-to-source-btn');
+  if (navigateBtn && node) {
+    navigateBtn.addEventListener('click', () => {
+      navigateToSource(node);
+    });
+  }
 }
 
 /**
@@ -1307,6 +1397,116 @@ function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ============================================================================
+// VS Code Message Handler
+// ============================================================================
+
+/**
+ * Handle messages from VS Code extension
+ */
+function handleVSCodeMessage(event: MessageEvent): void {
+  const message = event.data;
+  
+  switch (message.type) {
+    case 'loadGraph':
+      // Load graph data sent from extension
+      if (message.graph) {
+        console.log('[VS Code] Received graph data:', message.graph.nodes?.length, 'nodes');
+        
+        // Store the selected node ID for exact matching
+        if (message.selectedNodeId) {
+          selectedNodeId = message.selectedNodeId;
+          console.log('[VS Code] Selected node ID:', message.selectedNodeId.slice(-60));
+        } else {
+          selectedNodeId = null;
+        }
+        
+        loadGraph(message.graph as D3Graph, 'Loaded from VS Code extension');
+        
+        // Apply initial query if provided
+        if (message.initialQuery) {
+          const sourceInput = document.getElementById('source-input') as HTMLInputElement;
+          const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
+          
+          if (sourceInput && message.initialQuery.source) {
+            sourceInput.value = message.initialQuery.source;
+            state.filters.sourceQuery = message.initialQuery.source;
+          }
+          if (sinkInput && message.initialQuery.sink) {
+            sinkInput.value = message.initialQuery.sink;
+            state.filters.sinkQuery = message.initialQuery.sink;
+          }
+          if (message.initialQuery.depth !== undefined) {
+            const depthInput = document.getElementById('depth-limit') as HTMLInputElement;
+            if (depthInput) {
+              depthInput.value = message.initialQuery.depth.toString();
+              state.filters.maxDepth = message.initialQuery.depth || null;
+              document.getElementById('depth-value')!.textContent = 
+                message.initialQuery.depth > 0 ? message.initialQuery.depth.toString() : 'All';
+            }
+          }
+          
+          // Apply filters after setting initial query
+          applyFiltersAndUpdate();
+        }
+      }
+      break;
+      
+    case 'setQuery':
+      // Update the query (e.g., user clicked on a different function)
+      if (message.source !== undefined) {
+        const sourceInput = document.getElementById('source-input') as HTMLInputElement;
+        if (sourceInput) {
+          sourceInput.value = message.source;
+          state.filters.sourceQuery = message.source;
+        }
+      }
+      if (message.sink !== undefined) {
+        const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
+        if (sinkInput) {
+          sinkInput.value = message.sink;
+          state.filters.sinkQuery = message.sink;
+        }
+      }
+      applyFiltersAndUpdate();
+      break;
+      
+    case 'refresh':
+      // Reload the graph (extension will send new data)
+      postMessageToExtension({ type: 'requestRefresh' });
+      break;
+  }
+}
+
+/**
+ * Setup VS Code integration if running in webview
+ */
+function setupVSCodeIntegration(): void {
+  if (!isVSCodeEnvironment()) {
+    return;
+  }
+  
+  console.log('[VS Code] Running in VS Code webview');
+  
+  // Listen for messages from extension
+  window.addEventListener('message', handleVSCodeMessage);
+  
+  // Hide file input (not needed in VS Code)
+  const fileInputContainer = document.querySelector('.file-input-container') as HTMLElement;
+  if (fileInputContainer) {
+    fileInputContainer.style.display = 'none';
+  }
+  
+  // Update title
+  const header = document.querySelector('.header h1');
+  if (header) {
+    header.textContent = '📊 Call Graph Explorer';
+  }
+  
+  // Notify extension that we're ready
+  postMessageToExtension({ type: 'ready' });
 }
 
 // Initialize on DOM load
