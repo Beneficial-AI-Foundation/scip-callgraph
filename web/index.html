@@ -77,19 +77,40 @@
           </div>
 
           <div class="filter-group">
-            <h3>🚫 Exclude Patterns</h3>
+            <h3>🚫 Exclude by Name</h3>
             <label class="input-label">
               <input 
                 type="text" 
-                id="exclude-patterns" 
+                id="exclude-name-patterns" 
                 placeholder="e.g., *_comm*, lemma_mul_*" 
                 class="search-input"
               />
             </label>
             <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-              💡 Glob patterns: <code>*</code> = any chars, <code>?</code> = one char<br>
-              💡 <code>*_comm*</code> matches <code>lemma_commutativity</code><br>
-              💡 <code>p_*</code> matches <code>p_foo</code> but not <code>step_1</code>
+              💡 Matches function names. <code>*_comm*</code> excludes <code>lemma_commutativity</code>
+            </small>
+          </div>
+
+          <div class="filter-group">
+            <h3>📂 Exclude by Path</h3>
+            <div class="preset-row">
+              <select id="exclude-path-presets" class="preset-select">
+                <option value="">+ Add preset...</option>
+                <option value="*/specs/*">specs/</option>
+                <option value="*/common_lemmas/*">common_lemmas/</option>
+                <option value="*/specs/*, */common_lemmas/*">specs + common</option>
+              </select>
+            </div>
+            <label class="input-label">
+              <input 
+                type="text" 
+                id="exclude-path-patterns" 
+                placeholder="e.g., */specs/*, */common_lemmas/*" 
+                class="search-input"
+              />
+            </label>
+            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+              💡 Matches node paths. <code>*/specs/*</code> excludes all spec functions
             </small>
           </div>
 

@@ -34,13 +34,23 @@ function globToRegex(pattern: string): RegExp {
 }
 
 /**
- * Check if a node matches any of the exclude patterns
+ * Check if a node matches any of the exclude NAME patterns
  * Returns true if node should be EXCLUDED (hidden)
+ * Matches against node.display_name (function name)
  */
-function nodeMatchesExcludePattern(node: D3Node, excludePatterns: RegExp[]): boolean {
+function nodeMatchesExcludeNamePattern(node: D3Node, excludePatterns: RegExp[]): boolean {
   if (excludePatterns.length === 0) return false;
-  const displayName = node.display_name;
-  return excludePatterns.some(pattern => pattern.test(displayName));
+  return excludePatterns.some(pattern => pattern.test(node.display_name));
+}
+
+/**
+ * Check if a node matches any of the exclude PATH patterns
+ * Returns true if node should be EXCLUDED (hidden)
+ * Matches against node.id (full SCIP path)
+ */
+function nodeMatchesExcludePathPattern(node: D3Node, excludePatterns: RegExp[]): boolean {
+  if (excludePatterns.length === 0) return false;
+  return excludePatterns.some(pattern => pattern.test(node.id));
 }
 
 /**
@@ -95,9 +105,18 @@ function nodeIsFromBuildArtifact(node: D3Node): boolean {
 /**
  * Apply filters to the full graph and return a filtered graph
  */
+/**
+ * Options for exact node selection (used by VS Code integration)
+ */
+export interface SelectedNodeOptions {
+  /** Exact SCIP ID of the selected node (overrides sourceQuery matching) */
+  selectedNodeId?: string | null;
+}
+
 export function applyFilters(
   fullGraph: D3Graph,
-  filters: FilterOptions
+  filters: FilterOptions,
+  nodeOptions?: SelectedNodeOptions
 ): D3Graph {
   // Debug: Check if fullGraph.links have been mutated
   if (fullGraph.links.length > 0) {
@@ -113,8 +132,9 @@ export function applyFilters(
   const sourceQuery = filters.sourceQuery.trim().toLowerCase();
   const sinkQuery = filters.sinkQuery.trim().toLowerCase();
   
-  // Parse exclude patterns
-  const excludePatterns = parseExcludePatterns(filters.excludePatterns);
+  // Parse exclude patterns (name and path separately)
+  const excludeNamePatterns = parseExcludePatterns(filters.excludeNamePatterns);
+  const excludePathPatterns = parseExcludePatterns(filters.excludePathPatterns);
 
   // Parse include file patterns
   const includeFilePatterns = parseIncludeFilePatterns(filters.includeFiles);
@@ -124,7 +144,8 @@ export function applyFilters(
   const modeAllowedNodeIds = new Set<string>(
     fullGraph.nodes
       .filter(node => nodePassesModeFilter(node, filters))
-      .filter(node => !nodeMatchesExcludePattern(node, excludePatterns))
+      .filter(node => !nodeMatchesExcludeNamePattern(node, excludeNamePatterns))
+      .filter(node => !nodeMatchesExcludePathPattern(node, excludePathPatterns))
       .filter(node => nodeMatchesIncludeFilePattern(node, includeFilePatterns))
       .filter(node => !nodeIsFromBuildArtifact(node))  // Exclude build artifacts (target/, build/)
       .filter(node => !filters.hiddenNodes.has(node.id))  // Exclude hidden nodes from traversal
@@ -132,10 +153,12 @@ export function applyFilters(
   );
   
   // Debug: Show filter effects
-  if (excludePatterns.length > 0 || includeFilePatterns.length > 0) {
-    const excludedByPattern = fullGraph.nodes.filter(n => nodeMatchesExcludePattern(n, excludePatterns)).length;
+  if (excludeNamePatterns.length > 0 || excludePathPatterns.length > 0 || includeFilePatterns.length > 0) {
+    const excludedByName = fullGraph.nodes.filter(n => nodeMatchesExcludeNamePattern(n, excludeNamePatterns)).length;
+    const excludedByPath = fullGraph.nodes.filter(n => nodeMatchesExcludePathPattern(n, excludePathPatterns)).length;
     const excludedByFile = fullGraph.nodes.filter(n => !nodeMatchesIncludeFilePattern(n, includeFilePatterns)).length;
-    console.log(`[Filter] Exclude patterns: ${excludePatterns.length}, excluded ${excludedByPattern} nodes`);
+    console.log(`[Filter] Exclude name patterns: ${excludeNamePatterns.length}, excluded ${excludedByName} nodes`);
+    console.log(`[Filter] Exclude path patterns: ${excludePathPatterns.length}, excluded ${excludedByPath} nodes`);
     console.log(`[Filter] Include files: ${includeFilePatterns.length}, excluded ${excludedByFile} nodes`);
     console.log(`[Filter] modeAllowedNodeIds size: ${modeAllowedNodeIds.size} (from ${fullGraph.nodes.length})`);
   }
@@ -158,12 +181,34 @@ export function applyFilters(
   const sourceMatchIds = new Set<string>();
   const sinkMatchIds = new Set<string>();
   
+  // Check if we have an exact node selection (from VS Code)
+  const selectedNodeId = nodeOptions?.selectedNodeId;
+  
   if (sourceQuery !== '') {
-    fullGraph.nodes.forEach(node => {
-      if (matchesQuery(node, sourceQuery)) {
-        sourceMatchIds.add(node.id);
+    if (selectedNodeId) {
+      // Use exact node ID for source matching
+      // This ensures we only match the specific function the user clicked on
+      const exactNode = fullGraph.nodes.find(n => n.id === selectedNodeId);
+      if (exactNode) {
+        sourceMatchIds.add(exactNode.id);
+        console.log('[DEBUG] Exact source match by ID:', exactNode.display_name, exactNode.file_name);
+      } else {
+        // Fallback to query matching if ID not found
+        console.log('[DEBUG] Selected node ID not found, falling back to query matching');
+        fullGraph.nodes.forEach(node => {
+          if (matchesQuery(node, sourceQuery)) {
+            sourceMatchIds.add(node.id);
+          }
+        });
       }
-    });
+    } else {
+      // Normal query matching
+      fullGraph.nodes.forEach(node => {
+        if (matchesQuery(node, sourceQuery)) {
+          sourceMatchIds.add(node.id);
+        }
+      });
+    }
     // Log matched node names for debugging
     const sourceNames = fullGraph.nodes
       .filter(n => sourceMatchIds.has(n.id))
@@ -172,11 +217,29 @@ export function applyFilters(
   }
   
   if (sinkQuery !== '') {
-    fullGraph.nodes.forEach(node => {
-      if (matchesQuery(node, sinkQuery)) {
-        sinkMatchIds.add(node.id);
+    if (selectedNodeId) {
+      // Use exact node ID for sink matching
+      const exactNode = fullGraph.nodes.find(n => n.id === selectedNodeId);
+      if (exactNode) {
+        sinkMatchIds.add(exactNode.id);
+        console.log('[DEBUG] Exact sink match by ID:', exactNode.display_name, exactNode.file_name);
+      } else {
+        // Fallback to query matching
+        console.log('[DEBUG] Selected node ID not found, falling back to query matching');
+        fullGraph.nodes.forEach(node => {
+          if (matchesQuery(node, sinkQuery)) {
+            sinkMatchIds.add(node.id);
+          }
+        });
       }
-    });
+    } else {
+      // Normal query matching
+      fullGraph.nodes.forEach(node => {
+        if (matchesQuery(node, sinkQuery)) {
+          sinkMatchIds.add(node.id);
+        }
+      });
+    }
     const sinkNames = fullGraph.nodes
       .filter(n => sinkMatchIds.has(n.id))
       .map(n => `${n.display_name} (${n.file_name})`);
@@ -478,7 +541,7 @@ export function applyFilters(
     // Unknown type - show by default
     return true;
   });
-
+  
   // Remove isolated nodes (nodes with no edges in the filtered graph)
   // This includes query matches - if a sink has no callers, don't show it
   const connectedNodeIds = new Set<string>();

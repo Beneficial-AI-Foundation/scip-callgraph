@@ -2,72 +2,6 @@ import { D3Graph, D3Node, GraphState, FilterOptions } from './types';
 import { applyFilters, getCallers, getCallees } from './filters';
 import { CallGraphVisualization } from './graph';
 
-// ============================================================================
-// VS Code Integration
-// ============================================================================
-
-/**
- * VS Code API interface for webview communication
- */
-interface VSCodeAPI {
-  postMessage(message: any): void;
-  getState(): any;
-  setState(state: any): void;
-}
-
-/**
- * Check if running inside VS Code webview
- */
-function isVSCodeEnvironment(): boolean {
-  return typeof (window as any).acquireVsCodeApi === 'function';
-}
-
-/**
- * Get VS Code API if available
- */
-let vscodeApi: VSCodeAPI | null = null;
-function getVSCodeAPI(): VSCodeAPI | null {
-  if (vscodeApi) return vscodeApi;
-  if (isVSCodeEnvironment()) {
-    vscodeApi = (window as any).acquireVsCodeApi();
-    return vscodeApi;
-  }
-  return null;
-}
-
-/**
- * Send a message to the VS Code extension
- */
-function postMessageToExtension(message: any): void {
-  const api = getVSCodeAPI();
-  if (api) {
-    api.postMessage(message);
-  }
-}
-
-/**
- * Navigate to a file in VS Code (or GitHub in web mode)
- */
-function navigateToSource(node: D3Node): void {
-  const api = getVSCodeAPI();
-  if (api) {
-    // In VS Code: send message to extension to open the file
-    api.postMessage({
-      type: 'navigate',
-      relativePath: node.relative_path,
-      startLine: node.start_line,
-      endLine: node.end_line,
-      displayName: node.display_name
-    });
-  } else {
-    // In web mode: open GitHub link if available
-    const githubLink = buildGitHubLink(node);
-    if (githubLink) {
-      window.open(githubLink, '_blank');
-    }
-  }
-}
-
 // GitHub URL for source code links (configurable via env var, URL param, or graph metadata)
 // Priority: URL param > graph metadata > env var
 let githubBaseUrl: string | null = import.meta.env.VITE_GITHUB_URL || null;
@@ -170,7 +104,6 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   // String params
   if (params.has('source')) filters.sourceQuery = params.get('source')!;
   if (params.has('sink')) filters.sinkQuery = params.get('sink')!;
-  if (params.has('exclude')) filters.excludePatterns = params.get('exclude')!;
   if (params.has('files')) filters.includeFiles = params.get('files')!;
   
   // Number params
@@ -204,6 +137,14 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (libsignal !== undefined) filters.showLibsignal = libsignal;
   if (external !== undefined) filters.showNonLibsignal = external;
   
+  // Exclude patterns from URL
+  if (params.has('excludeName')) {
+    filters.excludeNamePatterns = params.get('excludeName')!;
+  }
+  if (params.has('excludePath')) {
+    filters.excludePathPatterns = params.get('excludePath')!;
+  }
+  
   // Hidden nodes (comma-separated display names, since full IDs are too long)
   if (params.has('hidden')) {
     const hiddenNames = params.get('hidden')!.split(',').map(s => s.trim()).filter(s => s);
@@ -228,7 +169,6 @@ function generateShareableURL(): string {
   // Add current filter state
   if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
   if (state.filters.sinkQuery) params.set('sink', state.filters.sinkQuery);
-  if (state.filters.excludePatterns) params.set('exclude', state.filters.excludePatterns);
   if (state.filters.includeFiles) params.set('files', state.filters.includeFiles);
   if (state.filters.maxDepth !== null) params.set('depth', state.filters.maxDepth.toString());
   
@@ -241,6 +181,13 @@ function generateShareableURL(): string {
   if (state.filters.showPostconditionCalls) params.set('post', '1');
   if (!state.filters.showLibsignal) params.set('libsignal', '0');
   if (!state.filters.showNonLibsignal) params.set('external', '0');
+  // Exclude patterns
+  if (state.filters.excludeNamePatterns) {
+    params.set('excludeName', state.filters.excludeNamePatterns);
+  }
+  if (state.filters.excludePathPatterns) {
+    params.set('excludePath', state.filters.excludePathPatterns);
+  }
   
   // Hidden nodes - use display names (shorter than full IDs)
   if (state.filters.hiddenNodes.size > 0 && state.fullGraph) {
@@ -277,7 +224,8 @@ function applyURLFiltersToState(urlFilters: Partial<FilterOptions>): void {
   
   setInput('source-input', state.filters.sourceQuery);
   setInput('sink-input', state.filters.sinkQuery);
-  setInput('exclude-patterns', state.filters.excludePatterns);
+  setInput('exclude-name-patterns', state.filters.excludeNamePatterns);
+  setInput('exclude-path-patterns', state.filters.excludePathPatterns);
   setInput('include-files', state.filters.includeFiles);
   
   // Update file list selection to match
@@ -325,7 +273,10 @@ const initialFilters: FilterOptions = {
   showExecFunctions: true,        // Show exec functions by default
   showProofFunctions: true,       // Show proof functions by default
   showSpecFunctions: false,       // Hide spec functions by default
-  excludePatterns: '',            // Comma-separated patterns to exclude
+  // Similar lemmas source filter
+  hideSimilarLemmasVstd: false,   // Show vstd entries in similar_lemmas panel by default
+  excludeNamePatterns: '',        // Exclude by function name (e.g., *_comm*)
+  excludePathPatterns: '',        // Exclude by path (e.g., */specs/*)
   includeFiles: '',               // Comma-separated file patterns to include (empty = all)
   maxDepth: 1,
   sourceQuery: '',  // Source nodes - shows what they call (callees)
@@ -352,7 +303,8 @@ function syncInputsToState(): void {
   // Sync text inputs that might have been auto-filled by the browser
   const sourceInput = document.getElementById('source-input') as HTMLInputElement;
   const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
-  const excludeInput = document.getElementById('exclude-patterns') as HTMLInputElement;
+  const excludeNameInput = document.getElementById('exclude-name-patterns') as HTMLInputElement;
+  const excludePathInput = document.getElementById('exclude-path-patterns') as HTMLInputElement;
   const includeFilesInput = document.getElementById('include-files') as HTMLInputElement;
   const depthInput = document.getElementById('depth-limit') as HTMLInputElement;
   
@@ -362,8 +314,11 @@ function syncInputsToState(): void {
   if (sinkInput?.value) {
     state.filters.sinkQuery = sinkInput.value;
   }
-  if (excludeInput?.value) {
-    state.filters.excludePatterns = excludeInput.value;
+  if (excludeNameInput?.value) {
+    state.filters.excludeNamePatterns = excludeNameInput.value;
+  }
+  if (excludePathInput?.value) {
+    state.filters.excludePathPatterns = excludePathInput.value;
   }
   if (includeFilesInput?.value) {
     state.filters.includeFiles = includeFilesInput.value;
@@ -384,6 +339,8 @@ function syncInputsToState(): void {
   state.filters.showExecFunctions = (document.getElementById('show-exec-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showProofFunctions = (document.getElementById('show-proof-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showSpecFunctions = (document.getElementById('show-spec-functions') as HTMLInputElement)?.checked ?? false;
+  // Similar lemmas filter
+  state.filters.hideSimilarLemmasVstd = (document.getElementById('hide-similar-vstd') as HTMLInputElement)?.checked ?? false;
 }
 
 /**
@@ -409,13 +366,8 @@ function init(): void {
   updateStats();
   updateNodeInfo();
 
-  // Setup VS Code integration if running in webview
-  setupVSCodeIntegration();
-
-  // Try to auto-load graph.json if it exists (skipped in VS Code mode)
-  if (!isVSCodeEnvironment()) {
-    autoLoadGraph();
-  }
+  // Try to auto-load graph.json if it exists
+  autoLoadGraph();
 }
 
 /**
@@ -469,6 +421,58 @@ function setupUIHandlers(): void {
     applyFiltersAndUpdate();
   });
 
+  // Exclude name patterns input
+  document.getElementById('exclude-name-patterns')?.addEventListener('input', (e) => {
+    state.filters.excludeNamePatterns = (e.target as HTMLInputElement).value;
+    if (state.fullGraph) {
+      if (isLargeGraph(state.fullGraph)) {
+        debouncedApplyFilters();
+      } else {
+        applyFiltersAndUpdate();
+      }
+    }
+  });
+
+  // Exclude path patterns input
+  document.getElementById('exclude-path-patterns')?.addEventListener('input', (e) => {
+    state.filters.excludePathPatterns = (e.target as HTMLInputElement).value;
+    if (state.fullGraph) {
+      if (isLargeGraph(state.fullGraph)) {
+        debouncedApplyFilters();
+      } else {
+        applyFiltersAndUpdate();
+      }
+    }
+  });
+
+  // Exclude path presets dropdown - adds selected pattern to the exclude path patterns field
+  document.getElementById('exclude-path-presets')?.addEventListener('change', (e) => {
+    const select = e.target as HTMLSelectElement;
+    const preset = select.value;
+    if (preset) {
+      const excludeInput = document.getElementById('exclude-path-patterns') as HTMLInputElement;
+      const currentPatterns = excludeInput.value.trim();
+      
+      // Add preset patterns (avoid duplicates)
+      const existingPatterns = currentPatterns ? currentPatterns.split(',').map(p => p.trim()) : [];
+      const presetPatterns = preset.split(',').map(p => p.trim());
+      
+      for (const p of presetPatterns) {
+        if (!existingPatterns.includes(p)) {
+          existingPatterns.push(p);
+        }
+      }
+      
+      excludeInput.value = existingPatterns.join(', ');
+      state.filters.excludePathPatterns = excludeInput.value;
+      
+      // Reset dropdown
+      select.value = '';
+      
+      applyFiltersAndUpdate();
+    }
+  });
+
   document.getElementById('source-input')?.addEventListener('input', (e) => {
     state.filters.sourceQuery = (e.target as HTMLInputElement).value;
     // Only auto-apply if graph is already loaded, use debounce for large graphs
@@ -519,11 +523,6 @@ function setupUIHandlers(): void {
         applyFiltersAndUpdate();
       }
     }
-  });
-
-  document.getElementById('exclude-patterns')?.addEventListener('input', (e) => {
-    state.filters.excludePatterns = (e.target as HTMLInputElement).value;
-    applyFiltersAndUpdate();
   });
 
   document.getElementById('include-files')?.addEventListener('input', (e) => {
@@ -862,7 +861,7 @@ function applyFiltersAndUpdate(): void {
     
     // Keep nodes with highest connectivity (most relevant)
     const sortedNodes = [...filtered.nodes].sort((a, b) => 
-      (b.dependents.length + b.dependencies.length) - (a.dependents.length + a.dependencies.length)
+      (b.dependents.length + (b.dependencies?.length || 0)) - (a.dependents.length + (a.dependencies?.length || 0))
     );
     const keptNodes = sortedNodes.slice(0, MAX_RENDERED_NODES);
     const keptNodeIds = new Set(keptNodes.map(n => n.id));
@@ -1059,11 +1058,13 @@ function updateNodeInfo(): void {
       <strong>Path:</strong> 
       <code class="code-block">${node.relative_path}</code>
     </div>
-    <div class="node-detail">
-      <button id="navigate-to-source-btn" class="github-link" style="background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; color: inherit;">
-        ${isVSCodeEnvironment() ? '📂 Open in Editor' : (githubLink ? '📂 View on GitHub' : '')}
-      </button>
-    </div>
+    ${githubLink ? `
+      <div class="node-detail">
+        <a href="${githubLink}" target="_blank" rel="noopener noreferrer" class="github-link">
+          📂 View on GitHub
+        </a>
+      </div>
+    ` : ''}
     <div class="node-detail">
       <strong>Callers (${allCallers.length}):</strong>
       <ul class="node-list">${callersHtml}</ul>
@@ -1089,14 +1090,6 @@ function updateNodeInfo(): void {
       </div>
     ` : ''}
   `;
-  
-  // Add click handler for navigate button
-  const navigateBtn = document.getElementById('navigate-to-source-btn');
-  if (navigateBtn && node) {
-    navigateBtn.addEventListener('click', () => {
-      navigateToSource(node);
-    });
-  }
 }
 
 /**
@@ -1233,7 +1226,8 @@ function resetFilters(): void {
   (document.getElementById('show-exec-functions') as HTMLInputElement).checked = true;
   (document.getElementById('show-proof-functions') as HTMLInputElement).checked = true;
   (document.getElementById('show-spec-functions') as HTMLInputElement).checked = false;
-  (document.getElementById('exclude-patterns') as HTMLInputElement).value = '';
+  (document.getElementById('exclude-name-patterns') as HTMLInputElement).value = '';
+  (document.getElementById('exclude-path-patterns') as HTMLInputElement).value = '';
   (document.getElementById('include-files') as HTMLInputElement).value = '';
   (document.getElementById('source-input') as HTMLInputElement).value = '';
   (document.getElementById('sink-input') as HTMLInputElement).value = '';
@@ -1313,107 +1307,6 @@ function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
-}
-
-// ============================================================================
-// VS Code Message Handler
-// ============================================================================
-
-/**
- * Handle messages from VS Code extension
- */
-function handleVSCodeMessage(event: MessageEvent): void {
-  const message = event.data;
-  
-  switch (message.type) {
-    case 'loadGraph':
-      // Load graph data sent from extension
-      if (message.graph) {
-        console.log('[VS Code] Received graph data:', message.graph.nodes?.length, 'nodes');
-        loadGraph(message.graph as D3Graph, 'Loaded from VS Code extension');
-        
-        // Apply initial query if provided
-        if (message.initialQuery) {
-          const sourceInput = document.getElementById('source-input') as HTMLInputElement;
-          const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
-          
-          if (sourceInput && message.initialQuery.source) {
-            sourceInput.value = message.initialQuery.source;
-            state.filters.sourceQuery = message.initialQuery.source;
-          }
-          if (sinkInput && message.initialQuery.sink) {
-            sinkInput.value = message.initialQuery.sink;
-            state.filters.sinkQuery = message.initialQuery.sink;
-          }
-          if (message.initialQuery.depth !== undefined) {
-            const depthInput = document.getElementById('depth-limit') as HTMLInputElement;
-            if (depthInput) {
-              depthInput.value = message.initialQuery.depth.toString();
-              state.filters.maxDepth = message.initialQuery.depth || null;
-              document.getElementById('depth-value')!.textContent = 
-                message.initialQuery.depth > 0 ? message.initialQuery.depth.toString() : 'All';
-            }
-          }
-          
-          // Apply filters after setting initial query
-          applyFiltersAndUpdate();
-        }
-      }
-      break;
-      
-    case 'setQuery':
-      // Update the query (e.g., user clicked on a different function)
-      if (message.source !== undefined) {
-        const sourceInput = document.getElementById('source-input') as HTMLInputElement;
-        if (sourceInput) {
-          sourceInput.value = message.source;
-          state.filters.sourceQuery = message.source;
-        }
-      }
-      if (message.sink !== undefined) {
-        const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
-        if (sinkInput) {
-          sinkInput.value = message.sink;
-          state.filters.sinkQuery = message.sink;
-        }
-      }
-      applyFiltersAndUpdate();
-      break;
-      
-    case 'refresh':
-      // Reload the graph (extension will send new data)
-      postMessageToExtension({ type: 'requestRefresh' });
-      break;
-  }
-}
-
-/**
- * Setup VS Code integration if running in webview
- */
-function setupVSCodeIntegration(): void {
-  if (!isVSCodeEnvironment()) {
-    return;
-  }
-  
-  console.log('[VS Code] Running in VS Code webview');
-  
-  // Listen for messages from extension
-  window.addEventListener('message', handleVSCodeMessage);
-  
-  // Hide file input (not needed in VS Code)
-  const fileInputContainer = document.querySelector('.file-input-container') as HTMLElement;
-  if (fileInputContainer) {
-    fileInputContainer.style.display = 'none';
-  }
-  
-  // Update title
-  const header = document.querySelector('.header h1');
-  if (header) {
-    header.textContent = '📊 Call Graph Explorer';
-  }
-  
-  // Notify extension that we're ready
-  postMessageToExtension({ type: 'ready' });
 }
 
 // Initialize on DOM load

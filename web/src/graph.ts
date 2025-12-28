@@ -294,7 +294,7 @@ export class CallGraphVisualization {
       .enter()
       .append('circle')
       .attr('class', 'node')
-      .attr('r', (d) => Math.max(5, Math.min(15, Math.sqrt(d.dependents.length + d.dependencies.length) * 2)))
+      .attr('r', (d) => Math.max(5, Math.min(15, Math.sqrt(d.dependents.length + (d.dependencies?.length || 0)) * 2)))
       .attr('fill', (d) => this.getNodeColor(d))
       .attr('stroke', '#fff')
       .attr('stroke-width', 2)

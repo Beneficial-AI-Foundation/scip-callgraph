@@ -75,8 +75,11 @@ export interface FilterOptions {
   showExecFunctions: boolean;      // Show executable functions (default: true)
   showProofFunctions: boolean;     // Show proof functions/lemmas (default: true)
   showSpecFunctions: boolean;      // Show spec functions (default: false)
-  // Pattern-based exclusion (comma-separated substrings to exclude)
-  excludePatterns: string;         // e.g., "_commutative,_associative,lemma_mul"
+  // Similar lemmas source filter
+  hideSimilarLemmasVstd: boolean;  // Hide vstd entries in similar_lemmas panel (default: false)
+  // Pattern-based exclusion (comma-separated glob patterns)
+  excludeNamePatterns: string;     // Matches display_name, e.g., "*_comm*, lemma_mul_*"
+  excludePathPatterns: string;     // Matches node ID path, e.g., "*/specs/*, */common_lemmas/*"
   // File-based inclusion (comma-separated file names or glob patterns)
   includeFiles: string;            // e.g., "edwards.rs, decompress*.rs" - empty means all files
   maxDepth: number | null;

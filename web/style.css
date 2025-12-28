@@ -168,6 +168,30 @@ body {
   color: #f57c00;
 }
 
+/* Preset dropdown row */
+.preset-row {
+  margin-bottom: 0.5rem;
+}
+
+.preset-select {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  background: #f8f9fa;
+  cursor: pointer;
+}
+
+.preset-select:hover {
+  border-color: #aaa;
+}
+
+.preset-select:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
 /* Input Labels */
 .input-label {
   display: block;
