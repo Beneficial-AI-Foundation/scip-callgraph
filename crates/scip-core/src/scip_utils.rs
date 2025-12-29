@@ -20,7 +20,7 @@ use std::process::Command;
 /// # Example
 ///
 /// ```no_run
-/// use scip_callgraph::scip_utils::generate_scip_json_index;
+/// use scip_core::scip_utils::generate_scip_json_index;
 ///
 /// let output_file = generate_scip_json_index("/path/to/project").unwrap();
 /// println!("Generated: {}", output_file);

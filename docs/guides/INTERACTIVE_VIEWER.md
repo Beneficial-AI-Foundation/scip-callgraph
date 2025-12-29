@@ -90,7 +90,7 @@ npm install
 npm run dev
 ```
 
-The viewer will open in your browser (usually at `http://localhost:3000`).
+The viewer will open in your browser (usually at `http://localhost:5173`).
 
 #### 4. Load and Explore
 
@@ -220,24 +220,27 @@ The exported JSON has this structure:
       "relative_path": "src/file.rs",
       "file_name": "file.rs",
       "parent_folder": "src",
-      "body": "pub fn my_function() { ... }",
+      "start_line": 42,
+      "end_line": 58,
       "is_libsignal": true,
-      "caller_count": 5,
-      "callee_count": 3
+      "dependencies": ["callee_id_1", "callee_id_2"],
+      "dependents": ["caller_id_1"],
+      "mode": "exec"
     }
   ],
   "links": [
     {
       "source": "node_id_1",
       "target": "node_id_2",
-      "type": "calls"
+      "type": "inner"
     }
   ],
   "metadata": {
     "total_nodes": 150,
     "total_edges": 342,
     "project_root": "/path/to/project",
-    "generated_at": "2025-11-05T..."
+    "generated_at": "2025-11-05T...",
+    "github_url": "https://github.com/user/repo"
   }
 }
 ```

@@ -162,11 +162,14 @@ pub fn build_call_graph(scip_data: &ScipIndex) -> HashMap<String, FunctionNode> 
 }
 
 /// Check if a symbol kind represents a function-like entity
+/// 
+/// SCIP symbol kinds (from SCIP protocol):
+/// - 6: Method
+/// - 12: Constructor  
+/// - 17: Function
+/// - 80: Method (Rust-specific)
 fn is_function_like(kind: i32) -> bool {
-    match kind {
-        6 | 12 | 17 | 80 => true, // Method, Function, etc.
-        _ => false,
-    }
+    matches!(kind, 6 | 12 | 17 | 80)
 }
 
 /// Helper to convert kind to string

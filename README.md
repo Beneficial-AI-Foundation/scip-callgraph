@@ -17,7 +17,7 @@ scip-callgraph/
 ├── crates/
 │   ├── scip-core/           # Core SCIP parsing library
 │   ├── verus-metrics/       # Halstead metrics for Verus specs/proofs
-│   └── metrics-cli/         # All command-line tools (37 binaries, including pipeline)
+│   └── metrics-cli/         # All command-line tools (38 binaries, including pipeline)
 ├── external/                # Git submodules
 │   ├── scip-atoms/          # Verification analysis (github.com/Beneficial-AI-Foundation/scip-atoms)
 │   └── verus_lemma_finder/  # Similar lemma search (github.com/Beneficial-AI-Foundation/verus_lemma_finder)
@@ -239,7 +239,7 @@ println!("Halstead length: {:?}", metrics.halstead_length);
 
 ### `metrics-cli`
 
-36 command-line tools including:
+38 command-line tools including:
 
 | Tool | Description |
 |------|-------------|

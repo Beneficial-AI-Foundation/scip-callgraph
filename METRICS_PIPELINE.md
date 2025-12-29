@@ -160,7 +160,7 @@ cargo run -p metrics-cli --bin enrich_csv_complete -- \
 ## Full Pipeline (Copy-Paste Ready)
 
 ```bash
-cd /home/lacra/git_repos/baif/scip-callgraph
+cd /path/to/scip-callgraph
 
 # Step 1: Generate atoms from SCIP
 cargo run -p metrics-cli --bin write_atoms -- \

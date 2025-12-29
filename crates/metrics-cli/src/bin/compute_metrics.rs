@@ -1,8 +1,22 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs;
-use verus_metrics::spec_halstead::analyze_spec;
+//! Compute Verus specification metrics using verus_syn AST parsing.
+//!
+//! Uses verus_syn to parse entire function items, extracting specs directly
+//! from the AST instead of using string manipulation.
+//!
+//! Benefits:
+//! - Robust parsing (no edge cases from string matching)
+//! - Function mode (exec/proof/spec) extracted automatically
+//! - Specs already parsed as expressions
+//! - Clean, maintainable code
 
+use quote::ToTokens;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use std::fs;
+use verus_syn::visit::Visit;
+use verus_syn::{Expr, Item, ItemFn, ImplItem, TraitItem};
+
+// Input format from write_atoms
 #[derive(Debug, Deserialize)]
 struct Atom {
     identifier: String,
@@ -16,6 +30,7 @@ struct Atom {
     parent_folder: String,
 }
 
+// Output format with metrics
 #[derive(Debug, Serialize)]
 struct AtomWithMetrics {
     identifier: String,
@@ -48,6 +63,8 @@ struct SpecHalsteadMetrics {
 
 #[derive(Debug, Serialize)]
 struct FunctionMetrics {
+    /// Function mode: exec, proof, or spec
+    function_mode: String,
     requires_count: usize,
     requires_lengths: Vec<usize>,
     requires_specs: Vec<SpecHalsteadMetrics>,
@@ -55,705 +72,323 @@ struct FunctionMetrics {
     ensures_lengths: Vec<usize>,
     ensures_specs: Vec<SpecHalsteadMetrics>,
     decreases_count: usize,
-    decreases_specs: Vec<SpecHalsteadMetrics>, // Halstead metrics for each decreases expression
+    decreases_specs: Vec<SpecHalsteadMetrics>,
     body_length: usize,
     operators: HashMap<String, usize>,
 }
 
-/// Clean signature: remove comments, triggers, newlines, and ghost operators
-fn clean_signature(text: &str) -> String {
-    // Step 1: Remove comments
-    let without_comments = remove_comments(text);
-
-    // Step 2: Remove triggers
-    let without_triggers = remove_triggers(&without_comments);
-
-    // Step 3: Remove newlines
-    let without_newlines = without_triggers.replace('\n', " ");
-
-    // Step 4: Remove @ ghost operator (Verus-specific)
-    without_newlines.replace('@', "")
+impl Default for FunctionMetrics {
+    fn default() -> Self {
+        Self {
+            function_mode: "exec".to_string(),
+            requires_count: 0,
+            requires_lengths: Vec::new(),
+            requires_specs: Vec::new(),
+            ensures_count: 0,
+            ensures_lengths: Vec::new(),
+            ensures_specs: Vec::new(),
+            decreases_count: 0,
+            decreases_specs: Vec::new(),
+            body_length: 0,
+            operators: HashMap::new(),
+        }
+    }
 }
 
-/// Find the function body start by looking for { at depth 0
-/// (not inside parentheses/brackets/braces from specs)
-/// Skip { blocks that end with comma (spec blocks like "==> { ... },")
-fn find_function_body_start(body: &str) -> usize {
-    let chars: Vec<char> = body.chars().collect();
-    let mut depth: i32 = 0;
-    let mut i = 0;
+// ============================================================================
+// Halstead Metrics Computation (from verus_syn Expr)
+// ============================================================================
 
-    while i < chars.len() {
-        match chars[i] {
-            '(' | '[' => depth += 1,
-            ')' | ']' => depth = depth.saturating_sub(1),
-            '{' => {
-                if depth == 0 {
-                    // Found { at depth 0 - check if it's a spec block
-                    // Spec blocks end with },  (comma after })
-                    // Function bodies don't have comma after }
-
-                    // Find the matching }
-                    let mut brace_depth = 1;
-                    let mut j = i + 1;
-                    while j < chars.len() && brace_depth > 0 {
-                        match chars[j] {
-                            '{' => brace_depth += 1,
-                            '}' => brace_depth -= 1,
-                            _ => {}
-                        }
-                        j += 1;
-                    }
-
-                    // j is now after the matching }
-                    // Skip whitespace and check for comma
-                    let mut k = j;
-                    while k < chars.len() && chars[k].is_whitespace() {
-                        k += 1;
-                    }
-
-                    if k < chars.len() && chars[k] == ',' {
-                        // This { } block ends with comma - it's a spec block
-                        // Continue searching from after the comma
-                        i = k + 1;
-                        continue;
-                    } else {
-                        // No comma after } - this is the function body
-                        return i;
-                    }
-                }
-                depth += 1;
-            }
-            '}' => depth = depth.saturating_sub(1),
-            _ => {}
-        }
-        i += 1;
-    }
-
-    body.len()
+#[derive(Default)]
+struct HalsteadVisitor {
+    operators: Vec<String>,
+    operands: Vec<String>,
+    unique_operators: HashSet<String>,
+    unique_operands: HashSet<String>,
 }
 
-fn extract_requires(body: &str) -> (usize, Vec<usize>, String) {
-    // Check if body has a function signature
-    // Include Verus function modifiers: proof, exec, spec, tracked
-    let trimmed = body.trim_start();
-    let has_fn_signature = trimmed.starts_with("fn ")
-        || trimmed.starts_with("pub fn ")
-        || trimmed.starts_with("pub(crate) fn ")
-        || trimmed.starts_with("pub(super) fn ")
-        || trimmed.starts_with("proof fn ")
-        || trimmed.starts_with("exec fn ")
-        || trimmed.starts_with("spec fn ")
-        || trimmed.starts_with("tracked fn ")
-        || trimmed.starts_with("pub proof fn ")
-        || trimmed.starts_with("pub exec fn ")
-        || trimmed.starts_with("pub spec fn ")
-        || trimmed.starts_with("pub tracked fn ")
-        || trimmed.starts_with("pub(crate) proof fn ")
-        || trimmed.starts_with("pub(crate) exec fn ")
-        || trimmed.starts_with("pub(crate) spec fn ")
-        || trimmed.starts_with("pub(crate) tracked fn ");
-
-    if !has_fn_signature {
-        // This body doesn't have a function signature, only body code
-        // Don't extract any specs from it
-        return (0, Vec::new(), String::new());
-    }
-
-    // Find the function body start ({ at depth 0)
-    let function_body_start = find_function_body_start(body);
-
-    // Only work with the signature (before function body)
-    let signature = &body[..function_body_start];
-
-    // Clean the signature: remove comments, triggers, newlines
-    let cleaned = clean_signature(signature);
-
-    // Find "requires" in the cleaned signature
-    let start_opt = cleaned.find("requires");
-    if start_opt.is_none() {
-        return (0, Vec::new(), String::new());
-    }
-    let start = start_opt.unwrap() + "requires".len();
-
-    // Find end: either "ensures", "returns", or end of cleaned signature
-    let after_requires = &cleaned[start..];
-    let mut end = start + after_requires.len();
-
-    if let Some(pos) = after_requires.find("ensures") {
-        end = start + pos;
-    }
-    if let Some(pos) = after_requires.find("returns") {
-        if start + pos < end {
-            end = start + pos;
+impl<'ast> Visit<'ast> for HalsteadVisitor {
+    fn visit_expr(&mut self, expr: &'ast Expr) {
+        match expr {
+            Expr::Binary(bin) => {
+                let op = bin.op.to_token_stream().to_string();
+                self.operators.push(op.clone());
+                self.unique_operators.insert(op);
+                self.visit_expr(&bin.left);
+                self.visit_expr(&bin.right);
+            }
+            Expr::Unary(un) => {
+                let op = un.op.to_token_stream().to_string();
+                self.operators.push(op.clone());
+                self.unique_operators.insert(op);
+                self.visit_expr(&un.expr);
+            }
+            Expr::Path(path) => {
+                let name = path
+                    .path
+                    .segments
+                    .iter()
+                    .map(|seg| seg.ident.to_string())
+                    .collect::<Vec<_>>()
+                    .join("::");
+                self.operands.push(name.clone());
+                self.unique_operands.insert(name);
+            }
+            Expr::Lit(lit) => {
+                let lit_str = lit.lit.to_token_stream().to_string();
+                self.operands.push(lit_str.clone());
+                self.unique_operands.insert(lit_str);
+            }
+            Expr::Call(call) => {
+                self.operators.push("call".to_string());
+                self.unique_operators.insert("call".to_string());
+                self.visit_expr(&call.func);
+                for arg in &call.args {
+                    self.visit_expr(arg);
+                }
+            }
+            Expr::MethodCall(method) => {
+                let method_name = method.method.to_string();
+                self.operators.push(method_name.clone());
+                self.unique_operators.insert(method_name);
+                self.visit_expr(&method.receiver);
+                for arg in &method.args {
+                    self.visit_expr(arg);
+                }
+            }
+            Expr::Field(field) => {
+                self.operators.push(".".to_string());
+                self.unique_operators.insert(".".to_string());
+                let field_name = match &field.member {
+                    verus_syn::Member::Named(ident) => ident.to_string(),
+                    verus_syn::Member::Unnamed(index) => index.index.to_string(),
+                };
+                self.operands.push(field_name.clone());
+                self.unique_operands.insert(field_name);
+                self.visit_expr(&field.base);
+            }
+            Expr::Index(index) => {
+                self.operators.push("[]".to_string());
+                self.unique_operators.insert("[]".to_string());
+                self.visit_expr(&index.expr);
+                self.visit_expr(&index.index);
+            }
+            Expr::Paren(paren) => {
+                self.operators.push("()".to_string());
+                self.unique_operators.insert("()".to_string());
+                self.visit_expr(&paren.expr);
+            }
+            Expr::Cast(cast) => {
+                self.operators.push("as".to_string());
+                self.unique_operators.insert("as".to_string());
+                self.visit_expr(&cast.expr);
+            }
+            Expr::Reference(reference) => {
+                self.operators.push("&".to_string());
+                self.unique_operators.insert("&".to_string());
+                self.visit_expr(&reference.expr);
+            }
+            _ => verus_syn::visit::visit_expr(self, expr),
         }
     }
-
-    let requires_block = &cleaned[start..end];
-
-    if requires_block.trim().is_empty() {
-        return (0, Vec::new(), String::new());
-    }
-
-    let conditions = split_conditions(requires_block);
-    let count = conditions.len();
-    let lengths: Vec<usize> = conditions.iter().map(|c| c.trim().len()).collect();
-
-    (count, lengths, requires_block.to_string())
 }
 
-fn extract_ensures(body: &str) -> (usize, Vec<usize>, String) {
-    // Check if body has a function signature
-    // Include Verus function modifiers: proof, exec, spec, tracked
-    let trimmed = body.trim_start();
-    let has_fn_signature = trimmed.starts_with("fn ")
-        || trimmed.starts_with("pub fn ")
-        || trimmed.starts_with("pub(crate) fn ")
-        || trimmed.starts_with("pub(super) fn ")
-        || trimmed.starts_with("proof fn ")
-        || trimmed.starts_with("exec fn ")
-        || trimmed.starts_with("spec fn ")
-        || trimmed.starts_with("tracked fn ")
-        || trimmed.starts_with("pub proof fn ")
-        || trimmed.starts_with("pub exec fn ")
-        || trimmed.starts_with("pub spec fn ")
-        || trimmed.starts_with("pub tracked fn ")
-        || trimmed.starts_with("pub(crate) proof fn ")
-        || trimmed.starts_with("pub(crate) exec fn ")
-        || trimmed.starts_with("pub(crate) spec fn ")
-        || trimmed.starts_with("pub(crate) tracked fn ");
+/// Compute Halstead metrics from a verus_syn Expr
+fn compute_halstead_from_expr(expr: &Expr) -> SpecHalsteadMetrics {
+    let mut visitor = HalsteadVisitor::default();
+    visitor.visit_expr(expr);
 
-    if !has_fn_signature {
-        // This body doesn't have a function signature, only body code
-        // Don't extract any specs from it
-        return (0, Vec::new(), String::new());
-    }
+    let n1 = visitor.unique_operators.len();
+    let n2 = visitor.unique_operands.len();
+    let n1_total = visitor.operators.len();
+    let n2_total = visitor.operands.len();
 
-    // Find the function body start ({ at depth 0)
-    let function_body_start = find_function_body_start(body);
+    let length = n1_total + n2_total;
+    let vocabulary = n1 + n2;
 
-    // Only work with the signature (before function body)
-    let signature = &body[..function_body_start];
-
-    // Clean the signature: remove comments, triggers, newlines
-    let cleaned = clean_signature(signature);
-
-    // Find "ensures" in the cleaned signature
-    let start_opt = cleaned.find("ensures");
-    if start_opt.is_none() {
-        return (0, Vec::new(), String::new());
-    }
-    let start = start_opt.unwrap() + "ensures".len();
-
-    // Find end: either "returns" or end of cleaned signature
-    let after_ensures = &cleaned[start..];
-    let mut end = start + after_ensures.len();
-
-    if let Some(pos) = after_ensures.find("returns") {
-        end = start + pos;
-    }
-
-    let ensures_block = &cleaned[start..end];
-
-    if ensures_block.trim().is_empty() {
-        return (0, Vec::new(), String::new());
-    }
-
-    let conditions = split_conditions(ensures_block);
-    let count = conditions.len();
-    let lengths: Vec<usize> = conditions.iter().map(|c| c.trim().len()).collect();
-
-    (count, lengths, ensures_block.to_string())
-}
-
-fn extract_decreases(body: &str) -> (usize, Vec<String>) {
-    // Check if body has a function signature (same check as requires/ensures)
-    let trimmed = body.trim_start();
-    let has_fn_signature = trimmed.starts_with("fn ")
-        || trimmed.starts_with("pub fn ")
-        || trimmed.starts_with("pub(crate) fn ")
-        || trimmed.starts_with("pub(super) fn ")
-        || trimmed.starts_with("proof fn ")
-        || trimmed.starts_with("exec fn ")
-        || trimmed.starts_with("spec fn ")
-        || trimmed.starts_with("tracked fn ")
-        || trimmed.starts_with("pub proof fn ")
-        || trimmed.starts_with("pub exec fn ")
-        || trimmed.starts_with("pub spec fn ")
-        || trimmed.starts_with("pub tracked fn ")
-        || trimmed.starts_with("pub(crate) proof fn ")
-        || trimmed.starts_with("pub(crate) exec fn ")
-        || trimmed.starts_with("pub(crate) spec fn ")
-        || trimmed.starts_with("pub(crate) tracked fn ");
-
-    if !has_fn_signature {
-        return (0, Vec::new());
-    }
-
-    // Find the function body start
-    let function_body_start = find_function_body_start(body);
-
-    // Only work with the signature (before function body)
-    let signature = &body[..function_body_start];
-
-    // Clean the signature: remove comments, triggers, newlines
-    let cleaned = clean_signature(signature);
-
-    // Find "decreases" in the cleaned signature
-    let start_opt = cleaned.find("decreases");
-    if start_opt.is_none() {
-        return (0, Vec::new());
-    }
-    let start = start_opt.unwrap() + "decreases".len();
-
-    // Find end: look for "requires", "ensures", "returns", or end of cleaned signature
-    let after_decreases = &cleaned[start..];
-    let mut end = start + after_decreases.len();
-
-    // Check for other spec keywords
-    for keyword in ["requires", "ensures", "returns"] {
-        if let Some(pos) = after_decreases.find(keyword) {
-            if start + pos < end {
-                end = start + pos;
-            }
-        }
-    }
-
-    let decreases_block = &cleaned[start..end].trim();
-
-    if decreases_block.is_empty() {
-        return (0, Vec::new());
-    }
-
-    // Split by comma to get individual expressions
-    // Use the same split_conditions logic but simpler since decreases is usually simpler
-    let expressions = split_conditions(decreases_block);
-    let count = expressions.len();
-
-    (count, expressions)
-}
-
-/// Remove comments from a string
-fn remove_comments(text: &str) -> String {
-    let mut result = String::new();
-    let mut chars = text.chars().peekable();
-
-    #[allow(clippy::while_let_on_iterator)]
-    while let Some(c) = chars.next() {
-        match c {
-            '"' => {
-                // Preserve string literals as-is
-                result.push(c);
-                #[allow(clippy::while_let_on_iterator)]
-                while let Some(ch) = chars.next() {
-                    result.push(ch);
-                    if ch == '\\' {
-                        if let Some(escaped) = chars.next() {
-                            result.push(escaped);
-                        }
-                    } else if ch == '"' {
-                        break;
-                    }
-                }
-            }
-            '/' => {
-                let next = chars.peek().copied();
-                if next == Some('/') {
-                    // Line comment - skip to end of line
-                    chars.next(); // consume second /
-                    #[allow(clippy::while_let_on_iterator)]
-                    while let Some(ch) = chars.next() {
-                        if ch == '\n' {
-                            result.push('\n'); // Keep newline
-                            break;
-                        }
-                    }
-                } else if next == Some('*') {
-                    // Block comment - skip to */
-                    chars.next(); // consume *
-                    let mut prev = ' ';
-                    #[allow(clippy::while_let_on_iterator)]
-                    while let Some(ch) = chars.next() {
-                        if prev == '*' && ch == '/' {
-                            break;
-                        }
-                        prev = ch;
-                    }
-                } else {
-                    result.push(c);
-                }
-            }
-            _ => {
-                result.push(c);
-            }
-        }
-    }
-
-    result
-}
-
-/// Remove trigger annotations like #![trigger ...] from text
-/// Handles nested brackets like #![trigger old(inputs)[i]]
-fn remove_triggers(text: &str) -> String {
-    let mut result = String::new();
-    let chars: Vec<char> = text.chars().collect();
-    let mut i = 0;
-
-    while i < chars.len() {
-        // Check for #![trigger
-        if i + 10 < chars.len() {
-            let slice: String = chars[i..i + 10].iter().collect();
-            if slice == "#![trigger" {
-                // Found trigger annotation - skip until we find the closing ]
-                i += 10;
-                let mut bracket_depth = 1; // We're inside the #![
-                while i < chars.len() && bracket_depth > 0 {
-                    match chars[i] {
-                        '[' => bracket_depth += 1,
-                        ']' => bracket_depth -= 1,
-                        _ => {}
-                    }
-                    i += 1;
-                }
-                continue;
-            }
-        }
-        result.push(chars[i]);
-        i += 1;
-    }
-
-    result
-}
-
-fn split_conditions(block: &str) -> Vec<String> {
-    // Step 1: Remove comments (including comment-only lines)
-    let without_comments = remove_comments(block);
-
-    // Step 2: Remove trigger annotations
-    let without_triggers = remove_triggers(&without_comments);
-
-    // Step 3: Remove newlines to handle multi-line conditions
-    let single_line = without_triggers.replace('\n', " ");
-
-    // Step 4: Split by commas at depth 0
-    let mut conditions = Vec::new();
-    let mut current = String::new();
-    let mut depth = 0;
-    let mut in_string = false;
-    let mut escape_next = false;
-
-    let chars: Vec<char> = single_line.chars().collect();
-    let mut i = 0;
-
-    while i < chars.len() {
-        let c = chars[i];
-
-        if escape_next {
-            current.push(c);
-            escape_next = false;
-            i += 1;
-            continue;
-        }
-
-        if c == '\\' && in_string {
-            current.push(c);
-            escape_next = true;
-            i += 1;
-            continue;
-        }
-
-        if c == '"' {
-            in_string = !in_string;
-            current.push(c);
-            i += 1;
-            continue;
-        }
-
-        if !in_string {
-            match c {
-                '(' | '[' | '{' => {
-                    depth += 1;
-                    current.push(c);
-                }
-                ')' | ']' | '}' => {
-                    depth -= 1;
-                    current.push(c);
-                }
-                ',' if depth == 0 => {
-                    let trimmed = current.trim();
-                    if !trimmed.is_empty() {
-                        conditions.push(trimmed.to_string());
-                    }
-                    current.clear();
-                }
-                _ => {
-                    current.push(c);
-                }
-            }
-        } else {
-            current.push(c);
-        }
-
-        i += 1;
-    }
-
-    let trimmed = current.trim();
-    if !trimmed.is_empty() {
-        conditions.push(trimmed.to_string());
-    }
-
-    conditions
-}
-
-fn remove_strings_and_comments(code: &str) -> String {
-    let mut result = String::new();
-    let mut chars = code.chars().peekable();
-
-    #[allow(clippy::while_let_on_iterator)]
-    while let Some(c) = chars.next() {
-        match c {
-            '"' => {
-                // Skip string literals
-                #[allow(clippy::while_let_on_iterator)]
-                while let Some(ch) = chars.next() {
-                    if ch == '\\' {
-                        chars.next(); // Skip escaped character
-                    } else if ch == '"' {
-                        break;
-                    }
-                }
-            }
-            '/' => {
-                let next = chars.peek().copied();
-                if next == Some('/') {
-                    // Line comment - skip to end of line
-                    chars.next(); // consume second /
-                    #[allow(clippy::while_let_on_iterator)]
-                    while let Some(ch) = chars.next() {
-                        if ch == '\n' {
-                            result.push('\n');
-                            break;
-                        }
-                    }
-                } else if next == Some('*') {
-                    // Block comment
-                    chars.next(); // consume *
-                    let mut prev = ' ';
-                    #[allow(clippy::while_let_on_iterator)]
-                    while let Some(ch) = chars.next() {
-                        if prev == '*' && ch == '/' {
-                            break;
-                        }
-                        prev = ch;
-                    }
-                } else {
-                    result.push(c);
-                }
-            }
-            _ => {
-                result.push(c);
-            }
-        }
-    }
-
-    result
-}
-
-fn count_operators(code: &str) -> HashMap<String, usize> {
-    let cleaned = remove_strings_and_comments(code);
-
-    let operators = vec![
-        // Process longer operators first to avoid miscounting
-        "<<", ">>", "<=", ">=", "==", "!=", "&&", "||", "+", "-", "*", "/", "%", "&", "|", "^", "<",
-        ">", "!",
-    ];
-
-    let mut counts: HashMap<String, usize> = HashMap::new();
-
-    for op in operators {
-        let count = cleaned.matches(op).count();
-        if count > 0 {
-            counts.insert(op.to_string(), count);
-        }
-    }
-
-    counts
-}
-
-fn compute_function_metrics(atom: &Atom) -> FunctionMetrics {
-    let body = &atom.body;
-
-    // Extract requires
-    let (_requires_count, _requires_lengths, requires_text) = extract_requires(body);
-    let requires_conditions = if !requires_text.is_empty() {
-        split_conditions(&requires_text)
+    let difficulty = if n2 == 0 {
+        0.0
     } else {
-        Vec::new()
+        (n1 as f64 / 2.0) * (n2_total as f64 / n2 as f64)
     };
 
-    // Extract ensures
-    let (_ensures_count, _ensures_lengths, ensures_text) = extract_ensures(body);
-    let ensures_conditions = if !ensures_text.is_empty() {
-        split_conditions(&ensures_text)
+    let volume = if vocabulary == 0 {
+        0.0
     } else {
-        Vec::new()
+        length as f64 * (vocabulary as f64).log2()
     };
 
-    // Filter out prose conditions (comments, documentation, etc.)
-    let requires_conditions_filtered: Vec<String> = requires_conditions
-        .into_iter()
-        .filter(|cond| !verus_metrics::spec_halstead::is_prose(cond))
-        .collect();
+    let effort = difficulty * volume;
 
-    let ensures_conditions_filtered: Vec<String> = ensures_conditions
-        .into_iter()
-        .filter(|cond| !verus_metrics::spec_halstead::is_prose(cond))
-        .collect();
-
-    // Update counts to reflect filtered conditions
-    let filtered_requires_count = requires_conditions_filtered.len();
-    let filtered_requires_lengths: Vec<usize> = requires_conditions_filtered
-        .iter()
-        .map(|c| c.trim().len())
-        .collect();
-
-    let filtered_ensures_count = ensures_conditions_filtered.len();
-    let filtered_ensures_lengths: Vec<usize> = ensures_conditions_filtered
-        .iter()
-        .map(|c| c.trim().len())
-        .collect();
-
-    // Compute Halstead metrics for each requires condition
-    let requires_specs: Vec<SpecHalsteadMetrics> = requires_conditions_filtered
-        .iter()
-        .map(|cond| match analyze_spec(cond) {
-            Ok(metrics) => SpecHalsteadMetrics {
-                text: cond.clone(),
-                halstead_length: Some(metrics.halstead_length),
-                halstead_difficulty: Some(metrics.difficulty),
-                halstead_effort: Some(metrics.effort),
-                halstead_vocabulary: Some(metrics.vocabulary),
-                halstead_volume: Some(metrics.volume),
-                unique_operators: Some(metrics.n1_unique_operators),
-                total_operators: Some(metrics.n1_total_operators),
-                unique_operands: Some(metrics.n2_unique_operands),
-                total_operands: Some(metrics.n2_total_operands),
-                parse_error: None,
-            },
-            Err(e) => SpecHalsteadMetrics {
-                text: cond.clone(),
-                halstead_length: None,
-                halstead_difficulty: None,
-                halstead_effort: None,
-                halstead_vocabulary: None,
-                halstead_volume: None,
-                unique_operators: None,
-                total_operators: None,
-                unique_operands: None,
-                total_operands: None,
-                parse_error: Some(e.to_string()),
-            },
-        })
-        .collect();
-
-    // Compute Halstead metrics for each ensures condition
-    let ensures_specs: Vec<SpecHalsteadMetrics> = ensures_conditions_filtered
-        .iter()
-        .map(|cond| match analyze_spec(cond) {
-            Ok(metrics) => SpecHalsteadMetrics {
-                text: cond.clone(),
-                halstead_length: Some(metrics.halstead_length),
-                halstead_difficulty: Some(metrics.difficulty),
-                halstead_effort: Some(metrics.effort),
-                halstead_vocabulary: Some(metrics.vocabulary),
-                halstead_volume: Some(metrics.volume),
-                unique_operators: Some(metrics.n1_unique_operators),
-                total_operators: Some(metrics.n1_total_operators),
-                unique_operands: Some(metrics.n2_unique_operands),
-                total_operands: Some(metrics.n2_total_operands),
-                parse_error: None,
-            },
-            Err(e) => SpecHalsteadMetrics {
-                text: cond.clone(),
-                halstead_length: None,
-                halstead_difficulty: None,
-                halstead_effort: None,
-                halstead_vocabulary: None,
-                halstead_volume: None,
-                unique_operators: None,
-                total_operators: None,
-                unique_operands: None,
-                total_operands: None,
-                parse_error: Some(e.to_string()),
-            },
-        })
-        .collect();
-
-    // Extract decreases clause (for termination proofs)
-    let (decreases_count, decreases_expressions) = extract_decreases(body);
-
-    // Compute Halstead metrics for each decreases expression
-    let decreases_specs: Vec<SpecHalsteadMetrics> = decreases_expressions
-        .iter()
-        .map(|expr| match analyze_spec(expr) {
-            Ok(metrics) => SpecHalsteadMetrics {
-                text: expr.clone(),
-                halstead_length: Some(metrics.halstead_length),
-                halstead_difficulty: Some(metrics.difficulty),
-                halstead_effort: Some(metrics.effort),
-                halstead_vocabulary: Some(metrics.vocabulary),
-                halstead_volume: Some(metrics.volume),
-                unique_operators: Some(metrics.n1_unique_operators),
-                total_operators: Some(metrics.n1_total_operators),
-                unique_operands: Some(metrics.n2_unique_operands),
-                total_operands: Some(metrics.n2_total_operands),
-                parse_error: None,
-            },
-            Err(e) => SpecHalsteadMetrics {
-                text: expr.clone(),
-                halstead_length: None,
-                halstead_difficulty: None,
-                halstead_effort: None,
-                halstead_vocabulary: None,
-                halstead_volume: None,
-                unique_operators: None,
-                total_operators: None,
-                unique_operands: None,
-                total_operands: None,
-                parse_error: Some(e.to_string()),
-            },
-        })
-        .collect();
-
-    // Calculate body length (excluding requires and ensures)
-    let total_spec_length = requires_text.len() + ensures_text.len();
-    let body_length = body.len().saturating_sub(total_spec_length);
-
-    // Remove requires and ensures from body for operator counting
-    let mut body_without_specs = body.clone();
-    if !requires_text.is_empty() {
-        body_without_specs = body_without_specs.replace(&requires_text, "");
+    SpecHalsteadMetrics {
+        text: expr.to_token_stream().to_string(),
+        halstead_length: Some(length),
+        halstead_difficulty: Some(difficulty),
+        halstead_effort: Some(effort),
+        halstead_vocabulary: Some(vocabulary),
+        halstead_volume: Some(volume),
+        unique_operators: Some(n1),
+        total_operators: Some(n1_total),
+        unique_operands: Some(n2),
+        total_operands: Some(n2_total),
+        parse_error: None,
     }
-    if !ensures_text.is_empty() {
-        body_without_specs = body_without_specs.replace(&ensures_text, "");
+}
+
+// ============================================================================
+// Function Mode Extraction
+// ============================================================================
+
+fn fn_mode_to_string(mode: &verus_syn::FnMode) -> String {
+    match mode {
+        verus_syn::FnMode::Default => "exec".to_string(),
+        verus_syn::FnMode::Spec(_) => "spec".to_string(),
+        verus_syn::FnMode::SpecChecked(_) => "spec".to_string(),
+        verus_syn::FnMode::Proof(_) => "proof".to_string(),
+        verus_syn::FnMode::ProofAxiom(_) => "proof".to_string(),
+        verus_syn::FnMode::Exec(_) => "exec".to_string(),
+    }
+}
+
+// ============================================================================
+// Main Metrics Extraction from ItemFn
+// ============================================================================
+
+/// Extract metrics from an ItemFn using verus_syn's structured parsing
+fn extract_metrics_from_item_fn(item_fn: &ItemFn) -> FunctionMetrics {
+    let mut metrics = FunctionMetrics::default();
+
+    // Extract function mode
+    metrics.function_mode = fn_mode_to_string(&item_fn.sig.mode);
+
+    // Extract requires clauses
+    if let Some(requires) = &item_fn.sig.spec.requires {
+        let exprs: Vec<&Expr> = requires.exprs.exprs.iter().collect();
+        metrics.requires_count = exprs.len();
+        metrics.requires_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
+        metrics.requires_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
     }
 
-    // Count operators in body (excluding specs)
-    let operators = count_operators(&body_without_specs);
+    // Extract ensures clauses
+    if let Some(ensures) = &item_fn.sig.spec.ensures {
+        let exprs: Vec<&Expr> = ensures.exprs.exprs.iter().collect();
+        metrics.ensures_count = exprs.len();
+        metrics.ensures_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
+        metrics.ensures_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+    }
 
+    // Extract decreases clauses
+    if let Some(decreases) = &item_fn.sig.spec.decreases {
+        let exprs: Vec<&Expr> = decreases.decreases.exprs.exprs.iter().collect();
+        metrics.decreases_count = exprs.len();
+        metrics.decreases_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+    }
+
+    // Compute body length (the actual function block)
+    metrics.body_length = item_fn.block.to_token_stream().to_string().len();
+
+    // Count operators in body
+    let mut body_visitor = HalsteadVisitor::default();
+    for stmt in &item_fn.block.stmts {
+        verus_syn::visit::visit_stmt(&mut body_visitor, stmt);
+    }
+    for (op, _) in body_visitor.unique_operators.iter().zip(body_visitor.operators.iter()) {
+        *metrics.operators.entry(op.clone()).or_insert(0) += 1;
+    }
+
+    metrics
+}
+
+/// Try to parse body as different Verus item types
+fn compute_function_metrics(body: &str) -> FunctionMetrics {
+    // Attempt 1: Parse as standalone ItemFn
+    if let Ok(item_fn) = verus_syn::parse_str::<ItemFn>(body) {
+        return extract_metrics_from_item_fn(&item_fn);
+    }
+
+    // Attempt 2: Parse as Item (covers more cases)
+    if let Ok(item) = verus_syn::parse_str::<Item>(body) {
+        if let Item::Fn(item_fn) = item {
+            return extract_metrics_from_item_fn(&item_fn);
+        }
+    }
+
+    // Attempt 3: Parse as ImplItemFn (method inside impl block)
+    if let Ok(impl_item) = verus_syn::parse_str::<ImplItem>(body) {
+        if let ImplItem::Fn(impl_fn) = impl_item {
+            let mut metrics = FunctionMetrics::default();
+            metrics.function_mode = fn_mode_to_string(&impl_fn.sig.mode);
+
+            if let Some(requires) = &impl_fn.sig.spec.requires {
+                let exprs: Vec<&Expr> = requires.exprs.exprs.iter().collect();
+                metrics.requires_count = exprs.len();
+                metrics.requires_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
+                metrics.requires_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+            }
+
+            if let Some(ensures) = &impl_fn.sig.spec.ensures {
+                let exprs: Vec<&Expr> = ensures.exprs.exprs.iter().collect();
+                metrics.ensures_count = exprs.len();
+                metrics.ensures_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
+                metrics.ensures_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+            }
+
+            if let Some(decreases) = &impl_fn.sig.spec.decreases {
+                let exprs: Vec<&Expr> = decreases.decreases.exprs.exprs.iter().collect();
+                metrics.decreases_count = exprs.len();
+                metrics.decreases_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+            }
+
+            metrics.body_length = impl_fn.block.to_token_stream().to_string().len();
+            return metrics;
+        }
+    }
+
+    // Attempt 4: Parse as TraitItemFn
+    if let Ok(trait_item) = verus_syn::parse_str::<TraitItem>(body) {
+        if let TraitItem::Fn(trait_fn) = trait_item {
+            let mut metrics = FunctionMetrics::default();
+            metrics.function_mode = fn_mode_to_string(&trait_fn.sig.mode);
+
+            if let Some(requires) = &trait_fn.sig.spec.requires {
+                let exprs: Vec<&Expr> = requires.exprs.exprs.iter().collect();
+                metrics.requires_count = exprs.len();
+                metrics.requires_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
+                metrics.requires_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+            }
+
+            if let Some(ensures) = &trait_fn.sig.spec.ensures {
+                let exprs: Vec<&Expr> = ensures.exprs.exprs.iter().collect();
+                metrics.ensures_count = exprs.len();
+                metrics.ensures_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
+                metrics.ensures_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+            }
+
+            if let Some(decreases) = &trait_fn.sig.spec.decreases {
+                let exprs: Vec<&Expr> = decreases.decreases.exprs.exprs.iter().collect();
+                metrics.decreases_count = exprs.len();
+                metrics.decreases_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+            }
+
+            if let Some(block) = &trait_fn.default {
+                metrics.body_length = block.to_token_stream().to_string().len();
+            }
+            return metrics;
+        }
+    }
+
+    // Fallback: Return default metrics if parsing fails
+    // This handles non-function bodies or incomplete fragments
     FunctionMetrics {
-        requires_count: filtered_requires_count,
-        requires_lengths: filtered_requires_lengths,
-        requires_specs,
-        ensures_count: filtered_ensures_count,
-        ensures_lengths: filtered_ensures_lengths,
-        ensures_specs,
-        decreases_count,
-        decreases_specs,
-        body_length,
-        operators,
+        function_mode: "unknown".to_string(),
+        body_length: body.len(),
+        ..Default::default()
     }
 }
+
+// ============================================================================
+// Main
+// ============================================================================
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -762,6 +397,7 @@ fn main() {
             "Usage: {} <input_atoms_json> <output_metrics_json>",
             args[0]
         );
+        eprintln!("\nUses verus_syn AST parsing for robust spec extraction.");
         eprintln!("\nExample:");
         eprintln!(
             "  {} curve_dalek_atoms.json curve_dalek_atoms_with_metrics.json",
@@ -786,11 +422,11 @@ fn main() {
 
     println!("  Loaded {} functions", atoms.len());
 
-    println!("Computing metrics...");
+    println!("Computing metrics (using verus_syn AST parsing)...");
     let atoms_with_metrics: Vec<AtomWithMetrics> = atoms
         .iter()
         .map(|atom| {
-            let metrics = compute_function_metrics(atom);
+            let metrics = compute_function_metrics(&atom.body);
             AtomWithMetrics {
                 identifier: atom.identifier.clone(),
                 statement_type: atom.statement_type.clone(),
@@ -833,32 +469,35 @@ fn main() {
         .filter(|a| a.metrics.decreases_count > 0)
         .count();
 
-    // Count parse errors
-    let requires_parse_errors: usize = atoms_with_metrics
+    // Count by function mode
+    let exec_count = atoms_with_metrics
         .iter()
-        .flat_map(|a| &a.metrics.requires_specs)
-        .filter(|spec| spec.parse_error.is_some())
+        .filter(|a| a.metrics.function_mode == "exec")
         .count();
-    let ensures_parse_errors: usize = atoms_with_metrics
+    let proof_count = atoms_with_metrics
         .iter()
-        .flat_map(|a| &a.metrics.ensures_specs)
-        .filter(|spec| spec.parse_error.is_some())
+        .filter(|a| a.metrics.function_mode == "proof")
         .count();
-    let decreases_parse_errors: usize = atoms_with_metrics
+    let spec_count = atoms_with_metrics
         .iter()
-        .flat_map(|a| &a.metrics.decreases_specs)
-        .filter(|spec| spec.parse_error.is_some())
+        .filter(|a| a.metrics.function_mode == "spec")
+        .count();
+    let unknown_count = atoms_with_metrics
+        .iter()
+        .filter(|a| a.metrics.function_mode == "unknown")
         .count();
 
     println!("\nSummary:");
     println!("  Total functions: {}", atoms_with_metrics.len());
-    println!("  With requires: {}", with_requires);
-    println!("  With ensures: {}", with_ensures);
-    println!("  With decreases: {}", with_decreases);
-    println!(
-        "  Spec Halstead parse errors: {} requires, {} ensures, {} decreases",
-        requires_parse_errors, ensures_parse_errors, decreases_parse_errors
-    );
+    println!("  Function modes:");
+    println!("    - exec: {}", exec_count);
+    println!("    - proof: {}", proof_count);
+    println!("    - spec: {}", spec_count);
+    println!("    - unknown (parse failed): {}", unknown_count);
+    println!("  Specs found:");
+    println!("    - With requires: {}", with_requires);
+    println!("    - With ensures: {}", with_ensures);
+    println!("    - With decreases: {}", with_decreases);
 
     if let Some(example) = atoms_with_metrics
         .iter()
@@ -866,10 +505,10 @@ fn main() {
     {
         println!("\nExample function with specs:");
         println!("  Name: {}", example.display_name);
+        println!("  Mode: {}", example.metrics.function_mode);
         println!("  Requires: {}", example.metrics.requires_count);
         println!("  Ensures: {}", example.metrics.ensures_count);
         println!("  Body length: {}", example.metrics.body_length);
-        println!("  Operators: {}", example.metrics.operators.len());
 
         if !example.metrics.requires_specs.is_empty() {
             if let Some(first_req) = example.metrics.requires_specs.first() {
@@ -888,3 +527,4 @@ fn main() {
         }
     }
 }
+

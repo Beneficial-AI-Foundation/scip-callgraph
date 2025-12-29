@@ -72,3 +72,4 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+crates/metrics-cli/src/bin/compute_metrics_old.rs

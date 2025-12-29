@@ -6,6 +6,13 @@ use std::collections::{HashMap, HashSet};
 use std::fs::{self};
 use std::path::Path;
 use std::process::Command;
+use std::sync::OnceLock;
+
+/// Compiled regex for removing generic type parameters from paths
+fn generics_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"<[^>]*>").unwrap())
+}
 
 /// Helper function to generate both SVG and PNG files from a DOT file using Graphviz
 fn generate_svg_and_png_from_dot(dot_path: &str) -> std::io::Result<()> {
@@ -855,8 +862,7 @@ pub fn symbol_to_path(symbol: &str, display_name: &str) -> String {
 
     // Remove all occurrences of angle-bracketed generics, e.g., <...>
     // This will remove substrings like "<proto::group::MemberPendingProfileKey, Cproto::group::MemberPendingProfileKey, C>"
-    let re = Regex::new(r"<[^>]*>").unwrap();
-    clean_path = re.replace_all(&clean_path, "").to_string();
+    clean_path = generics_regex().replace_all(&clean_path, "").to_string();
     // Only append display_name if it's not already in the path
     if !clean_path.ends_with(display_name) {
         clean_path = format!("{clean_path}/{display_name}")
@@ -918,7 +924,8 @@ pub fn write_call_graph_as_atoms_json<P: AsRef<std::path::Path>>(
         })
         .collect();
 
-    let json = serde_json::to_string_pretty(&atoms).unwrap();
+    let json = serde_json::to_string_pretty(&atoms)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(output_path, json)
 }
 
@@ -1075,11 +1082,15 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
 }
 
 /// Check if a symbol kind represents a function-like entity
+/// 
+/// SCIP symbol kinds (from SCIP protocol):
+/// - 6: Method
+/// - 12: Constructor  
+/// - 17: Function
+/// - 26: TypeParameter (excluded - not a function)
+/// - 80: Method (Rust-specific)
 fn is_function_like(kind: i32) -> bool {
-    match kind {
-        6 | 17 | 26 | 80 => true, // Method, Function, etc.
-        _ => false,
-    }
+    matches!(kind, 6 | 12 | 17 | 80)
 }
 
 /// Generate a DOT file format for the call graph that can be rendered by Graphviz
@@ -1954,6 +1965,7 @@ mod tests {
         let tmp = NamedTempFile::new().unwrap();
         generate_call_graph_dot(&call_graph, tmp.path().to_str().unwrap()).unwrap();
         let dot = fs::read_to_string(tmp.path()).unwrap();
-        assert!(dot.contains("tooltip=\"fn foo() { println!(\\\"Hello\\\"); }\""));
+        // Quotes in tooltip are replaced with "' " (single quote + space) for DOT compatibility
+        assert!(dot.contains("tooltip=\"fn foo() { println!(' Hello' ); }\""));
     }
 }
