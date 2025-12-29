@@ -75,8 +75,6 @@ export interface FilterOptions {
   showExecFunctions: boolean;      // Show executable functions (default: true)
   showProofFunctions: boolean;     // Show proof functions/lemmas (default: true)
   showSpecFunctions: boolean;      // Show spec functions (default: false)
-  // Similar lemmas source filter
-  hideSimilarLemmasVstd: boolean;  // Hide vstd entries in similar_lemmas panel (default: false)
   // Pattern-based exclusion (comma-separated glob patterns)
   excludeNamePatterns: string;     // Matches display_name, e.g., "*_comm*, lemma_mul_*"
   excludePathPatterns: string;     // Matches node ID path, e.g., "*/specs/*, */common_lemmas/*"

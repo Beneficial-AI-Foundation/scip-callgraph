@@ -118,16 +118,8 @@ export function applyFilters(
   filters: FilterOptions,
   nodeOptions?: SelectedNodeOptions
 ): D3Graph {
-  // Debug: Check if fullGraph.links have been mutated
-  if (fullGraph.links.length > 0) {
-    const firstLink = fullGraph.links[0];
-    console.log('[DEBUG] First link source type:', typeof firstLink.source, 
-                'value:', typeof firstLink.source === 'string' ? firstLink.source.slice(-30) : (firstLink.source as any)?.id?.slice(-30));
-  }
-  
   let filteredNodes = [...fullGraph.nodes];
   let filteredLinks = [...fullGraph.links];
-  console.log('[DEBUG] Initial: fullGraph.nodes.length:', fullGraph.nodes.length, 'filteredNodes.length:', filteredNodes.length);
 
   const sourceQuery = filters.sourceQuery.trim().toLowerCase();
   const sinkQuery = filters.sinkQuery.trim().toLowerCase();
@@ -151,17 +143,6 @@ export function applyFilters(
       .filter(node => !filters.hiddenNodes.has(node.id))  // Exclude hidden nodes from traversal
       .map(node => node.id)
   );
-  
-  // Debug: Show filter effects
-  if (excludeNamePatterns.length > 0 || excludePathPatterns.length > 0 || includeFilePatterns.length > 0) {
-    const excludedByName = fullGraph.nodes.filter(n => nodeMatchesExcludeNamePattern(n, excludeNamePatterns)).length;
-    const excludedByPath = fullGraph.nodes.filter(n => nodeMatchesExcludePathPattern(n, excludePathPatterns)).length;
-    const excludedByFile = fullGraph.nodes.filter(n => !nodeMatchesIncludeFilePattern(n, includeFilePatterns)).length;
-    console.log(`[Filter] Exclude name patterns: ${excludeNamePatterns.length}, excluded ${excludedByName} nodes`);
-    console.log(`[Filter] Exclude path patterns: ${excludePathPatterns.length}, excluded ${excludedByPath} nodes`);
-    console.log(`[Filter] Include files: ${includeFilePatterns.length}, excluded ${excludedByFile} nodes`);
-    console.log(`[Filter] modeAllowedNodeIds size: ${modeAllowedNodeIds.size} (from ${fullGraph.nodes.length})`);
-  }
   
   // Create a "traversable" graph that respects mode filters
   // This prevents traversal through spec/proof/exec nodes that are filtered out
@@ -191,10 +172,8 @@ export function applyFilters(
       const exactNode = fullGraph.nodes.find(n => n.id === selectedNodeId);
       if (exactNode) {
         sourceMatchIds.add(exactNode.id);
-        console.log('[DEBUG] Exact source match by ID:', exactNode.display_name, exactNode.file_name);
       } else {
         // Fallback to query matching if ID not found
-        console.log('[DEBUG] Selected node ID not found, falling back to query matching');
         fullGraph.nodes.forEach(node => {
           if (matchesQuery(node, sourceQuery)) {
             sourceMatchIds.add(node.id);
@@ -209,11 +188,6 @@ export function applyFilters(
         }
       });
     }
-    // Log matched node names for debugging
-    const sourceNames = fullGraph.nodes
-      .filter(n => sourceMatchIds.has(n.id))
-      .map(n => `${n.display_name} (${n.file_name})`);
-    console.log('[DEBUG] Source matches:', sourceMatchIds.size, sourceNames);
   }
   
   if (sinkQuery !== '') {
@@ -222,10 +196,8 @@ export function applyFilters(
       const exactNode = fullGraph.nodes.find(n => n.id === selectedNodeId);
       if (exactNode) {
         sinkMatchIds.add(exactNode.id);
-        console.log('[DEBUG] Exact sink match by ID:', exactNode.display_name, exactNode.file_name);
       } else {
         // Fallback to query matching
-        console.log('[DEBUG] Selected node ID not found, falling back to query matching');
         fullGraph.nodes.forEach(node => {
           if (matchesQuery(node, sinkQuery)) {
             sinkMatchIds.add(node.id);
@@ -240,10 +212,6 @@ export function applyFilters(
         }
       });
     }
-    const sinkNames = fullGraph.nodes
-      .filter(n => sinkMatchIds.has(n.id))
-      .map(n => `${n.display_name} (${n.file_name})`);
-    console.log('[DEBUG] Sink matches:', sinkMatchIds.size, sinkNames);
   }
 
   // Build the set of nodes to include based on source/sink configuration
@@ -265,7 +233,6 @@ export function applyFilters(
   if (hasSource && hasSink) {
     if (isSameQuery) {
       // Same node in both → show full neighborhood (both directions)
-      console.log('[DEBUG] Same query mode - showing full neighborhood');
       usePathBasedLinkFilter = true;
       
       sourceMatchIds.forEach(id => {
@@ -298,7 +265,6 @@ export function applyFilters(
     } else {
       // Different source and sink → find paths between them
       // NOTE: We ignore maxDepth here - we want ALL nodes on any path from source to sink
-      console.log('[DEBUG] Path mode - finding paths from source to sink (ignoring depth limit)');
       // Filter source/sink to only include mode-allowed nodes
       const allowedSources = new Set([...sourceMatchIds].filter(id => modeAllowedNodeIds.has(id)));
       const allowedSinks = new Set([...sinkMatchIds].filter(id => modeAllowedNodeIds.has(id)));
@@ -308,13 +274,9 @@ export function applyFilters(
     }
   } else if (hasSource) {
     // Source only → show callees (what source calls)
-    console.log('[DEBUG] Source-only mode - showing callees');
-    console.log('[DEBUG] sourceMatchIds:', [...sourceMatchIds]);
-    console.log('[DEBUG] maxDepth:', filters.maxDepth);
     usePathBasedLinkFilter = true;
     
     sourceMatchIds.forEach(id => {
-      console.log('[DEBUG] Checking source node:', id, 'modeAllowed:', modeAllowedNodeIds.has(id));
       if (modeAllowedNodeIds.has(id)) {
         includedNodeIds.add(id);
         calleeDepths.set(id, 0);
@@ -324,7 +286,6 @@ export function applyFilters(
     sourceMatchIds.forEach(nodeId => {
       if (!modeAllowedNodeIds.has(nodeId)) return;
       const calleesResult = getCalleesRecursive(traversableGraph, nodeId, filters.maxDepth);
-      console.log('[DEBUG] Callees of', nodeId, ':', [...calleesResult.nodeDepths.entries()].slice(0, 10));
       calleesResult.nodeIds.forEach(id => includedNodeIds.add(id));
       // Merge depths (keep minimum depth if node appears multiple times)
       calleesResult.nodeDepths.forEach((depth, id) => {
@@ -333,11 +294,8 @@ export function applyFilters(
         }
       });
     });
-    console.log('[DEBUG] calleeDepths size:', calleeDepths.size);
-    console.log('[DEBUG] calleeDepths sample:', [...calleeDepths.entries()].slice(0, 5));
   } else if (hasSink) {
     // Sink only → show callers (who calls sink)
-    console.log('[DEBUG] Sink-only mode - showing callers');
     usePathBasedLinkFilter = true;
     
     sinkMatchIds.forEach(id => {
@@ -366,7 +324,6 @@ export function applyFilters(
   
   if (queryEntered && !queryMatched) {
     // Query was entered but matched nothing - return empty graph
-    console.log('[DEBUG] Query entered but no matches found, returning empty graph');
     return {
       nodes: [],
       links: [],
@@ -378,10 +335,7 @@ export function applyFilters(
     };
   } else if (queryMatched) {
     // Apply source/sink traversal results
-    console.log('[DEBUG] Before source/sink filter: filteredNodes.length:', filteredNodes.length);
-    console.log('[DEBUG] includedNodeIds.size:', includedNodeIds.size);
     filteredNodes = filteredNodes.filter(node => includedNodeIds.has(node.id));
-    console.log('[DEBUG] After source/sink filter: filteredNodes.length:', filteredNodes.length);
   } else {
     // No source/sink query - apply pre-filters (mode, exclude patterns, include files)
     filteredNodes = filteredNodes.filter(node => modeAllowedNodeIds.has(node.id));
@@ -451,50 +405,21 @@ export function applyFilters(
 
   // Create a set of valid node IDs for efficient lookup
   const validNodeIds = new Set(filteredNodes.map(node => node.id));
-  console.log('[DEBUG] filteredNodes.length before link filter:', filteredNodes.length);
-  console.log('[DEBUG] validNodeIds.size:', validNodeIds.size);
-  console.log('[DEBUG] fullGraph.links.length:', fullGraph.links.length);
 
   // Filter links to only include those between valid nodes
-  let linkDebugCounter = 0;
   filteredLinks = fullGraph.links.filter(link => {
     const sourceId = typeof link.source === 'string' ? link.source : (link.source as any).id;
     const targetId = typeof link.target === 'string' ? link.target : (link.target as any).id;
-    const passes = validNodeIds.has(sourceId) && validNodeIds.has(targetId);
-    if (passes && linkDebugCounter < 3) {
-      console.log('[DEBUG] Link passes validNodeIds:', 
-        'source type:', typeof link.source, 
-        'sourceId:', sourceId?.slice?.(-40) || sourceId,
-        'target type:', typeof link.target,
-        'targetId:', targetId?.slice?.(-40) || targetId);
-      linkDebugCounter++;
-    }
-    return passes;
+    return validNodeIds.has(sourceId) && validNodeIds.has(targetId);
   });
-  console.log('[DEBUG] filteredLinks after validNodeIds filter:', filteredLinks.length);
 
   // Apply path-based link filtering when depth limit is active
   // Only show edges that are "on the path" (source_depth + 1 = target_depth for callees,
   // or target_depth + 1 = source_depth for callers)
   if (usePathBasedLinkFilter && filters.maxDepth !== null) {
-    console.log('[DEBUG] Applying path-based link filter');
-    console.log('[DEBUG] Links before path filter:', filteredLinks.length);
-    console.log('[DEBUG] calleeDepths size:', calleeDepths.size, 'callerDepths size:', callerDepths.size);
-    
-    let debugCounter = 0;
     filteredLinks = filteredLinks.filter(link => {
       const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
       const targetId = typeof link.target === 'string' ? link.target : link.target.id;
-      
-      // Debug first few links
-      if (debugCounter < 5) {
-        console.log('[DEBUG] Link:', sourceId.slice(-30), '→', targetId.slice(-30));
-        console.log('[DEBUG]   calleeDepths.has(source):', calleeDepths.has(sourceId), 
-                    'calleeDepths.has(target):', calleeDepths.has(targetId));
-        if (calleeDepths.has(sourceId)) console.log('[DEBUG]   source depth:', calleeDepths.get(sourceId));
-        if (calleeDepths.has(targetId)) console.log('[DEBUG]   target depth:', calleeDepths.get(targetId));
-        debugCounter++;
-      }
       
       // Check if this link is on a callee path (source → target direction)
       // Valid if source is at depth N and target is at depth N+1
@@ -520,7 +445,6 @@ export function applyFilters(
       
       return false;
     });
-    console.log('[DEBUG] Links after path filter:', filteredLinks.length);
   }
 
   // Filter links by call type (inner, precondition, postcondition)
@@ -694,8 +618,6 @@ function findPathNodes(
     
     dfs(sourceId);
   }
-  
-  console.log('[DEBUG] DFS path finding complete. Nodes on paths:', nodesOnPaths.size);
   
   return nodesOnPaths;
 }

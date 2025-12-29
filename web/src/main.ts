@@ -87,6 +87,9 @@ const LARGE_FILE_SIZE_THRESHOLD = 5 * 1024 * 1024;
 // Track if we're deferring load due to large file
 let deferredGraphUrl: string | null = null;
 
+// Prevent multiple simultaneous deferred graph loads
+let isDeferredLoadInProgress = false;
+
 // Debounce timer for search inputs
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const SEARCH_DEBOUNCE_MS = 300; // Wait 300ms after user stops typing
@@ -343,8 +346,6 @@ const initialFilters: FilterOptions = {
   showExecFunctions: true,        // Show exec functions by default
   showProofFunctions: true,       // Show proof functions by default
   showSpecFunctions: false,       // Hide spec functions by default
-  // Similar lemmas source filter
-  hideSimilarLemmasVstd: false,   // Show vstd entries in similar_lemmas panel by default
   excludeNamePatterns: '',        // Exclude by function name (e.g., *_comm*)
   excludePathPatterns: '',        // Exclude by path (e.g., */specs/*)
   includeFiles: '',               // Comma-separated file patterns to include (empty = all)
@@ -409,8 +410,6 @@ function syncInputsToState(): void {
   state.filters.showExecFunctions = (document.getElementById('show-exec-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showProofFunctions = (document.getElementById('show-proof-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showSpecFunctions = (document.getElementById('show-spec-functions') as HTMLInputElement)?.checked ?? false;
-  // Similar lemmas filter
-  state.filters.hideSimilarLemmasVstd = (document.getElementById('hide-similar-vstd') as HTMLInputElement)?.checked ?? false;
 }
 
 /**
@@ -753,11 +752,19 @@ async function autoLoadGraph(): Promise<void> {
 async function loadDeferredGraph(): Promise<void> {
   if (!deferredGraphUrl) return;
   
+  // Prevent multiple simultaneous loads
+  if (isDeferredLoadInProgress) {
+    console.log('Deferred graph load already in progress, skipping');
+    return;
+  }
+  
   // Check if user has entered a search query
   if (!hasSearchFilters()) {
     showError('Please enter a Source or Sink query first to filter the large graph.');
     return;
   }
+  
+  isDeferredLoadInProgress = true;
   
   const statsDiv = document.getElementById('stats');
   if (statsDiv) {
@@ -783,6 +790,8 @@ async function loadDeferredGraph(): Promise<void> {
   } catch (error) {
     console.error('Failed to load deferred graph:', error);
     showError(`Failed to load graph: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } finally {
+    isDeferredLoadInProgress = false;
   }
 }
 
@@ -825,7 +834,6 @@ function loadGraph(graph: D3Graph, message: string): void {
   }
   
   const isLarge = isLargeGraph(state.fullGraph);
-  console.log('[DEBUG] Graph loaded:', state.fullGraph.nodes.length, 'nodes,', state.fullGraph.links.length, 'links', isLarge ? '(LARGE - requires filter)' : '');
   
   // Populate the file list panel
   populateFileList();
@@ -833,7 +841,6 @@ function loadGraph(graph: D3Graph, message: string): void {
   // Apply URL filter parameters (if any)
   const urlFilters = parseFiltersFromURL();
   if (Object.keys(urlFilters).length > 0) {
-    console.log('[DEBUG] Applying URL filters:', urlFilters);
     applyURLFiltersToState(urlFilters);
     
     // Resolve hidden node names to IDs
@@ -915,14 +922,8 @@ const MAX_RENDERED_NODES = 200;
 function applyFiltersAndUpdate(): void {
   if (!state.fullGraph) return;
 
-  console.log('[DEBUG] applyFiltersAndUpdate called with source:', JSON.stringify(state.filters.sourceQuery), 'sink:', JSON.stringify(state.filters.sinkQuery));
-  if (selectedNodeId) {
-    console.log('[DEBUG] Using exact node ID for filtering:', selectedNodeId.slice(-60));
-  }
-  
   // For large graphs, require a search filter to render anything
   if (isLargeGraph(state.fullGraph) && !hasSearchFilters()) {
-    console.log('[DEBUG] Large graph without search filters - showing empty view');
     state.filteredGraph = { nodes: [], links: [], metadata: state.fullGraph.metadata };
     visualization?.update(state.filteredGraph);
     updateStats();
@@ -935,12 +936,10 @@ function applyFiltersAndUpdate(): void {
   // Pass selectedNodeId for exact matching (VS Code integration)
   const nodeOptions: SelectedNodeOptions = { selectedNodeId };
   let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions);
-  console.log('[DEBUG] Filtered graph:', filtered.nodes.length, 'nodes,', filtered.links.length, 'links');
   
   // Limit rendered nodes for large results to prevent D3 freeze
   let wasTruncated = false;
   if (filtered.nodes.length > MAX_RENDERED_NODES) {
-    console.log(`[DEBUG] Truncating from ${filtered.nodes.length} to ${MAX_RENDERED_NODES} nodes`);
     wasTruncated = true;
     
     // Keep nodes with highest connectivity (most relevant)
@@ -1164,7 +1163,7 @@ function updateNodeInfo(): void {
               <span class="similar-lemma-name">${escapeHtml(lemma.name)}</span>
               <span class="similar-lemma-score">${(lemma.score * 100).toFixed(0)}%</span>
               <div class="similar-lemma-meta">
-                ${lemma.file_path}${lemma.line_number ? `:${lemma.line_number}` : ''}
+                ${escapeHtml(lemma.file_path)}${lemma.line_number ? `:${lemma.line_number}` : ''}
               </div>
             </li>
           `).join('')}
