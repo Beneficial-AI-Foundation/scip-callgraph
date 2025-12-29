@@ -150,8 +150,18 @@ function buildGitHubLink(node: D3Node): string | null {
   // Clean up path prefix (remove leading/trailing slashes)
   const prefix = githubPathPrefix.replace(/^\/|\/$/g, '');
   
-  // Build the full path
-  const fullPath = prefix ? `${prefix}/${node.relative_path}` : node.relative_path;
+  // Build the full path, but avoid duplicating if relative_path already starts with prefix
+  let fullPath: string;
+  if (prefix) {
+    // Check if relative_path already starts with the prefix (avoid duplication)
+    if (node.relative_path.startsWith(prefix + '/') || node.relative_path === prefix) {
+      fullPath = node.relative_path;
+    } else {
+      fullPath = `${prefix}/${node.relative_path}`;
+    }
+  } else {
+    fullPath = node.relative_path;
+  }
   
   // Build the link with line numbers if available
   let link = `${baseUrl}/blob/main/${fullPath}`;
