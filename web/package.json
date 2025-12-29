@@ -8,7 +8,9 @@
     "build:vscode": "tsc && vite build --config vite.config.vscode.js",
     "dev": "vite",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "d3": "^7.9.0",
@@ -17,7 +19,8 @@
   "devDependencies": {
     "@types/d3": "^7.4.3",
     "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "^2.1.0"
   }
 }
 

@@ -18,8 +18,10 @@ function nodePassesModeFilter(node: D3Node, filters: FilterOptions): boolean {
  * - Other regex special chars are escaped
  * - Pattern is anchored: p_* matches "p_foo" but not "step_1"
  * - Use *pattern* for substring matching
+ * 
+ * @public Exported for testing
  */
-function globToRegex(pattern: string): RegExp {
+export function globToRegex(pattern: string): RegExp {
   // Escape regex special characters except * and ?
   let regexStr = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
   
@@ -507,7 +509,10 @@ export function applyFilters(
  *   - "edwards:decompress" → decompress in any path containing "edwards"
  *   - "u64:mul" → mul in any path containing "u64"
  */
-function matchesQuery(node: D3Node, query: string): boolean {
+/**
+ * @public Exported for testing
+ */
+export function matchesQuery(node: D3Node, query: string): boolean {
   // Check for Rust-style path-qualified syntax: "path::function"
   // Example: edwards::decompress, ristretto::*compress*
   const doubleColonIndex = query.indexOf('::');
