@@ -64,10 +64,6 @@ name = "detect_unused_specs"
 path = "src/bin/detect_unused_specs.rs"
 
 [[bin]]
-name = "dot_to_atoms_json_example"
-path = "src/bin/dot_to_atoms_json_example.rs"
-
-[[bin]]
 name = "enrich_csv_complete"
 path = "src/bin/enrich_csv_complete.rs"
 

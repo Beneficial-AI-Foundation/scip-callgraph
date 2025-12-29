@@ -81,6 +81,9 @@ jobs:
       - name: Build workspace (debug)
         run: cargo build --workspace --target ${{ matrix.target }}
 
+      - name: Run tests
+        run: cargo test --workspace --target ${{ matrix.target }}
+
       - name: Build key binaries (release)
         shell: bash
         run: |

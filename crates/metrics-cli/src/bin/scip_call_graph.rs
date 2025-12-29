@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand};
-use scip_core::scip_call_graph;
+use scip_core::{
+    build_call_graph, generate_call_graph_dot_string, generate_filtered_call_graph,
+    parse_scip_json, print_call_graph_summary,
+};
 use std::fs::File;
 use std::io::Write;
 
@@ -42,17 +45,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             output_dot_file,
         } => {
             // Parse SCIP JSON data
-            let scip_data = scip_call_graph::parse_scip_json(&scip_json_file)?;
+            let scip_data = parse_scip_json(&scip_json_file)?;
 
             // Build the call graph
-            let call_graph = scip_call_graph::build_call_graph(&scip_data);
+            let call_graph = build_call_graph(&scip_data);
 
             // Print summary
             println!("Call graph generated from {scip_json_file}");
-            scip_call_graph::print_call_graph_summary(&call_graph);
+            print_call_graph_summary(&call_graph);
 
-            // Generate DOT file
-            let dot_content = scip_call_graph::generate_call_graph_dot(&call_graph);
+            // Generate DOT content
+            let dot_content = generate_call_graph_dot_string(&call_graph);
 
             if let Some(path) = output_dot_file {
                 let mut file = File::create(&path)?;
@@ -71,10 +74,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             max_depth,
         } => {
             // Parse SCIP JSON data
-            let scip_data = scip_call_graph::parse_scip_json(&scip_json_file)?;
+            let scip_data = parse_scip_json(&scip_json_file)?;
 
             // Build the full call graph
-            let full_graph = scip_call_graph::build_call_graph(&scip_data);
+            let full_graph = build_call_graph(&scip_data);
 
             // Find possible matches for the entry point
             let mut matching_entries = Vec::new();
@@ -101,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             // Generate filtered graph
-            let filtered_graph = scip_call_graph::generate_filtered_call_graph(
+            let filtered_graph = generate_filtered_call_graph(
                 &full_graph,
                 &[matching_entries[0].clone()],
                 max_depth,
@@ -112,10 +115,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(depth) = max_depth {
                 println!("(limited to depth {depth})");
             }
-            scip_call_graph::print_call_graph_summary(&filtered_graph);
+            print_call_graph_summary(&filtered_graph);
 
-            // Generate DOT file
-            let dot_content = scip_call_graph::generate_call_graph_dot(&filtered_graph);
+            // Generate DOT content
+            let dot_content = generate_call_graph_dot_string(&filtered_graph);
 
             if let Some(path) = output_dot_file {
                 let mut file = File::create(&path)?;

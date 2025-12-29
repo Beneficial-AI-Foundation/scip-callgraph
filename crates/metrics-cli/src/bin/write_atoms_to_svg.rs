@@ -1,8 +1,6 @@
 use log::{error, info};
 use scip_core::logging::{init_logger, should_enable_debug};
-use scip_core::scip_to_call_graph_json::{
-    build_call_graph, generate_call_graph_svg, parse_scip_json,
-};
+use scip_core::{build_call_graph, generate_call_graph_svg, parse_scip_json};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

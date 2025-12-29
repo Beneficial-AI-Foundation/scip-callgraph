@@ -1,4 +1,4 @@
-use scip_core::scip_to_call_graph_json::{build_call_graph, parse_scip_json, FunctionNode};
+use scip_core::{build_call_graph, parse_scip_json, FunctionNode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -42,8 +42,7 @@ fn check_command_exists(cmd: &str) -> bool {
 }
 
 fn symbol_to_path(symbol: &str, display_name: &str) -> String {
-    // Reuse the symbol_to_path function from scip_to_call_graph_json
-    scip_core::scip_to_call_graph_json::symbol_to_path(symbol, display_name)
+    scip_core::symbol_to_path(symbol, display_name)
 }
 
 fn convert_to_atoms_with_lines(call_graph: &HashMap<String, FunctionNode>) -> Vec<AtomWithLines> {

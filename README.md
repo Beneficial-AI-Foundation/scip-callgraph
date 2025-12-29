@@ -118,7 +118,7 @@ cargo run --release --bin pipeline -- /path/to/verus-project
 cd web && npm install && npm run dev
 ```
 
-Open http://localhost:5173 to explore your call graph interactively.
+Open http://localhost:3000 to explore your call graph interactively.
 
 The pipeline automatically:
 1. **Generates SCIP index** from your Verus project

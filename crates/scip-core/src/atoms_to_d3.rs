@@ -5,7 +5,7 @@
 //!
 //! This approach keeps scip-atoms unchanged while extending its output for our needs.
 
-use crate::scip_to_call_graph_json::{D3Graph, D3GraphMetadata, D3Link, D3Node, FunctionMode};
+use crate::types::{D3Graph, D3GraphMetadata, D3Link, D3Node, FunctionMode};
 use scip_atoms::{AtomWithLines, FunctionNode};
 use std::collections::HashMap;
 use std::path::Path;

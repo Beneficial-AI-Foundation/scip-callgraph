@@ -1,9 +1,7 @@
 use clap::Parser;
 use log::{debug, info};
 use scip_core::logging::init_logger;
-use scip_core::scip_to_call_graph_json::{
-    build_call_graph, generate_call_graph_dot, parse_scip_json,
-};
+use scip_core::{build_call_graph, generate_call_graph_dot, parse_scip_json};
 
 /// Generate call graph DOT files from SCIP data
 #[derive(Parser, Debug)]

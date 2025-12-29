@@ -90,7 +90,7 @@ npm install
 npm run dev
 ```
 
-The viewer will open in your browser (usually at `http://localhost:5173`).
+The viewer will open in your browser (usually at `http://localhost:3000`).
 
 #### 4. Load and Explore
 

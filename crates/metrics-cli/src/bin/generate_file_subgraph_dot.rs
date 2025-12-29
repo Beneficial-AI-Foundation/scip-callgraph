@@ -1,7 +1,7 @@
 // filepath: /home/lacra/git_repos/baif/scip-callgraph/src/bin/generate_file_subgraph_dot.rs
 use log::{debug, error, info, warn};
 use scip_core::logging::{init_logger, should_enable_debug};
-use scip_core::scip_to_call_graph_json::{build_call_graph, parse_scip_json};
+use scip_core::{build_call_graph, parse_scip_json, FunctionNode};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -114,7 +114,7 @@ fn load_verification_report(path: &str) -> Result<VerificationResult, Box<dyn st
 }
 
 fn generate_file_subgraph_dot_with_verification(
-    call_graph: &HashMap<String, scip_core::scip_to_call_graph_json::FunctionNode>,
+    call_graph: &HashMap<String, FunctionNode>,
     file_path: &str,
     output_path: &str,
     verification_status: &Option<VerificationResult>,
@@ -138,7 +138,7 @@ fn generate_file_subgraph_dot_with_verification(
         .unwrap_or_default();
 
     // Find nodes that belong to the specified file - more flexible path matching
-    let file_nodes: Vec<&scip_core::scip_to_call_graph_json::FunctionNode> = call_graph
+    let file_nodes: Vec<&FunctionNode> = call_graph
         .values()
         .filter(|node| {
             // Extract the filename from the provided file_path argument

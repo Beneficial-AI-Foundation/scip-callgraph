@@ -1,7 +1,7 @@
 use clap::Parser;
 use log::{error, info};
 use scip_core::logging::init_logger;
-use scip_core::scip_to_call_graph_json::{build_call_graph, export_call_graph_d3, parse_scip_json};
+use scip_core::{build_call_graph, export_call_graph_d3, parse_scip_json};
 
 /// Export call graph in D3.js force-directed graph format
 #[derive(Parser, Debug)]
