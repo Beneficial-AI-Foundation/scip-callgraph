@@ -174,3 +174,6 @@ path = "src/bin/write_atoms_to_svg.rs"
 [[bin]]
 name = "pipeline"
 path = "src/bin/pipeline.rs"
+
+[dev-dependencies]
+tempfile = "3.10"

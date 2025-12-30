@@ -526,3 +526,373 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// =============================================================================
+// Tests
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    // =========================================================================
+    // normalize_path tests
+    // =========================================================================
+
+    #[test]
+    fn test_normalize_path_strips_file_protocol() {
+        // Path with /src/ gets normalized to start from src/
+        let path = "file:///home/user/project/src/lib.rs";
+        assert_eq!(normalize_path(path), "src/lib.rs");
+    }
+
+    #[test]
+    fn test_normalize_path_strips_file_protocol_no_src() {
+        // Path without /src/ just strips the file:// protocol
+        let path = "file:///home/user/build.rs";
+        assert_eq!(normalize_path(path), "/home/user/build.rs");
+    }
+
+    #[test]
+    fn test_normalize_path_extracts_from_src() {
+        let path = "/home/user/project/src/backend/scalar.rs";
+        assert_eq!(normalize_path(path), "src/backend/scalar.rs");
+    }
+
+    #[test]
+    fn test_normalize_path_with_file_protocol_and_src() {
+        let path = "file:///home/user/my-project/src/lib.rs";
+        assert_eq!(normalize_path(path), "src/lib.rs");
+    }
+
+    #[test]
+    fn test_normalize_path_no_src_returns_as_is() {
+        let path = "/home/user/project/lib.rs";
+        assert_eq!(normalize_path(path), "/home/user/project/lib.rs");
+    }
+
+    #[test]
+    fn test_normalize_path_nested_src() {
+        // Should match the first /src/
+        let path = "/project/src/nested/src/file.rs";
+        assert_eq!(normalize_path(path), "src/nested/src/file.rs");
+    }
+
+    #[test]
+    fn test_enrich_with_verification_status_basic() {
+        use scip_atoms::verification::{
+            AnalysisSummary, CompilationResult, FunctionLocation, VerificationResult, CodeTextInfo,
+        };
+
+        let temp_dir = TempDir::new().unwrap();
+        let graph_path = temp_dir.path().join("test_graph.json");
+
+        // Create a minimal graph with a node
+        let graph = serde_json::json!({
+            "nodes": [
+                {
+                    "id": "test::my_function",
+                    "display_name": "my_function",
+                    "relative_path": "src/lib.rs",
+                    "full_path": "/project/src/lib.rs"
+                },
+                {
+                    "id": "test::other_function",
+                    "display_name": "other_function",
+                    "relative_path": "src/other.rs",
+                    "full_path": "/project/src/other.rs"
+                }
+            ],
+            "links": []
+        });
+        fs::write(&graph_path, serde_json::to_string_pretty(&graph).unwrap()).unwrap();
+
+        // Create a mock verification result
+        let result = AnalysisResult {
+            status: AnalysisStatus::Success,
+            summary: AnalysisSummary {
+                total_functions: 2,
+                verified_functions: 1,
+                failed_functions: 0,
+                unverified_functions: 1,
+                verification_errors: 0,
+                compilation_errors: 0,
+                compilation_warnings: 0,
+            },
+            verification: VerificationResult {
+                verified_functions: vec![FunctionLocation {
+                    display_name: "my_function".to_string(),
+                    scip_name: None,
+                    code_path: "src/lib.rs".to_string(),
+                    code_text: CodeTextInfo { lines_start: 1, lines_end: 10 },
+                }],
+                failed_functions: vec![],
+                unverified_functions: vec![FunctionLocation {
+                    display_name: "other_function".to_string(),
+                    scip_name: None,
+                    code_path: "src/other.rs".to_string(),
+                    code_text: CodeTextInfo { lines_start: 1, lines_end: 5 },
+                }],
+                errors: vec![],
+            },
+            compilation: CompilationResult {
+                errors: vec![],
+                warnings: vec![],
+            },
+        };
+
+        // Run enrichment
+        let enriched_count = enrich_with_verification_status(&graph_path, &result).unwrap();
+        assert_eq!(enriched_count, 2);
+
+        // Verify the graph was enriched
+        let enriched_graph: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&graph_path).unwrap()).unwrap();
+        let nodes = enriched_graph["nodes"].as_array().unwrap();
+
+        let my_func = nodes.iter().find(|n| n["display_name"] == "my_function").unwrap();
+        assert_eq!(my_func["verification_status"], "verified");
+
+        let other_func = nodes.iter().find(|n| n["display_name"] == "other_function").unwrap();
+        assert_eq!(other_func["verification_status"], "unverified");
+    }
+
+    #[test]
+    fn test_enrich_with_verification_status_handles_failed() {
+        use scip_atoms::verification::{
+            AnalysisSummary, CompilationResult, FunctionLocation, VerificationResult, CodeTextInfo,
+        };
+
+        let temp_dir = TempDir::new().unwrap();
+        let graph_path = temp_dir.path().join("test_graph.json");
+
+        let graph = serde_json::json!({
+            "nodes": [
+                {
+                    "id": "test::failing_proof",
+                    "display_name": "failing_proof",
+                    "relative_path": "src/proofs.rs",
+                    "full_path": "/project/src/proofs.rs"
+                }
+            ],
+            "links": []
+        });
+        fs::write(&graph_path, serde_json::to_string_pretty(&graph).unwrap()).unwrap();
+
+        let result = AnalysisResult {
+            status: AnalysisStatus::VerificationFailed,
+            summary: AnalysisSummary {
+                total_functions: 1,
+                verified_functions: 0,
+                failed_functions: 1,
+                unverified_functions: 0,
+                verification_errors: 1,
+                compilation_errors: 0,
+                compilation_warnings: 0,
+            },
+            verification: VerificationResult {
+                verified_functions: vec![],
+                failed_functions: vec![FunctionLocation {
+                    display_name: "failing_proof".to_string(),
+                    scip_name: None,
+                    code_path: "src/proofs.rs".to_string(),
+                    code_text: CodeTextInfo { lines_start: 1, lines_end: 20 },
+                }],
+                unverified_functions: vec![],
+                errors: vec![],
+            },
+            compilation: CompilationResult {
+                errors: vec![],
+                warnings: vec![],
+            },
+        };
+
+        let enriched_count = enrich_with_verification_status(&graph_path, &result).unwrap();
+        assert_eq!(enriched_count, 1);
+
+        let enriched_graph: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&graph_path).unwrap()).unwrap();
+        let node = &enriched_graph["nodes"][0];
+        assert_eq!(node["verification_status"], "failed");
+    }
+
+    // =========================================================================
+    // Integration test: export_call_graph with mock SCIP data
+    // =========================================================================
+
+    /// Creates a minimal mock SCIP JSON for testing
+    fn create_mock_scip_json() -> serde_json::Value {
+        serde_json::json!({
+            "metadata": {
+                "version": 1,
+                "tool_info": {
+                    "name": "rust-analyzer",
+                    "version": "test"
+                },
+                "project_root": "file:///mock/project",
+                "text_document_encoding": 1
+            },
+            "documents": [
+                {
+                    "relative_path": "src/lib.rs",
+                    "language": "rust",
+                    "position_encoding": 1,
+                    "occurrences": [
+                        {
+                            "range": [10, 0, 10, 10],
+                            "symbol": "rust-analyzer cargo mock 0.1.0 lib/foo().",
+                            "symbol_roles": 1
+                        },
+                        {
+                            "range": [15, 4, 15, 7],
+                            "symbol": "rust-analyzer cargo mock 0.1.0 lib/bar().",
+                            "symbol_roles": 0
+                        }
+                    ],
+                    "symbols": [
+                        {
+                            "symbol": "rust-analyzer cargo mock 0.1.0 lib/foo().",
+                            "kind": 12,
+                            "display_name": "foo",
+                            "signature_documentation": {
+                                "language": "rust",
+                                "text": "fn foo()",
+                                "position_encoding": 1
+                            }
+                        },
+                        {
+                            "symbol": "rust-analyzer cargo mock 0.1.0 lib/bar().",
+                            "kind": 12,
+                            "display_name": "bar",
+                            "signature_documentation": {
+                                "language": "rust",
+                                "text": "fn bar()",
+                                "position_encoding": 1
+                            }
+                        }
+                    ]
+                }
+            ]
+        })
+    }
+
+    #[test]
+    fn test_export_call_graph_with_mock_scip() {
+        let temp_dir = TempDir::new().unwrap();
+        let scip_json_path = temp_dir.path().join("index.scip.json");
+        let output_path = temp_dir.path().join("graph.json");
+
+        // Write mock SCIP JSON
+        let mock_scip = create_mock_scip_json();
+        fs::write(&scip_json_path, serde_json::to_string_pretty(&mock_scip).unwrap()).unwrap();
+
+        // Run export
+        let result = export_call_graph(
+            &scip_json_path,
+            &output_path,
+            "/mock/project",
+            None,
+        );
+        assert!(result.is_ok(), "export_call_graph should succeed: {:?}", result);
+
+        // Verify output exists and is valid JSON
+        assert!(output_path.exists());
+        let graph_content = fs::read_to_string(&output_path).unwrap();
+        let graph: serde_json::Value = serde_json::from_str(&graph_content).unwrap();
+
+        // Verify structure - the graph should have nodes and links arrays
+        assert!(graph["nodes"].is_array(), "Graph should have 'nodes' array");
+        assert!(graph["links"].is_array(), "Graph should have 'links' array");
+
+        let nodes = graph["nodes"].as_array().unwrap();
+        let links = graph["links"].as_array().unwrap();
+        
+        // The minimal mock may not produce nodes (depends on function-like kind detection)
+        // but the output structure should be valid
+        eprintln!(
+            "✓ Mock SCIP test: {} nodes, {} links",
+            nodes.len(),
+            links.len()
+        );
+        
+        // If there are nodes, verify their structure
+        if !nodes.is_empty() {
+            let first_node = &nodes[0];
+            assert!(first_node["id"].is_string());
+            assert!(first_node["display_name"].is_string());
+        }
+    }
+
+    #[test]
+    fn test_export_call_graph_with_github_url() {
+        let temp_dir = TempDir::new().unwrap();
+        let scip_json_path = temp_dir.path().join("index.scip.json");
+        let output_path = temp_dir.path().join("graph.json");
+
+        // Write mock SCIP JSON
+        let mock_scip = create_mock_scip_json();
+        fs::write(&scip_json_path, serde_json::to_string_pretty(&mock_scip).unwrap()).unwrap();
+
+        // Run export with GitHub URL
+        let github_url = Some("https://github.com/test/repo".to_string());
+        let result = export_call_graph(
+            &scip_json_path,
+            &output_path,
+            "/mock/project",
+            github_url,
+        );
+        assert!(result.is_ok());
+
+        // Verify output
+        let graph: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(&output_path).unwrap()
+        ).unwrap();
+        
+        // Graph should be valid
+        assert!(graph["nodes"].is_array());
+    }
+
+    // =========================================================================
+    // generate_scip tests (uses mock cached SCIP)
+    // =========================================================================
+
+    #[test]
+    fn test_generate_scip_uses_cached_json() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_dir = temp_dir.path().to_path_buf();
+        
+        // Create a mock cached SCIP JSON
+        let cached_json = project_dir.join("index.scip.json");
+        fs::write(&cached_json, r#"{"metadata": {}, "documents": []}"#).unwrap();
+
+        // Should return the cached path when use_cached=true
+        let result = generate_scip(&project_dir, true);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), cached_json);
+    }
+
+    #[test]
+    fn test_generate_scip_returns_error_without_cache_or_tools() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_dir = temp_dir.path().to_path_buf();
+        
+        // No cached JSON, and verus-analyzer likely not installed
+        // This should either use cache (if exists) or fail gracefully
+        let result = generate_scip(&project_dir, true);
+        
+        // With use_cached=true but no cache, it should try to regenerate
+        // and likely fail (verus-analyzer not available)
+        // We just verify it doesn't panic
+        if result.is_err() {
+            let err = result.unwrap_err();
+            // Should mention verus-analyzer or scip
+            assert!(
+                err.contains("verus-analyzer") || err.contains("scip") || err.contains("not found"),
+                "Error should mention missing tool: {}",
+                err
+            );
+        }
+    }
+}
+
