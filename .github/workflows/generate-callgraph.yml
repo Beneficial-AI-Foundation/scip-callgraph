@@ -193,12 +193,16 @@ jobs:
         run: |
           npm ci
           
-          # Set base path for subpath deployment
+          # Set base path for deployment
           if [ "${{ inputs.deploy_mode }}" = "subpath" ]; then
             echo "Building for subpath: /${{ inputs.subpath }}/"
             npx vite build --base=/${{ inputs.subpath }}/
           else
-            npx vite build
+            # Extract repo name from github_url for standalone deployment
+            # e.g., https://github.com/org/repo -> /repo/
+            REPO_NAME=$(echo "${{ inputs.github_url }}" | sed 's|.*/||')
+            echo "Building for standalone deployment: /${REPO_NAME}/"
+            npx vite build --base=/${REPO_NAME}/
           fi
 
       # Step 4: Prepare artifact
