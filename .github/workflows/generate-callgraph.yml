@@ -1,4 +1,4 @@
-# Reusable workflow for generating enriched call graphs from Verus projects
+# Reusable workflow for generating enriched call graphs from Rust/Verus projects
 # 
 # Usage in your project:
 #   jobs:
@@ -6,6 +6,15 @@
 #       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
 #       with:
 #         github_url: https://github.com/your-org/your-repo
+#
+# For non-Verus projects, use rust-analyzer instead:
+#   jobs:
+#     callgraph:
+#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+#       with:
+#         github_url: https://github.com/your-org/your-repo
+#         use_rust_analyzer: true
+#         skip_verification: true
 #
 name: Generate Call Graph
 
@@ -51,6 +60,11 @@ on:
         required: false
         default: 'callgraph'
         type: string
+      use_rust_analyzer:
+        description: 'Use rust-analyzer instead of verus-analyzer for SCIP generation'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -100,6 +114,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Install verus-analyzer
+        if: ${{ !inputs.use_rust_analyzer }}
         run: |
           VERUS_URL=$(curl -s https://api.github.com/repos/verus-lang/verus-analyzer/releases/latest | jq -r '.assets[] | select(.name == "verus-analyzer-x86_64-unknown-linux-gnu.gz") | .browser_download_url')
           wget "$VERUS_URL" -O verus-analyzer.gz
@@ -107,6 +122,12 @@ jobs:
           chmod +x verus-analyzer
           sudo mv verus-analyzer /usr/local/bin/
           verus-analyzer --version
+
+      - name: Install rust-analyzer
+        if: ${{ inputs.use_rust_analyzer }}
+        run: |
+          rustup component add rust-analyzer
+          rust-analyzer --version
 
       - name: Install Verus (for verification)
         if: ${{ !inputs.skip_verification }}
@@ -143,9 +164,16 @@ jobs:
       # Step 1: Generate SCIP index
       - name: Generate SCIP index
         working-directory: project/${{ inputs.project_path }}
+        env:
+          USE_RUST_ANALYZER: ${{ inputs.use_rust_analyzer }}
         run: |
-          echo "Generating SCIP index..."
-          verus-analyzer scip .
+          if [ "$USE_RUST_ANALYZER" = "true" ]; then
+            ANALYZER="rust-analyzer"
+          else
+            ANALYZER="verus-analyzer"
+          fi
+          echo "Generating SCIP index using $ANALYZER..."
+          $ANALYZER scip .
           echo "Converting SCIP to JSON..."
           scip print --json index.scip > index.scip.json
           echo "✓ SCIP JSON generated"
@@ -161,6 +189,7 @@ jobs:
           SKIP_VERIFICATION: ${{ inputs.skip_verification }}
           SKIP_SIMILAR_LEMMAS: ${{ inputs.skip_similar_lemmas }}
           PACKAGE: ${{ inputs.package }}
+          USE_RUST_ANALYZER: ${{ inputs.use_rust_analyzer }}
         working-directory: scip-callgraph
         run: |
           ARGS="--use-cached-scip"
@@ -179,6 +208,10 @@ jobs:
           
           if [ -n "$PACKAGE" ]; then
             ARGS="$ARGS --package $PACKAGE"
+          fi
+          
+          if [ "$USE_RUST_ANALYZER" = "true" ]; then
+            ARGS="$ARGS --use-rust-analyzer"
           fi
           
           echo "Running pipeline with: $ARGS"

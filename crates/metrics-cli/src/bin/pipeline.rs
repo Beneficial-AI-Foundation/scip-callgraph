@@ -57,6 +57,10 @@ struct Args {
     /// (e.g., https://github.com/user/repo)
     #[arg(long)]
     github_url: Option<String>,
+
+    /// Use rust-analyzer instead of verus-analyzer for SCIP generation
+    #[arg(long)]
+    use_rust_analyzer: bool,
 }
 
 
@@ -64,38 +68,45 @@ fn check_command_exists(cmd: &str) -> bool {
     which::which(cmd).is_ok()
 }
 
-/// Run verus-analyzer scip to generate a new SCIP binary
-fn generate_new_scip(project: &Path) -> Result<PathBuf, String> {
+/// Run verus-analyzer or rust-analyzer to generate a new SCIP binary
+fn generate_new_scip(project: &Path, use_rust_analyzer: bool) -> Result<PathBuf, String> {
+    let analyzer = if use_rust_analyzer { "rust-analyzer" } else { "verus-analyzer" };
+    
     // Check prerequisites
-    if !check_command_exists("verus-analyzer") {
-        return Err("verus-analyzer not found in PATH. Install with: rustup component add verus-analyzer".to_string());
+    if !check_command_exists(analyzer) {
+        let install_hint = if use_rust_analyzer {
+            "Install with: rustup component add rust-analyzer"
+        } else {
+            "Install verus-analyzer from https://github.com/verus-lang/verus-analyzer/releases"
+        };
+        return Err(format!("{} not found in PATH. {}", analyzer, install_hint));
     }
 
-    info!("Generating SCIP index for {}...", project.display());
+    info!("Generating SCIP index using {} for {}...", analyzer, project.display());
     info!("  (This may take a while for large projects)");
 
-    // Run verus-analyzer scip
-    let scip_status = Command::new("verus-analyzer")
+    // Run analyzer scip command
+    let scip_status = Command::new(analyzer)
         .args(["scip", "."])
         .current_dir(project)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .map_err(|e| format!("Failed to run verus-analyzer: {}", e))?;
+        .map_err(|e| format!("Failed to run {}: {}", analyzer, e))?;
 
     if !scip_status.success() {
         return Err(format!(
-            "verus-analyzer scip failed with status: {}",
-            scip_status
+            "{} scip failed with status: {}",
+            analyzer, scip_status
         ));
     }
 
     let generated_scip_path = project.join("index.scip");
     if !generated_scip_path.exists() {
-        return Err("index.scip not found after running verus-analyzer scip".to_string());
+        return Err(format!("index.scip not found after running {} scip", analyzer));
     }
 
-    info!("✓ SCIP index generated");
+    info!("✓ SCIP index generated using {}", analyzer);
     Ok(generated_scip_path)
 }
 
@@ -103,7 +114,7 @@ fn generate_new_scip(project: &Path) -> Result<PathBuf, String> {
 /// 
 /// By default, always regenerates fresh SCIP data.
 /// If `use_cached` is true, uses existing index.scip.json if available.
-fn generate_scip(project: &Path, use_cached: bool) -> Result<PathBuf, String> {
+fn generate_scip(project: &Path, use_cached: bool, use_rust_analyzer: bool) -> Result<PathBuf, String> {
     let root_json_path = project.join("index.scip.json");
 
     // If caching is enabled, check for existing JSON
@@ -120,7 +131,7 @@ fn generate_scip(project: &Path, use_cached: bool) -> Result<PathBuf, String> {
     }
 
     // Generate fresh SCIP binary
-    let scip_path = generate_new_scip(project)?;
+    let scip_path = generate_new_scip(project, use_rust_analyzer)?;
 
     // Convert SCIP to JSON
     if !check_command_exists("scip") {
@@ -451,7 +462,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 1: Generate SCIP
     println!("─── Step 1: Generate SCIP Index ───────────────────────────────");
-    let scip_json = match generate_scip(&args.project, args.use_cached_scip) {
+    if args.use_rust_analyzer {
+        info!("Using rust-analyzer (non-Verus mode)");
+    }
+    let scip_json = match generate_scip(&args.project, args.use_cached_scip, args.use_rust_analyzer) {
         Ok(path) => path,
         Err(e) => {
             error!("Failed to generate SCIP: {}", e);
@@ -782,7 +796,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let scip_json_path = temp_dir.path().join("index.scip.json");
         let output_path = temp_dir.path().join("graph.json");
-
+        
         // Write mock SCIP JSON
         let mock_scip = create_mock_scip_json();
         fs::write(&scip_json_path, serde_json::to_string_pretty(&mock_scip).unwrap()).unwrap();
@@ -866,8 +880,8 @@ mod tests {
         let cached_json = project_dir.join("index.scip.json");
         fs::write(&cached_json, r#"{"metadata": {}, "documents": []}"#).unwrap();
 
-        // Should return the cached path when use_cached=true
-        let result = generate_scip(&project_dir, true);
+        // Should return the cached path when use_cached=true (use_rust_analyzer=false is default)
+        let result = generate_scip(&project_dir, true, false);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), cached_json);
     }
@@ -879,16 +893,16 @@ mod tests {
         
         // No cached JSON, and verus-analyzer likely not installed
         // This should either use cache (if exists) or fail gracefully
-        let result = generate_scip(&project_dir, true);
+        let result = generate_scip(&project_dir, true, false);
         
         // With use_cached=true but no cache, it should try to regenerate
         // and likely fail (verus-analyzer not available)
         // We just verify it doesn't panic
         if result.is_err() {
             let err = result.unwrap_err();
-            // Should mention verus-analyzer or scip
+            // Should mention verus-analyzer or rust-analyzer or scip
             assert!(
-                err.contains("verus-analyzer") || err.contains("scip") || err.contains("not found"),
+                err.contains("verus-analyzer") || err.contains("rust-analyzer") || err.contains("scip") || err.contains("not found"),
                 "Error should mention missing tool: {}",
                 err
             );

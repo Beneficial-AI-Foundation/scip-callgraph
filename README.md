@@ -143,6 +143,9 @@ cargo run --release --bin pipeline -- /path/to/project --github-url https://gith
 
 # For workspace projects
 cargo run --release --bin pipeline -- /path/to/project -p my-crate
+
+# Use rust-analyzer instead of verus-analyzer (for non-Verus projects)
+cargo run --release --bin pipeline -- /path/to/project --use-rust-analyzer --skip-verification
 ```
 
 #### Verification Status Colors
@@ -275,9 +278,11 @@ git push origin v1.0.0
 
 ---
 
-## CI Integration for Verus Projects
+## CI Integration for Rust/Verus Projects
 
-To automatically generate call graphs for a Verus project, one can use our reusable GitHub Actions workflow:
+To automatically generate call graphs for your project, use our reusable GitHub Actions workflow:
+
+### For Verus Projects (default)
 
 ```yaml
 # .github/workflows/deploy-callgraph.yml
@@ -297,6 +302,21 @@ jobs:
     uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
     with:
       github_url: https://github.com/YOUR_ORG/YOUR_REPO
+```
+
+### For Non-Verus Rust Projects
+
+Use `use_rust_analyzer: true` to use rust-analyzer instead of verus-analyzer:
+
+```yaml
+jobs:
+  callgraph:
+    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    with:
+      github_url: https://github.com/YOUR_ORG/YOUR_REPO
+      use_rust_analyzer: true
+      skip_verification: true
+      skip_similar_lemmas: true
 ```
 
 The interactive call graph will be deployed to GitHub Pages.
