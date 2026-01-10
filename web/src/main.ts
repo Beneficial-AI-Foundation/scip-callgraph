@@ -122,7 +122,7 @@ function showLargeGraphPrompt(fileSize: number): void {
       <div style="background: #fff3e0; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
         <div style="color: #e65100; font-weight: bold; margin-bottom: 8px;">📊 Large Graph Detected (${sizeMB} MB)</div>
         <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: #333;">
-          Enter a <strong>Source</strong> or <strong>Sink</strong> query, then press <strong>Enter</strong> or click <strong>Load & Search</strong>.
+          Enter a <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filter, then press <strong>Enter</strong> or click <strong>Load & Search</strong>.
         </p>
         <button id="load-graph-btn" style="background: #1976d2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
           Load & Search
@@ -616,7 +616,58 @@ function setupUIHandlers(): void {
   document.getElementById('include-files')?.addEventListener('input', (e) => {
     state.filters.includeFiles = (e.target as HTMLInputElement).value;
     updateFileListSelection();  // Update file list checkmarks
-    applyFiltersAndUpdate();
+    // Only auto-apply if graph is already loaded, use debounce for large graphs
+    if (state.fullGraph) {
+      if (isLargeGraph(state.fullGraph)) {
+        debouncedApplyFilters();
+      } else {
+        applyFiltersAndUpdate();
+      }
+    }
+  });
+  
+  // Handle Enter key to trigger immediate filter or deferred graph loading
+  // Also check for ambiguous file patterns and show disambiguation dropdown
+  document.getElementById('include-files')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      console.log('Enter pressed in include-files. deferredGraphUrl:', deferredGraphUrl, 'state.fullGraph:', !!state.fullGraph);
+      
+      // Hide any existing dropdown first
+      hideDisambiguationDropdown();
+      
+      if (deferredGraphUrl) {
+        // Graph not loaded yet - load it first, then check for disambiguation
+        console.log('Loading deferred graph...');
+        loadDeferredGraphWithDisambiguation();
+      } else if (state.fullGraph) {
+        // Check for ambiguous patterns before applying
+        const hasAmbiguity = checkAndShowDisambiguation();
+        if (!hasAmbiguity) {
+          // No ambiguity - apply filters immediately
+          if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+          applyFiltersAndUpdate();
+        }
+        // If ambiguous, dropdown is shown and user will select
+      } else {
+        console.log('No graph loaded and no deferred URL');
+      }
+    } else if (e.key === 'Escape') {
+      // Allow Escape to close the dropdown
+      hideDisambiguationDropdown();
+    }
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('file-disambiguation-dropdown');
+    const input = document.getElementById('include-files');
+    if (dropdown && dropdown.style.display !== 'none') {
+      const target = e.target as HTMLElement;
+      if (!dropdown.contains(target) && target !== input) {
+        hideDisambiguationDropdown();
+      }
+    }
   });
 
   document.getElementById('depth-limit')?.addEventListener('input', (e) => {
@@ -770,7 +821,7 @@ async function loadDeferredGraph(): Promise<void> {
   
   // Check if user has entered a search query
   if (!hasSearchFilters()) {
-    showError('Please enter a Source or Sink query first to filter the large graph.');
+    showError('Please enter a Source, Sink, or Include Files filter first to filter the large graph.');
     return;
   }
   
@@ -806,6 +857,87 @@ async function loadDeferredGraph(): Promise<void> {
 }
 
 /**
+ * Load a deferred graph and then check for disambiguation
+ * This is used when pressing Enter in the include-files input
+ */
+async function loadDeferredGraphWithDisambiguation(): Promise<void> {
+  if (!deferredGraphUrl) return;
+  
+  // Prevent multiple simultaneous loads
+  if (isDeferredLoadInProgress) {
+    console.log('Deferred graph load already in progress, skipping');
+    return;
+  }
+  
+  // Check if user has entered a search query
+  if (!hasSearchFilters()) {
+    showError('Please enter a Source, Sink, or Include Files filter first to filter the large graph.');
+    return;
+  }
+  
+  isDeferredLoadInProgress = true;
+  
+  const statsDiv = document.getElementById('stats');
+  if (statsDiv) {
+    statsDiv.innerHTML = `
+      <div style="padding: 1rem; text-align: center;">
+        <div style="margin-bottom: 0.5rem;">⏳ Loading graph...</div>
+        <div style="font-size: 0.8rem; color: #666;">This may take a few seconds...</div>
+      </div>
+    `;
+  }
+  
+  try {
+    const response = await fetch(deferredGraphUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    const graph: D3Graph = JSON.parse(text);
+    
+    deferredGraphUrl = null; // Clear the deferred URL
+    
+    // Load the graph but DON'T apply filters yet
+    state.fullGraph = {
+      nodes: graph.nodes.map(n => ({ ...n })),
+      links: graph.links.map(l => ({ ...l })),
+      metadata: { ...graph.metadata },
+    };
+    
+    // Populate the file list so disambiguation has data
+    populateFileList();
+    
+    console.log('Graph loaded, checking for disambiguation...');
+    
+    // Now check for disambiguation
+    const hasAmbiguity = checkAndShowDisambiguation();
+    if (!hasAmbiguity) {
+      // No ambiguity - apply filters
+      console.log('No ambiguity, applying filters');
+      loadGraph(graph, 'Loaded from deferred graph');
+    } else {
+      // Show success message but don't apply filters yet (user selecting)
+      console.log('Ambiguity found, waiting for user selection');
+      const statsDiv = document.getElementById('stats');
+      if (statsDiv) {
+        statsDiv.innerHTML = `
+          <div style="padding: 1rem; text-align: center;">
+            <div style="margin-bottom: 0.5rem;">📊 Graph loaded (${graph.nodes.length.toLocaleString()} nodes)</div>
+            <div style="font-size: 0.8rem; color: #666;">Select files from the dropdown above...</div>
+          </div>
+        `;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load deferred graph:', error);
+    showError(`Failed to load graph: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } finally {
+    isDeferredLoadInProgress = false;
+  }
+}
+
+/**
  * Check if graph is too large to render without filters
  */
 function isLargeGraph(graph: D3Graph): boolean {
@@ -813,10 +945,12 @@ function isLargeGraph(graph: D3Graph): boolean {
 }
 
 /**
- * Check if user has specified meaningful filters (source or sink query)
+ * Check if user has specified meaningful filters (source, sink, or include files)
  */
 function hasSearchFilters(): boolean {
-  return state.filters.sourceQuery.trim() !== '' || state.filters.sinkQuery.trim() !== '';
+  return state.filters.sourceQuery.trim() !== '' || 
+         state.filters.sinkQuery.trim() !== '' ||
+         state.filters.includeFiles.trim() !== '';
 }
 
 /**
@@ -875,7 +1009,7 @@ function loadGraph(graph: D3Graph, message: string): void {
     if (isLarge && !hasSearchFilters()) {
       // Show warning for large graphs
       successMsg.style.cssText = 'background: #ff9800; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
-      successMsg.innerHTML = `⚠️ Large graph (${graph.nodes.length.toLocaleString()} nodes, ${graph.links.length.toLocaleString()} links). Use <strong>Source</strong> or <strong>Sink</strong> filters to search.`;
+      successMsg.innerHTML = `⚠️ Large graph (${graph.nodes.length.toLocaleString()} nodes, ${graph.links.length.toLocaleString()} links). Use <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filters to search.`;
     } else {
       successMsg.style.cssText = 'background: #4caf50; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
       successMsg.textContent = `✓ ${message}`;
@@ -1031,7 +1165,7 @@ function updateStats(truncatedTo?: number): void {
     <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
       <span style="color: #e65100; font-weight: bold;">📊 Large Graph</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
-        Enter a <strong>Source</strong> or <strong>Sink</strong> query to explore the call graph.
+        Enter a <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filter to explore the call graph.
       </p>
     </div>
     ` : ''}
@@ -1192,7 +1326,75 @@ function updateNodeInfo(): void {
 }
 
 /**
+ * Information about a file entry for the file list
+ */
+interface FileListEntry {
+  fileName: string;           // Base file name (e.g., "edwards.rs")
+  relativePath: string;       // Full relative path (e.g., "curve25519-dalek/src/edwards.rs")
+  displayName: string;        // Display name with disambiguation if needed
+  filterPattern: string;      // Pattern to use in the filter (may include path for disambiguation)
+  count: number;              // Number of functions in this file
+  isDuplicate: boolean;       // Whether this filename has duplicates
+}
+
+/**
+ * Compute the shortest disambiguating path suffix for a set of paths
+ * For example, given:
+ *   - "curve25519-dalek/src/edwards.rs"
+ *   - "curve25519-dalek/src/backend/vector/ifma/edwards.rs"
+ * Returns:
+ *   - "src/edwards.rs"
+ *   - "ifma/edwards.rs"
+ */
+function computeDisambiguatedPaths(paths: string[]): Map<string, string> {
+  const result = new Map<string, string>();
+  
+  if (paths.length <= 1) {
+    // No disambiguation needed
+    paths.forEach(p => {
+      const fileName = p.split('/').pop() || p;
+      result.set(p, fileName);
+    });
+    return result;
+  }
+  
+  // Split each path into segments (reversed for bottom-up comparison)
+  const pathSegments = paths.map(p => p.split('/').reverse());
+  
+  // For each path, find the minimum number of segments needed to be unique
+  for (let i = 0; i < paths.length; i++) {
+    const segments = pathSegments[i];
+    let numSegments = 1;  // Start with just the filename
+    
+    // Increase segments until this path is unique among all paths
+    while (numSegments < segments.length) {
+      const suffix = segments.slice(0, numSegments).reverse().join('/');
+      
+      // Check if any other path has the same suffix
+      let isUnique = true;
+      for (let j = 0; j < paths.length; j++) {
+        if (i === j) continue;
+        const otherSuffix = pathSegments[j].slice(0, numSegments).reverse().join('/');
+        if (suffix === otherSuffix) {
+          isUnique = false;
+          break;
+        }
+      }
+      
+      if (isUnique) break;
+      numSegments++;
+    }
+    
+    const disambiguatedPath = segments.slice(0, numSegments).reverse().join('/');
+    result.set(paths[i], disambiguatedPath);
+  }
+  
+  return result;
+}
+
+/**
  * Populate the file list panel with unique files from the graph
+ * Shows disambiguated names for files with duplicate names
  */
 function populateFileList(): void {
   if (!state.fullGraph) return;
@@ -1201,42 +1403,381 @@ function populateFileList(): void {
   const fileCountSpan = document.getElementById('file-count');
   if (!fileListDiv) return;
 
-  // Get unique files with counts
-  const fileCounts = new Map<string, number>();
+  // Group nodes by file_name and relative_path
+  // Key: relative_path, Value: { fileName, count }
+  const filesByPath = new Map<string, { fileName: string; count: number }>();
   state.fullGraph.nodes.forEach(node => {
     const fileName = node.file_name || 'unknown';
-    fileCounts.set(fileName, (fileCounts.get(fileName) || 0) + 1);
+    const relativePath = node.relative_path || fileName;
+    
+    const existing = filesByPath.get(relativePath);
+    if (existing) {
+      existing.count++;
+    } else {
+      filesByPath.set(relativePath, { fileName, count: 1 });
+    }
   });
 
-  // Sort files alphabetically
-  const sortedFiles = [...fileCounts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  // Group by filename to detect duplicates
+  const pathsByFileName = new Map<string, string[]>();
+  for (const [relativePath, { fileName }] of filesByPath) {
+    if (!pathsByFileName.has(fileName)) {
+      pathsByFileName.set(fileName, []);
+    }
+    pathsByFileName.get(fileName)!.push(relativePath);
+  }
 
-  // Update count
+  // Build file list entries with disambiguation
+  const entries: FileListEntry[] = [];
+  
+  for (const [fileName, paths] of pathsByFileName) {
+    const isDuplicate = paths.length > 1;
+    
+    if (isDuplicate) {
+      // Compute disambiguated paths
+      const disambiguated = computeDisambiguatedPaths(paths);
+      
+      for (const relativePath of paths) {
+        const { count } = filesByPath.get(relativePath)!;
+        const disambiguatedPath = disambiguated.get(relativePath)!;
+        
+        entries.push({
+          fileName,
+          relativePath,
+          displayName: fileName,
+          filterPattern: disambiguatedPath,  // Use disambiguated path for filtering
+          count,
+          isDuplicate: true,
+        });
+      }
+    } else {
+      // No duplication, use simple filename
+      const relativePath = paths[0];
+      const { count } = filesByPath.get(relativePath)!;
+      
+      entries.push({
+        fileName,
+        relativePath,
+        displayName: fileName,
+        filterPattern: fileName,  // Simple filename for filtering
+        count,
+        isDuplicate: false,
+      });
+    }
+  }
+
+  // Sort entries: first by filename, then by path for duplicates
+  entries.sort((a, b) => {
+    const nameCompare = a.fileName.localeCompare(b.fileName);
+    if (nameCompare !== 0) return nameCompare;
+    return a.relativePath.localeCompare(b.relativePath);
+  });
+
+  // Update count (unique relative paths)
   if (fileCountSpan) {
-    fileCountSpan.textContent = sortedFiles.length.toString();
+    fileCountSpan.textContent = entries.length.toString();
   }
 
   // Build file list HTML
-  fileListDiv.innerHTML = sortedFiles.map(([fileName, count]) => `
-    <div class="file-list-item" data-file="${escapeHtml(fileName)}">
-      <span class="file-icon">📄</span>
-      <span class="file-name">${escapeHtml(fileName)}</span>
-      <span class="file-count">${count}</span>
-    </div>
-  `).join('');
+  fileListDiv.innerHTML = entries.map(entry => {
+    const disambigHtml = entry.isDuplicate 
+      ? `<span class="file-disambig">(${escapeHtml(entry.filterPattern.replace('/' + entry.fileName, ''))})</span>`
+      : '';
+    
+    return `
+      <div class="file-list-item${entry.isDuplicate ? ' has-duplicates' : ''}" 
+           data-file="${escapeHtml(entry.filterPattern)}"
+           data-path="${escapeHtml(entry.relativePath)}"
+           title="${escapeHtml(entry.relativePath)}">
+        <span class="file-icon">📄</span>
+        <span class="file-name">${escapeHtml(entry.fileName)}</span>
+        ${disambigHtml}
+        <span class="file-count">${entry.count}</span>
+      </div>
+    `;
+  }).join('');
 
   // Add click handlers to toggle file selection
   fileListDiv.querySelectorAll('.file-list-item').forEach(item => {
     item.addEventListener('click', () => {
-      const fileName = item.getAttribute('data-file');
-      if (fileName) {
-        toggleFileInFilter(fileName);
+      const filterPattern = item.getAttribute('data-file');
+      if (filterPattern) {
+        toggleFileInFilter(filterPattern);
       }
     });
   });
 
   // Update selection state based on current filter
   updateFileListSelection();
+}
+
+/**
+ * Information about a file that matches an ambiguous pattern
+ */
+interface AmbiguousFileMatch {
+  fileName: string;
+  relativePath: string;
+  disambiguatedPath: string;
+  count: number;
+}
+
+/**
+ * Find files that match an ambiguous pattern (filename without path)
+ * Returns null if not ambiguous, or array of matches if multiple files match
+ */
+function findAmbiguousMatches(pattern: string): AmbiguousFileMatch[] | null {
+  if (!state.fullGraph) return null;
+  
+  // Only check for ambiguity if pattern is a simple filename (no path separators, no complex globs)
+  if (pattern.includes('/') || pattern.includes('**')) {
+    return null;  // Already disambiguated or complex pattern
+  }
+  
+  // Convert simple glob to regex
+  let regexStr = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  regexStr = regexStr.replace(/\*/g, '.*');
+  regexStr = regexStr.replace(/\?/g, '.');
+  const regex = new RegExp('^' + regexStr + '$', 'i');
+  
+  // Find all files that match this pattern
+  const filesByPath = new Map<string, { fileName: string; count: number }>();
+  state.fullGraph.nodes.forEach(node => {
+    const fileName = node.file_name || '';
+    const relativePath = node.relative_path || fileName;
+    
+    if (regex.test(fileName)) {
+      const existing = filesByPath.get(relativePath);
+      if (existing) {
+        existing.count++;
+      } else {
+        filesByPath.set(relativePath, { fileName, count: 1 });
+      }
+    }
+  });
+  
+  // If only one file matches, not ambiguous
+  if (filesByPath.size <= 1) {
+    return null;
+  }
+  
+  // Multiple files match - compute disambiguated paths
+  const paths = Array.from(filesByPath.keys());
+  const disambiguated = computeDisambiguatedPaths(paths);
+  
+  const matches: AmbiguousFileMatch[] = [];
+  for (const [relativePath, { fileName, count }] of filesByPath) {
+    matches.push({
+      fileName,
+      relativePath,
+      disambiguatedPath: disambiguated.get(relativePath) || relativePath,
+      count,
+    });
+  }
+  
+  // Sort by path for consistent display
+  matches.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+  
+  return matches;
+}
+
+/**
+ * Current disambiguation state
+ */
+let disambiguationState: {
+  pattern: string;
+  matches: AmbiguousFileMatch[];
+  selectedPaths: Set<string>;
+} | null = null;
+
+/**
+ * Show the disambiguation dropdown for an ambiguous pattern
+ */
+function showDisambiguationDropdown(pattern: string, matches: AmbiguousFileMatch[]): void {
+  const dropdown = document.getElementById('file-disambiguation-dropdown');
+  if (!dropdown) return;
+  
+  disambiguationState = {
+    pattern,
+    matches,
+    selectedPaths: new Set(),
+  };
+  
+  // Build dropdown HTML
+  dropdown.innerHTML = `
+    <div class="dropdown-header">
+      Multiple files match "<strong>${escapeHtml(pattern)}</strong>" - select which to include:
+    </div>
+    ${matches.map((match, index) => `
+      <div class="dropdown-item" data-path="${escapeHtml(match.disambiguatedPath)}" data-index="${index}">
+        <input type="checkbox" class="checkbox" />
+        <span class="file-name">${escapeHtml(match.fileName)}</span>
+        <span class="file-path" title="${escapeHtml(match.relativePath)}">${escapeHtml(match.disambiguatedPath.replace('/' + match.fileName, ''))}</span>
+        <span class="file-count" style="background: #f0f0f0; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; color: #666;">${match.count}</span>
+      </div>
+    `).join('')}
+    <div class="dropdown-actions">
+      <button class="btn-all" title="Include all matching files">All</button>
+      <button class="btn-cancel">Cancel</button>
+      <button class="btn-apply">Apply</button>
+    </div>
+  `;
+  
+  // Show dropdown
+  dropdown.style.display = 'block';
+  
+  // Add click handlers for items
+  dropdown.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      // Don't toggle if clicking the checkbox directly (it will toggle itself)
+      if (target.tagName === 'INPUT') return;
+      
+      const checkbox = item.querySelector('input[type="checkbox"]') as HTMLInputElement;
+      if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        item.classList.toggle('selected', checkbox.checked);
+        
+        const path = item.getAttribute('data-path');
+        if (path) {
+          if (checkbox.checked) {
+            disambiguationState?.selectedPaths.add(path);
+          } else {
+            disambiguationState?.selectedPaths.delete(path);
+          }
+        }
+      }
+    });
+    
+    // Handle checkbox changes directly
+    const checkbox = item.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    checkbox?.addEventListener('change', () => {
+      item.classList.toggle('selected', checkbox.checked);
+      const path = item.getAttribute('data-path');
+      if (path) {
+        if (checkbox.checked) {
+          disambiguationState?.selectedPaths.add(path);
+        } else {
+          disambiguationState?.selectedPaths.delete(path);
+        }
+      }
+    });
+  });
+  
+  // Add button handlers
+  dropdown.querySelector('.btn-all')?.addEventListener('click', () => {
+    // Select all and apply
+    dropdown.querySelectorAll('.dropdown-item').forEach(item => {
+      const checkbox = item.querySelector('input[type="checkbox"]') as HTMLInputElement;
+      if (checkbox) {
+        checkbox.checked = true;
+        item.classList.add('selected');
+        const path = item.getAttribute('data-path');
+        if (path) disambiguationState?.selectedPaths.add(path);
+      }
+    });
+    applyDisambiguationSelection();
+  });
+  
+  dropdown.querySelector('.btn-cancel')?.addEventListener('click', () => {
+    hideDisambiguationDropdown();
+  });
+  
+  dropdown.querySelector('.btn-apply')?.addEventListener('click', () => {
+    applyDisambiguationSelection();
+  });
+}
+
+/**
+ * Hide the disambiguation dropdown
+ */
+function hideDisambiguationDropdown(): void {
+  const dropdown = document.getElementById('file-disambiguation-dropdown');
+  if (dropdown) {
+    dropdown.style.display = 'none';
+  }
+  disambiguationState = null;
+}
+
+/**
+ * Apply the selection from the disambiguation dropdown
+ */
+function applyDisambiguationSelection(): void {
+  if (!disambiguationState || disambiguationState.selectedPaths.size === 0) {
+    hideDisambiguationDropdown();
+    return;
+  }
+  
+  const input = document.getElementById('include-files') as HTMLInputElement;
+  if (!input) {
+    hideDisambiguationDropdown();
+    return;
+  }
+  
+  // Get current patterns and replace the ambiguous one with selected paths
+  const currentPatterns = input.value
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+  
+  // Find and replace the ambiguous pattern
+  const patternIndex = currentPatterns.findIndex(
+    p => p.toLowerCase() === disambiguationState!.pattern.toLowerCase()
+  );
+  
+  if (patternIndex >= 0) {
+    // Replace the ambiguous pattern with selected paths
+    currentPatterns.splice(patternIndex, 1, ...disambiguationState.selectedPaths);
+  } else {
+    // Pattern not found (maybe already modified), just add selected paths
+    currentPatterns.push(...disambiguationState.selectedPaths);
+  }
+  
+  // Update input and filter
+  input.value = currentPatterns.join(', ');
+  state.filters.includeFiles = input.value;
+  
+  hideDisambiguationDropdown();
+  updateFileListSelection();
+  applyFiltersAndUpdate();
+}
+
+/**
+ * Check for ambiguous patterns in the include files input and show disambiguation if needed
+ * Returns true if disambiguation dropdown was shown
+ */
+function checkAndShowDisambiguation(): boolean {
+  console.log('checkAndShowDisambiguation called');
+  if (!state.fullGraph) {
+    console.log('No fullGraph loaded');
+    return false;
+  }
+  
+  const input = document.getElementById('include-files') as HTMLInputElement;
+  if (!input) {
+    console.log('No include-files input found');
+    return false;
+  }
+  
+  const patterns = input.value
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+  
+  console.log('Checking patterns:', patterns);
+  
+  // Check each pattern for ambiguity
+  for (const pattern of patterns) {
+    const matches = findAmbiguousMatches(pattern);
+    console.log(`Pattern "${pattern}" has ${matches?.length || 0} matches:`, matches);
+    if (matches && matches.length > 1) {
+      console.log('Showing disambiguation dropdown');
+      showDisambiguationDropdown(pattern, matches);
+      return true;
+    }
+  }
+  
+  console.log('No ambiguous patterns found');
+  return false;
 }
 
 /**
@@ -1280,18 +1821,44 @@ function updateFileListSelection(): void {
     .filter(p => p.length > 0);
 
   fileListDiv.querySelectorAll('.file-list-item').forEach(item => {
-    const fileName = item.getAttribute('data-file')?.toLowerCase() || '';
+    const filterPattern = item.getAttribute('data-file')?.toLowerCase() || '';
+    const relativePath = item.getAttribute('data-path')?.toLowerCase() || '';
+    
     const isSelected = currentPatterns.some(pattern => {
-      // Simple matching: exact match or glob pattern match
+      // Check for exact match with the filter pattern first
+      if (filterPattern === pattern) return true;
+      
+      // Check if pattern matches the relative path (for path-based patterns)
+      if (pattern.includes('/')) {
+        // Path pattern - check if relative path ends with or contains this pattern
+        if (relativePath.endsWith(pattern) || relativePath.includes('/' + pattern)) {
+          return true;
+        }
+      }
+      
+      // Check glob pattern matching
       if (pattern.includes('*') || pattern.includes('?')) {
         // Convert glob to regex for matching
         const regexStr = pattern
           .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*/g, '.*')
-          .replace(/\?/g, '.');
-        return new RegExp('^' + regexStr + '$', 'i').test(fileName);
+          .replace(/\*\*/g, '<<<DOUBLESTAR>>>')
+          .replace(/\*/g, '[^/]*')
+          .replace(/\?/g, '[^/]')
+          .replace(/<<<DOUBLESTAR>>>/g, '.*');
+        
+        // For path patterns, match against relative path
+        if (pattern.includes('/')) {
+          const pathRegex = new RegExp('(^|/)' + regexStr + '$', 'i');
+          return pathRegex.test(relativePath);
+        }
+        // For filename patterns, match against the filter pattern (filename or disambig path)
+        return new RegExp('^' + regexStr + '$', 'i').test(filterPattern);
       }
-      return fileName === pattern;
+      
+      // Simple filename match (no glob, no path)
+      // Extract just the filename from the filter pattern for comparison
+      const justFileName = filterPattern.split('/').pop() || filterPattern;
+      return justFileName === pattern;
     });
     
     if (currentPatterns.length === 0) {

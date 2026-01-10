@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { globToRegex, matchesQuery, applyFilters } from './filters';
+import { globToRegex, matchesQuery, applyFilters, pathPatternToRegex } from './filters';
 import { D3Graph, D3Node, D3Link, FilterOptions } from './types';
 
 // ============================================================================
@@ -507,6 +507,255 @@ describe('Filter Behavior', () => {
       expect(nodeNames).toContain('func_a');
       expect(nodeNames).toContain('func_c');
       expect(nodeNames).not.toContain('func_b'); // In ristretto.rs
+    });
+
+    it('shows edges between files when using includeFiles alone (no source/sink)', () => {
+      // Simulates: hazmat.rs has ExpandedSecretKey::from_bytes which calls Scalar::from_bytes_mod_order in scalar.rs
+      const graph: D3Graph = {
+        nodes: [
+          createNode({ id: 'hazmat_from_bytes', display_name: 'from_bytes', file_name: 'hazmat.rs' }),
+          createNode({ id: 'scalar_from_bytes_mod_order', display_name: 'from_bytes_mod_order', file_name: 'scalar.rs' }),
+          createNode({ id: 'other_func', display_name: 'other_func', file_name: 'other.rs' }),
+          createNode({ id: 'another_func', display_name: 'another_func', file_name: 'another.rs' }),
+        ],
+        links: [
+          createLink('hazmat_from_bytes', 'scalar_from_bytes_mod_order'),  // hazmat.rs -> scalar.rs
+          createLink('other_func', 'hazmat_from_bytes'),  // other.rs -> hazmat.rs
+          createLink('another_func', 'other_func'),  // another.rs -> other.rs
+        ],
+        metadata: { total_nodes: 4, total_edges: 3, project_root: '/test', generated_at: '2024-01-01' },
+      };
+      
+      // Filter to only show hazmat.rs and scalar.rs (no source/sink query)
+      const filters = createFilters({
+        includeFiles: 'hazmat.rs, scalar.rs',
+      });
+      
+      const result = applyFilters(graph, filters);
+      const nodeNames = result.nodes.map(n => n.display_name);
+      
+      // Should include both nodes from the specified files
+      expect(nodeNames).toContain('from_bytes');
+      expect(nodeNames).toContain('from_bytes_mod_order');
+      // Should NOT include nodes from other files
+      expect(nodeNames).not.toContain('other_func');
+      expect(nodeNames).not.toContain('another_func');
+      // Should have the edge between them
+      expect(result.links.length).toBe(1);
+      expect(result.links[0].source).toBe('hazmat_from_bytes');
+      expect(result.links[0].target).toBe('scalar_from_bytes_mod_order');
+    });
+
+    it('supports multiple file patterns with glob wildcards', () => {
+      const graph: D3Graph = {
+        nodes: [
+          createNode({ id: 'a', display_name: 'func_a', file_name: 'hazmat.rs' }),
+          createNode({ id: 'b', display_name: 'func_b', file_name: 'scalar.rs' }),
+          createNode({ id: 'c', display_name: 'func_c', file_name: 'edwards.rs' }),
+          createNode({ id: 'd', display_name: 'func_d', file_name: 'ristretto.rs' }),
+        ],
+        links: [
+          createLink('a', 'b'),
+          createLink('c', 'd'),
+        ],
+        metadata: { total_nodes: 4, total_edges: 2, project_root: '/test', generated_at: '2024-01-01' },
+      };
+      
+      // Use glob pattern to match files ending with .rs that start with 'h' or 's'
+      const filters = createFilters({
+        includeFiles: 'h*.rs, s*.rs',
+      });
+      
+      const result = applyFilters(graph, filters);
+      const nodeNames = result.nodes.map(n => n.display_name);
+      
+      expect(nodeNames).toContain('func_a');  // hazmat.rs
+      expect(nodeNames).toContain('func_b');  // scalar.rs
+      expect(nodeNames).not.toContain('func_c');  // edwards.rs - no edge within included files
+      expect(nodeNames).not.toContain('func_d');  // ristretto.rs - no edge within included files
+    });
+
+    it('clicking nodes does NOT apply depth filtering when includeFiles is active', () => {
+      // This tests that the Include Files filter behaves like Source/Sink:
+      // clicking a node should NOT narrow the graph to just that node's neighborhood
+      const graph: D3Graph = {
+        nodes: [
+          createNode({ id: 'a', display_name: 'func_a', file_name: 'hazmat.rs' }),
+          createNode({ id: 'b', display_name: 'func_b', file_name: 'hazmat.rs' }),
+          createNode({ id: 'c', display_name: 'func_c', file_name: 'hazmat.rs' }),
+          createNode({ id: 'd', display_name: 'func_d', file_name: 'other.rs' }),
+        ],
+        links: [
+          createLink('a', 'b'),  // a -> b
+          createLink('b', 'c'),  // b -> c (depth 2 from a)
+          createLink('d', 'a'),  // d -> a (from other file)
+        ],
+        metadata: { total_nodes: 4, total_edges: 3, project_root: '/test', generated_at: '2024-01-01' },
+      };
+      
+      // Include Files is set, and we "click" on node 'a' (simulate by adding to selectedNodes)
+      const filters = createFilters({
+        includeFiles: 'hazmat.rs',
+        selectedNodes: new Set(['a']),  // Simulating a click on node 'a'
+        maxDepth: 1,  // Would normally limit to depth 1 from clicked node
+      });
+      
+      const result = applyFilters(graph, filters);
+      const nodeNames = result.nodes.map(n => n.display_name);
+      
+      // Even though maxDepth=1 and we clicked 'a', all hazmat.rs nodes should remain
+      // because Include Files is active (clicking shouldn't narrow the view)
+      expect(nodeNames).toContain('func_a');
+      expect(nodeNames).toContain('func_b');
+      expect(nodeNames).toContain('func_c');  // Would be excluded if depth filtering was applied (depth 2)
+      expect(nodeNames).not.toContain('func_d');  // Excluded because it's in other.rs
+      // Should have edges a->b and b->c (within hazmat.rs)
+      expect(result.links.length).toBe(2);
+    });
+  });
+
+  describe('Path pattern disambiguation', () => {
+    it('pathPatternToRegex matches paths ending with pattern', () => {
+      const regex = pathPatternToRegex('ifma/edwards.rs');
+      
+      // Should match paths ending with /ifma/edwards.rs
+      expect(regex.test('curve25519-dalek/src/backend/vector/ifma/edwards.rs')).toBe(true);
+      expect(regex.test('some/other/ifma/edwards.rs')).toBe(true);
+      
+      // Should match exact path
+      expect(regex.test('ifma/edwards.rs')).toBe(true);
+      
+      // Should NOT match different paths
+      expect(regex.test('curve25519-dalek/src/edwards.rs')).toBe(false);
+      expect(regex.test('avx2/edwards.rs')).toBe(false);
+    });
+
+    it('pathPatternToRegex handles ** glob patterns', () => {
+      const regex = pathPatternToRegex('**/backend/**/edwards.rs');
+      
+      // Should match any path with backend and something after it before edwards.rs
+      expect(regex.test('curve25519-dalek/src/backend/vector/ifma/edwards.rs')).toBe(true);
+      expect(regex.test('curve25519-dalek/src/backend/vector/avx2/edwards.rs')).toBe(true);
+      expect(regex.test('some/backend/x/edwards.rs')).toBe(true);
+      
+      // Should NOT match paths without backend
+      expect(regex.test('curve25519-dalek/src/edwards.rs')).toBe(false);
+      
+      // Test simpler ** pattern
+      const regex2 = pathPatternToRegex('**/edwards.rs');
+      expect(regex2.test('curve25519-dalek/src/edwards.rs')).toBe(true);
+      expect(regex2.test('backend/vector/ifma/edwards.rs')).toBe(true);
+      expect(regex2.test('edwards.rs')).toBe(true);
+    });
+
+    it('path patterns in includeFiles disambiguate duplicate filenames', () => {
+      // Simulates the real scenario: multiple edwards.rs files in different paths
+      // Each file has internal edges so nodes aren't isolated when filtered
+      const graph: D3Graph = {
+        nodes: [
+          createNode({ 
+            id: 'src_edwards_func1', 
+            display_name: 'decompress', 
+            file_name: 'edwards.rs',
+            relative_path: 'curve25519-dalek/src/edwards.rs'
+          }),
+          createNode({ 
+            id: 'src_edwards_func2', 
+            display_name: 'compress', 
+            file_name: 'edwards.rs',
+            relative_path: 'curve25519-dalek/src/edwards.rs'
+          }),
+          createNode({ 
+            id: 'ifma_edwards_func1', 
+            display_name: 'mul_by_pow_2', 
+            file_name: 'edwards.rs',
+            relative_path: 'curve25519-dalek/src/backend/vector/ifma/edwards.rs'
+          }),
+          createNode({ 
+            id: 'ifma_edwards_func2', 
+            display_name: 'double', 
+            file_name: 'edwards.rs',
+            relative_path: 'curve25519-dalek/src/backend/vector/ifma/edwards.rs'
+          }),
+          createNode({ 
+            id: 'avx2_edwards_func', 
+            display_name: 'neg', 
+            file_name: 'edwards.rs',
+            relative_path: 'curve25519-dalek/src/backend/vector/avx2/edwards.rs'
+          }),
+        ],
+        links: [
+          // Internal edges within each file
+          createLink('src_edwards_func1', 'src_edwards_func2'),
+          createLink('ifma_edwards_func1', 'ifma_edwards_func2'),
+          // Cross-file edges
+          createLink('ifma_edwards_func1', 'src_edwards_func1'),
+          createLink('avx2_edwards_func', 'src_edwards_func1'),
+        ],
+        metadata: { total_nodes: 5, total_edges: 4, project_root: '/test', generated_at: '2024-01-01' },
+      };
+      
+      // Filter to only the ifma edwards.rs using path pattern
+      const filters = createFilters({
+        includeFiles: 'ifma/edwards.rs',
+      });
+      
+      const result = applyFilters(graph, filters);
+      const nodeNames = result.nodes.map(n => n.display_name);
+      
+      // Should only include the ifma edwards.rs functions (they have an edge between them)
+      expect(nodeNames).toContain('mul_by_pow_2');
+      expect(nodeNames).toContain('double');
+      // Should NOT include other edwards.rs files
+      expect(nodeNames).not.toContain('decompress');
+      expect(nodeNames).not.toContain('compress');
+      expect(nodeNames).not.toContain('neg');
+      // Should have 1 edge (the internal ifma edge)
+      expect(result.links.length).toBe(1);
+    });
+
+    it('simple filename pattern still matches all files with that name', () => {
+      const graph: D3Graph = {
+        nodes: [
+          createNode({ 
+            id: 'src_edwards_func', 
+            display_name: 'decompress', 
+            file_name: 'edwards.rs',
+            relative_path: 'curve25519-dalek/src/edwards.rs'
+          }),
+          createNode({ 
+            id: 'ifma_edwards_func', 
+            display_name: 'mul_by_pow_2', 
+            file_name: 'edwards.rs',
+            relative_path: 'curve25519-dalek/src/backend/vector/ifma/edwards.rs'
+          }),
+          createNode({ 
+            id: 'scalar_func', 
+            display_name: 'from_bytes', 
+            file_name: 'scalar.rs',
+            relative_path: 'curve25519-dalek/src/scalar.rs'
+          }),
+        ],
+        links: [
+          createLink('src_edwards_func', 'ifma_edwards_func'),
+          createLink('src_edwards_func', 'scalar_func'),
+        ],
+        metadata: { total_nodes: 3, total_edges: 2, project_root: '/test', generated_at: '2024-01-01' },
+      };
+      
+      // Filter with just filename (no path) - should match ALL edwards.rs files
+      const filters = createFilters({
+        includeFiles: 'edwards.rs',
+      });
+      
+      const result = applyFilters(graph, filters);
+      const nodeNames = result.nodes.map(n => n.display_name);
+      
+      // Should include BOTH edwards.rs functions
+      expect(nodeNames).toContain('decompress');
+      expect(nodeNames).toContain('mul_by_pow_2');
+      // Should NOT include scalar.rs
+      expect(nodeNames).not.toContain('from_bytes');
     });
   });
 });

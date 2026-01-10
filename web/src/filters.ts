@@ -68,27 +68,110 @@ function parseExcludePatterns(patternsStr: string): RegExp[] {
 }
 
 /**
- * Parse include file patterns from comma-separated string and convert to regexes
- * Returns empty array if no patterns (meaning include all files)
+ * Parsed include file pattern with metadata about whether it's a path pattern
  */
-function parseIncludeFilePatterns(patternsStr: string): RegExp[] {
+interface IncludeFilePattern {
+  regex: RegExp;
+  isPathPattern: boolean;  // true if pattern contains '/' (matches against relative_path)
+  original: string;        // original pattern string for debugging
+}
+
+/**
+ * Convert a path pattern to a regex that matches against relative_path
+ * 
+ * Unlike globToRegex (which anchors with ^...$), this handles partial paths:
+ * - "ifma/edwards.rs" - matches paths ENDING with "/ifma/edwards.rs" or equal to "ifma/edwards.rs"
+ * - "** /ifma/edwards.rs" - matches any path ending with "/ifma/edwards.rs"
+ * - "curve25519-dalek/ **" - matches paths starting with "curve25519-dalek/"
+ * 
+ * @public Exported for testing
+ */
+export function pathPatternToRegex(pattern: string): RegExp {
+  // Escape regex special characters except * and ?
+  let regexStr = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  
+  // Handle ** BEFORE * to avoid double-replacement
+  // Use placeholder to protect ** from being affected by * replacement
+  regexStr = regexStr.replace(/\*\*/g, '<<<GLOBSTAR>>>');
+  // Handle * (matches anything except /)
+  regexStr = regexStr.replace(/\*/g, '[^/]*');
+  // Handle ?
+  regexStr = regexStr.replace(/\?/g, '[^/]');
+  // Now replace the placeholder with the actual globstar pattern
+  regexStr = regexStr.replace(/<<<GLOBSTAR>>>/g, '.*');
+  
+  // Handle **/ at the start specially - it means "any path prefix including empty"
+  // e.g., "**/edwards.rs" should match both "foo/edwards.rs" and "edwards.rs"
+  if (pattern.startsWith('**/')) {
+    // The pattern already has .* at the start from the replacement above
+    // We need to make it match "start of string OR any prefix ending with /"
+    // Current: .*/rest... -> need: (^|.*/)rest...
+    // Remove the leading .*/ and add the proper prefix
+    regexStr = regexStr.replace(/^\.\*\//, '');
+    regexStr = '(^|.*/)' + regexStr + '$';
+  } else if (!pattern.startsWith('**')) {
+    // Pattern doesn't start with ** - allow matching at end of path
+    // e.g., "ifma/edwards.rs" matches "foo/bar/ifma/edwards.rs"
+    regexStr = '(^|/)' + regexStr + '$';
+  } else {
+    // Pattern starts with ** but not **/ (e.g., "**foo") - anchor at end only
+    regexStr = regexStr + '$';
+  }
+  
+  return new RegExp(regexStr, 'i');  // case-insensitive
+}
+
+/**
+ * Parse include file patterns from comma-separated string
+ * Returns empty array if no patterns (meaning include all files)
+ * 
+ * Patterns containing '/' are matched against relative_path (for disambiguation)
+ * Patterns without '/' are matched against file_name only
+ * 
+ * Examples:
+ * - "edwards.rs" - matches file_name "edwards.rs" (all edwards.rs files)
+ * - "src/edwards.rs" - matches paths ending with "src/edwards.rs"
+ * - "ifma/edwards.rs" - matches paths ending with "ifma/edwards.rs"
+ * - "curve25519-dalek/ ** /edwards.rs" - matches edwards.rs anywhere under curve25519-dalek
+ * - "** /backend/ **" - matches any path containing /backend/
+ */
+function parseIncludeFilePatterns(patternsStr: string): IncludeFilePattern[] {
   if (!patternsStr.trim()) return [];
   return patternsStr
     .split(',')
     .map(p => p.trim())
     .filter(p => p.length > 0)
-    .map(p => globToRegex(p));
+    .map(p => ({
+      // Use different regex functions based on whether it's a path pattern
+      regex: p.includes('/') ? pathPatternToRegex(p) : globToRegex(p),
+      isPathPattern: p.includes('/'),
+      original: p,
+    }));
 }
 
 /**
  * Check if a node's file matches any of the include patterns
  * Returns true if node should be INCLUDED
  * If no patterns specified (empty array), all nodes are included
+ * 
+ * Path patterns (containing '/') match against relative_path
+ * Filename patterns match against file_name
  */
-function nodeMatchesIncludeFilePattern(node: D3Node, includePatterns: RegExp[]): boolean {
+function nodeMatchesIncludeFilePattern(node: D3Node, includePatterns: IncludeFilePattern[]): boolean {
   if (includePatterns.length === 0) return true;  // No filter = include all
+  
   const fileName = node.file_name || '';
-  return includePatterns.some(pattern => pattern.test(fileName));
+  const relativePath = node.relative_path || '';
+  
+  return includePatterns.some(pattern => {
+    if (pattern.isPathPattern) {
+      // Path pattern: match against relative_path
+      return pattern.regex.test(relativePath);
+    } else {
+      // Filename pattern: match against file_name only
+      return pattern.regex.test(fileName);
+    }
+  });
 }
 
 /**
@@ -363,9 +446,13 @@ export function applyFilters(
     });
   }
 
+  // Check if Include Files filter is active (non-empty)
+  const hasIncludeFiles = filters.includeFiles.trim() !== '';
+
   // Apply depth filtering from selected nodes (click-based selection)
-  // Only apply when there's NO source/sink query - clicking shouldn't override query results
-  if (filters.maxDepth !== null && filters.selectedNodes.size > 0 && !hasSource && !hasSink) {
+  // Only apply when there's NO source/sink query AND NO include files filter
+  // - clicking shouldn't override query results or include files filter results
+  if (filters.maxDepth !== null && filters.selectedNodes.size > 0 && !hasSource && !hasSink && !hasIncludeFiles) {
     // Use traversable graph to respect mode filters during depth traversal
     // When clicking (no query), explore BOTH directions to show full neighborhood
     const nodesAtDepth = computeDepthFromSelected(
