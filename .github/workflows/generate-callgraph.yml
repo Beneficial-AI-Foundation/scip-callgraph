@@ -265,8 +265,10 @@ jobs:
           retention-days: 7
 
       # For standalone mode, also upload as pages artifact
+      # NOTE: Only upload when NOT in subpath mode to avoid duplicate artifacts
+      # when the calling workflow handles its own Pages deployment
       - name: Upload Pages artifact (standalone mode)
-        if: ${{ inputs.deploy_mode == 'standalone' }}
+        if: inputs.deploy_mode != 'subpath'
         uses: actions/upload-pages-artifact@v3
         with:
           path: artifact
@@ -274,7 +276,7 @@ jobs:
   # Deploy job for standalone mode (full GitHub Pages site)
   deploy-standalone:
     name: Deploy (Standalone)
-    if: ${{ inputs.deploy_mode == 'standalone' }}
+    if: inputs.deploy_mode != 'subpath'
     needs: build
     runs-on: ubuntu-latest
     
