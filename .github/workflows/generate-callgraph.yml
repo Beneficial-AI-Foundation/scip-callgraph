@@ -1,20 +1,24 @@
 # Reusable workflow for generating enriched call graphs from Rust/Verus projects
 # 
-# Usage in your project:
+# Usage in your project (minimal - github_url is auto-detected):
 #   jobs:
 #     callgraph:
 #       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
-#       with:
-#         github_url: https://github.com/your-org/your-repo
 #
 # For non-Verus projects, use rust-analyzer instead:
 #   jobs:
 #     callgraph:
 #       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
 #       with:
-#         github_url: https://github.com/your-org/your-repo
 #         use_rust_analyzer: true
 #         skip_verification: true
+#
+# Override github_url if needed (e.g., for forks pointing to upstream):
+#   jobs:
+#     callgraph:
+#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+#       with:
+#         github_url: https://github.com/upstream-org/upstream-repo
 #
 name: Generate Call Graph
 
@@ -27,8 +31,9 @@ on:
         default: '.'
         type: string
       github_url:
-        description: 'GitHub repository URL for source code links'
-        required: true
+        description: 'GitHub repository URL for source code links (auto-detected if not provided)'
+        required: false
+        default: ''
         type: string
       github_path_prefix:
         description: 'Path prefix for source files (e.g., "curve25519-dalek" if repo has subdirectory)'
@@ -193,7 +198,8 @@ jobs:
           PROJECT_PATH: ${{ github.workspace }}/project/${{ inputs.project_path }}
           SCIP_JSON: ${{ github.workspace }}/project/${{ inputs.project_path }}/index.scip.json
           OUTPUT_PATH: ${{ github.workspace }}/scip-callgraph/web/public/graph.json
-          GITHUB_URL: ${{ inputs.github_url }}
+          # Auto-detect github_url from context if not explicitly provided
+          GITHUB_URL: ${{ inputs.github_url || format('{0}/{1}', github.server_url, github.repository) }}
           SKIP_VERIFICATION: ${{ inputs.skip_verification }}
           SKIP_SIMILAR_LEMMAS: ${{ inputs.skip_similar_lemmas }}
           PACKAGE: ${{ inputs.package }}
@@ -202,9 +208,9 @@ jobs:
         run: |
           ARGS="--use-cached-scip"
           
-          if [ -n "$GITHUB_URL" ]; then
-            ARGS="$ARGS --github-url $GITHUB_URL"
-          fi
+          # github_url is always set (either from input or auto-detected)
+          ARGS="$ARGS --github-url $GITHUB_URL"
+          echo "Using GitHub URL: $GITHUB_URL"
           
           if [ "$SKIP_VERIFICATION" = "true" ]; then
             ARGS="$ARGS --skip-verification"
