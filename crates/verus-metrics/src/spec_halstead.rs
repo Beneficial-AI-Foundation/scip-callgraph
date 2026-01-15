@@ -508,7 +508,7 @@ mod tests {
         // The parser fails to parse this as an expression.
         let spec = "decreases i";
         let result = analyze_spec(spec);
-        
+
         // This should fail to parse as an expression
         assert!(result.is_err());
     }

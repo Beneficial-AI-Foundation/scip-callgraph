@@ -1,5 +1,5 @@
-use scip_core::{build_call_graph, parse_scip_json, write_call_graph_as_atoms_json, Atom};
 use scip_core::scip_utils::generate_scip_json_index;
+use scip_core::{build_call_graph, parse_scip_json, write_call_graph_as_atoms_json, Atom};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;

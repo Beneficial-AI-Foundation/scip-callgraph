@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use verus_syn::visit::Visit;
-use verus_syn::{Expr, Item, ItemFn, ImplItem, TraitItem};
+use verus_syn::{Expr, ImplItem, Item, ItemFn, TraitItem};
 
 // Input format from write_atoms
 #[derive(Debug, Deserialize)]
@@ -256,32 +256,47 @@ fn fn_mode_to_string(mode: &verus_syn::FnMode) -> String {
 
 /// Extract metrics from an ItemFn using verus_syn's structured parsing
 fn extract_metrics_from_item_fn(item_fn: &ItemFn) -> FunctionMetrics {
-    let mut metrics = FunctionMetrics::default();
-
-    // Extract function mode
-    metrics.function_mode = fn_mode_to_string(&item_fn.sig.mode);
+    let mut metrics = FunctionMetrics {
+        function_mode: fn_mode_to_string(&item_fn.sig.mode),
+        ..Default::default()
+    };
 
     // Extract requires clauses
     if let Some(requires) = &item_fn.sig.spec.requires {
         let exprs: Vec<&Expr> = requires.exprs.exprs.iter().collect();
         metrics.requires_count = exprs.len();
-        metrics.requires_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
-        metrics.requires_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+        metrics.requires_lengths = exprs
+            .iter()
+            .map(|e| e.to_token_stream().to_string().len())
+            .collect();
+        metrics.requires_specs = exprs
+            .iter()
+            .map(|e| compute_halstead_from_expr(e))
+            .collect();
     }
 
     // Extract ensures clauses
     if let Some(ensures) = &item_fn.sig.spec.ensures {
         let exprs: Vec<&Expr> = ensures.exprs.exprs.iter().collect();
         metrics.ensures_count = exprs.len();
-        metrics.ensures_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
-        metrics.ensures_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+        metrics.ensures_lengths = exprs
+            .iter()
+            .map(|e| e.to_token_stream().to_string().len())
+            .collect();
+        metrics.ensures_specs = exprs
+            .iter()
+            .map(|e| compute_halstead_from_expr(e))
+            .collect();
     }
 
     // Extract decreases clauses
     if let Some(decreases) = &item_fn.sig.spec.decreases {
         let exprs: Vec<&Expr> = decreases.decreases.exprs.exprs.iter().collect();
         metrics.decreases_count = exprs.len();
-        metrics.decreases_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
+        metrics.decreases_specs = exprs
+            .iter()
+            .map(|e| compute_halstead_from_expr(e))
+            .collect();
     }
 
     // Compute body length (the actual function block)
@@ -292,7 +307,11 @@ fn extract_metrics_from_item_fn(item_fn: &ItemFn) -> FunctionMetrics {
     for stmt in &item_fn.block.stmts {
         verus_syn::visit::visit_stmt(&mut body_visitor, stmt);
     }
-    for (op, _) in body_visitor.unique_operators.iter().zip(body_visitor.operators.iter()) {
+    for (op, _) in body_visitor
+        .unique_operators
+        .iter()
+        .zip(body_visitor.operators.iter())
+    {
         *metrics.operators.entry(op.clone()).or_insert(0) += 1;
     }
 
@@ -307,74 +326,102 @@ fn compute_function_metrics(body: &str) -> FunctionMetrics {
     }
 
     // Attempt 2: Parse as Item (covers more cases)
-    if let Ok(item) = verus_syn::parse_str::<Item>(body) {
-        if let Item::Fn(item_fn) = item {
-            return extract_metrics_from_item_fn(&item_fn);
-        }
+    if let Ok(Item::Fn(item_fn)) = verus_syn::parse_str::<Item>(body) {
+        return extract_metrics_from_item_fn(&item_fn);
     }
 
     // Attempt 3: Parse as ImplItemFn (method inside impl block)
-    if let Ok(impl_item) = verus_syn::parse_str::<ImplItem>(body) {
-        if let ImplItem::Fn(impl_fn) = impl_item {
-            let mut metrics = FunctionMetrics::default();
-            metrics.function_mode = fn_mode_to_string(&impl_fn.sig.mode);
+    if let Ok(ImplItem::Fn(impl_fn)) = verus_syn::parse_str::<ImplItem>(body) {
+        let mut metrics = FunctionMetrics {
+            function_mode: fn_mode_to_string(&impl_fn.sig.mode),
+            ..Default::default()
+        };
 
-            if let Some(requires) = &impl_fn.sig.spec.requires {
-                let exprs: Vec<&Expr> = requires.exprs.exprs.iter().collect();
-                metrics.requires_count = exprs.len();
-                metrics.requires_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
-                metrics.requires_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
-            }
-
-            if let Some(ensures) = &impl_fn.sig.spec.ensures {
-                let exprs: Vec<&Expr> = ensures.exprs.exprs.iter().collect();
-                metrics.ensures_count = exprs.len();
-                metrics.ensures_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
-                metrics.ensures_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
-            }
-
-            if let Some(decreases) = &impl_fn.sig.spec.decreases {
-                let exprs: Vec<&Expr> = decreases.decreases.exprs.exprs.iter().collect();
-                metrics.decreases_count = exprs.len();
-                metrics.decreases_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
-            }
-
-            metrics.body_length = impl_fn.block.to_token_stream().to_string().len();
-            return metrics;
+        if let Some(requires) = &impl_fn.sig.spec.requires {
+            let exprs: Vec<&Expr> = requires.exprs.exprs.iter().collect();
+            metrics.requires_count = exprs.len();
+            metrics.requires_lengths = exprs
+                .iter()
+                .map(|e| e.to_token_stream().to_string().len())
+                .collect();
+            metrics.requires_specs = exprs
+                .iter()
+                .map(|e| compute_halstead_from_expr(e))
+                .collect();
         }
+
+        if let Some(ensures) = &impl_fn.sig.spec.ensures {
+            let exprs: Vec<&Expr> = ensures.exprs.exprs.iter().collect();
+            metrics.ensures_count = exprs.len();
+            metrics.ensures_lengths = exprs
+                .iter()
+                .map(|e| e.to_token_stream().to_string().len())
+                .collect();
+            metrics.ensures_specs = exprs
+                .iter()
+                .map(|e| compute_halstead_from_expr(e))
+                .collect();
+        }
+
+        if let Some(decreases) = &impl_fn.sig.spec.decreases {
+            let exprs: Vec<&Expr> = decreases.decreases.exprs.exprs.iter().collect();
+            metrics.decreases_count = exprs.len();
+            metrics.decreases_specs = exprs
+                .iter()
+                .map(|e| compute_halstead_from_expr(e))
+                .collect();
+        }
+
+        metrics.body_length = impl_fn.block.to_token_stream().to_string().len();
+        return metrics;
     }
 
     // Attempt 4: Parse as TraitItemFn
-    if let Ok(trait_item) = verus_syn::parse_str::<TraitItem>(body) {
-        if let TraitItem::Fn(trait_fn) = trait_item {
-            let mut metrics = FunctionMetrics::default();
-            metrics.function_mode = fn_mode_to_string(&trait_fn.sig.mode);
+    if let Ok(TraitItem::Fn(trait_fn)) = verus_syn::parse_str::<TraitItem>(body) {
+        let mut metrics = FunctionMetrics {
+            function_mode: fn_mode_to_string(&trait_fn.sig.mode),
+            ..Default::default()
+        };
 
-            if let Some(requires) = &trait_fn.sig.spec.requires {
-                let exprs: Vec<&Expr> = requires.exprs.exprs.iter().collect();
-                metrics.requires_count = exprs.len();
-                metrics.requires_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
-                metrics.requires_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
-            }
-
-            if let Some(ensures) = &trait_fn.sig.spec.ensures {
-                let exprs: Vec<&Expr> = ensures.exprs.exprs.iter().collect();
-                metrics.ensures_count = exprs.len();
-                metrics.ensures_lengths = exprs.iter().map(|e| e.to_token_stream().to_string().len()).collect();
-                metrics.ensures_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
-            }
-
-            if let Some(decreases) = &trait_fn.sig.spec.decreases {
-                let exprs: Vec<&Expr> = decreases.decreases.exprs.exprs.iter().collect();
-                metrics.decreases_count = exprs.len();
-                metrics.decreases_specs = exprs.iter().map(|e| compute_halstead_from_expr(e)).collect();
-            }
-
-            if let Some(block) = &trait_fn.default {
-                metrics.body_length = block.to_token_stream().to_string().len();
-            }
-            return metrics;
+        if let Some(requires) = &trait_fn.sig.spec.requires {
+            let exprs: Vec<&Expr> = requires.exprs.exprs.iter().collect();
+            metrics.requires_count = exprs.len();
+            metrics.requires_lengths = exprs
+                .iter()
+                .map(|e| e.to_token_stream().to_string().len())
+                .collect();
+            metrics.requires_specs = exprs
+                .iter()
+                .map(|e| compute_halstead_from_expr(e))
+                .collect();
         }
+
+        if let Some(ensures) = &trait_fn.sig.spec.ensures {
+            let exprs: Vec<&Expr> = ensures.exprs.exprs.iter().collect();
+            metrics.ensures_count = exprs.len();
+            metrics.ensures_lengths = exprs
+                .iter()
+                .map(|e| e.to_token_stream().to_string().len())
+                .collect();
+            metrics.ensures_specs = exprs
+                .iter()
+                .map(|e| compute_halstead_from_expr(e))
+                .collect();
+        }
+
+        if let Some(decreases) = &trait_fn.sig.spec.decreases {
+            let exprs: Vec<&Expr> = decreases.decreases.exprs.exprs.iter().collect();
+            metrics.decreases_count = exprs.len();
+            metrics.decreases_specs = exprs
+                .iter()
+                .map(|e| compute_halstead_from_expr(e))
+                .collect();
+        }
+
+        if let Some(block) = &trait_fn.default {
+            metrics.body_length = block.to_token_stream().to_string().len();
+        }
+        return metrics;
     }
 
     // Fallback: Return default metrics if parsing fails
@@ -527,4 +574,3 @@ fn main() {
         }
     }
 }
-

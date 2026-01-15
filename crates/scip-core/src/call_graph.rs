@@ -98,21 +98,9 @@ pub fn parse_function_sections(body: &str, func_start_line: i32) -> FunctionSect
             }
             in_requires = true;
             requires_start = Some(line_num);
-        } else if trimmed.starts_with("ensures") && !found_body_start {
-            if in_requires {
-                if let Some(start) = requires_start {
-                    sections.requires_range = Some((start, line_num - 1));
-                }
-                in_requires = false;
-            }
-            if in_ensures {
-                if let Some(start) = ensures_start {
-                    sections.ensures_range = Some((start, line_num - 1));
-                }
-            }
-            in_ensures = true;
-            ensures_start = Some(line_num);
-        } else if trimmed.starts_with("decreases") && !found_body_start {
+        } else if (trimmed.starts_with("ensures") || trimmed.starts_with("decreases"))
+            && !found_body_start
+        {
             if in_requires {
                 if let Some(start) = requires_start {
                     sections.requires_range = Some((start, line_num - 1));
@@ -473,10 +461,9 @@ pub fn symbol_to_path(symbol: &str, display_name: &str) -> String {
     }
 
     let path = s
-        .replace('/', "::")
-        .replace('#', "::")
+        .replace(['/', '#'], "::")
         .replace("impl#", "")
-        .replace("`", "");
+        .replace('`', "");
 
     let path = generics_regex().replace_all(&path, "");
     let path = path.trim_end_matches('.').trim_end_matches("()");
@@ -703,7 +690,7 @@ mod tests {
             println!(\"hello\");
         }";
         let sections = parse_function_sections(body, 0);
-        
+
         assert!(sections.requires_range.is_none());
         assert!(sections.ensures_range.is_none());
         assert!(sections.body_start_line.is_some());
@@ -717,7 +704,7 @@ mod tests {
             x + 1
         }";
         let sections = parse_function_sections(body, 10);
-        
+
         assert!(sections.requires_range.is_some());
         let (start, _end) = sections.requires_range.unwrap();
         assert_eq!(start, 11); // Line after fn signature
@@ -731,7 +718,7 @@ mod tests {
             x + 1
         }";
         let sections = parse_function_sections(body, 0);
-        
+
         assert!(sections.ensures_range.is_some());
     }
 
@@ -744,7 +731,7 @@ mod tests {
             x + 1
         }";
         let sections = parse_function_sections(body, 0);
-        
+
         assert!(sections.requires_range.is_some());
         assert!(sections.ensures_range.is_some());
         assert!(sections.body_start_line.is_some());
@@ -762,7 +749,7 @@ mod tests {
             ensures_range: Some((3, 4)),
             body_start_line: Some(5),
         };
-        
+
         // Line 6 is inside the body
         assert_eq!(classify_call_location(6, &sections), CallLocation::Inner);
     }
@@ -775,9 +762,15 @@ mod tests {
             ensures_range: Some((3, 4)),
             body_start_line: Some(5),
         };
-        
-        assert_eq!(classify_call_location(1, &sections), CallLocation::Precondition);
-        assert_eq!(classify_call_location(2, &sections), CallLocation::Precondition);
+
+        assert_eq!(
+            classify_call_location(1, &sections),
+            CallLocation::Precondition
+        );
+        assert_eq!(
+            classify_call_location(2, &sections),
+            CallLocation::Precondition
+        );
     }
 
     #[test]
@@ -788,9 +781,15 @@ mod tests {
             ensures_range: Some((3, 4)),
             body_start_line: Some(5),
         };
-        
-        assert_eq!(classify_call_location(3, &sections), CallLocation::Postcondition);
-        assert_eq!(classify_call_location(4, &sections), CallLocation::Postcondition);
+
+        assert_eq!(
+            classify_call_location(3, &sections),
+            CallLocation::Postcondition
+        );
+        assert_eq!(
+            classify_call_location(4, &sections),
+            CallLocation::Postcondition
+        );
     }
 
     #[test]
@@ -801,7 +800,7 @@ mod tests {
             ensures_range: None,
             body_start_line: Some(1),
         };
-        
+
         // Everything should be Inner when there are no specs
         assert_eq!(classify_call_location(0, &sections), CallLocation::Inner);
         assert_eq!(classify_call_location(5, &sections), CallLocation::Inner);
@@ -816,7 +815,7 @@ mod tests {
         let symbol = "rust-analyzer cargo my_crate 0.1.0 module/func().";
         let display_name = "func";
         let path = symbol_to_path(symbol, display_name);
-        
+
         // Should produce a readable path ending with the display_name
         assert!(path.ends_with("func"));
         assert!(path.contains("module"));
@@ -827,7 +826,7 @@ mod tests {
         let symbol = "rust-analyzer cargo lib 1.0.0 Container<T>/method().";
         let display_name = "method";
         let path = symbol_to_path(symbol, display_name);
-        
+
         // Generics should be removed
         assert!(!path.contains("<T>"));
         assert!(path.ends_with("method"));
@@ -838,7 +837,7 @@ mod tests {
         let symbol = "rust-analyzer cargo lib 1.0.0 impl#MyStruct/func().";
         let display_name = "func";
         let path = symbol_to_path(symbol, display_name);
-        
+
         // impl# should be removed
         assert!(!path.contains("impl#"));
     }
@@ -850,7 +849,7 @@ mod tests {
     fn create_test_graph() -> HashMap<String, FunctionNode> {
         // Create a simple call graph: A -> B -> C -> D
         let mut graph = HashMap::new();
-        
+
         let node_a = FunctionNode {
             symbol: "A".to_string(),
             display_name: "func_a".to_string(),
@@ -862,7 +861,7 @@ mod tests {
             range: vec![0],
             body: None,
         };
-        
+
         let node_b = FunctionNode {
             symbol: "B".to_string(),
             display_name: "func_b".to_string(),
@@ -874,7 +873,7 @@ mod tests {
             range: vec![10],
             body: None,
         };
-        
+
         let node_c = FunctionNode {
             symbol: "C".to_string(),
             display_name: "func_c".to_string(),
@@ -886,7 +885,7 @@ mod tests {
             range: vec![20],
             body: None,
         };
-        
+
         let node_d = FunctionNode {
             symbol: "D".to_string(),
             display_name: "func_d".to_string(),
@@ -898,12 +897,12 @@ mod tests {
             range: vec![30],
             body: None,
         };
-        
+
         graph.insert("A".to_string(), node_a);
         graph.insert("B".to_string(), node_b);
         graph.insert("C".to_string(), node_c);
         graph.insert("D".to_string(), node_d);
-        
+
         graph
     }
 
@@ -911,7 +910,7 @@ mod tests {
     fn test_generate_filtered_call_graph_no_depth_limit() {
         let graph = create_test_graph();
         let filtered = generate_filtered_call_graph(&graph, &["A".to_string()], None);
-        
+
         // Should include all nodes reachable from A
         assert_eq!(filtered.len(), 4);
         assert!(filtered.contains_key("A"));
@@ -924,7 +923,7 @@ mod tests {
     fn test_generate_filtered_call_graph_with_depth_1() {
         let graph = create_test_graph();
         let filtered = generate_filtered_call_graph(&graph, &["A".to_string()], Some(1));
-        
+
         // Should only include A and B (depth 1)
         assert_eq!(filtered.len(), 2);
         assert!(filtered.contains_key("A"));
@@ -936,7 +935,7 @@ mod tests {
     fn test_generate_filtered_call_graph_with_depth_2() {
         let graph = create_test_graph();
         let filtered = generate_filtered_call_graph(&graph, &["A".to_string()], Some(2));
-        
+
         // Should include A, B, and C (depth 2)
         assert_eq!(filtered.len(), 3);
         assert!(filtered.contains_key("A"));
@@ -949,7 +948,7 @@ mod tests {
     fn test_generate_filtered_call_graph_nonexistent_entry() {
         let graph = create_test_graph();
         let filtered = generate_filtered_call_graph(&graph, &["NONEXISTENT".to_string()], None);
-        
+
         // Should return empty graph
         assert!(filtered.is_empty());
     }
@@ -957,12 +956,9 @@ mod tests {
     #[test]
     fn test_generate_filtered_call_graph_multiple_entry_points() {
         let graph = create_test_graph();
-        let filtered = generate_filtered_call_graph(
-            &graph, 
-            &["A".to_string(), "C".to_string()], 
-            Some(1)
-        );
-        
+        let filtered =
+            generate_filtered_call_graph(&graph, &["A".to_string(), "C".to_string()], Some(1));
+
         // Should include A, B (from A) and C, D (from C)
         assert!(filtered.contains_key("A"));
         assert!(filtered.contains_key("B"));
@@ -970,4 +966,3 @@ mod tests {
         assert!(filtered.contains_key("D"));
     }
 }
-

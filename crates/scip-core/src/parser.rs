@@ -119,16 +119,23 @@ mod tests {
     #[test]
     fn test_extract_display_name_nested_module() {
         // Note: impl method symbols include the struct name with #
-        let symbol = "rust-analyzer cargo dalek 4.1.0 backend/serial/curve_models/AffineNielsPoint#neg().";
+        let symbol =
+            "rust-analyzer cargo dalek 4.1.0 backend/serial/curve_models/AffineNielsPoint#neg().";
         // The function returns "StructName#method" for impl blocks, preserving context
-        assert_eq!(extract_display_name_from_symbol(symbol), "AffineNielsPoint#neg");
+        assert_eq!(
+            extract_display_name_from_symbol(symbol),
+            "AffineNielsPoint#neg"
+        );
     }
 
     #[test]
     fn test_extract_display_name_impl_block() {
         let symbol = "rust-analyzer cargo curve25519 0.1.0 field/FieldElement51#square().";
         // The function returns "StructName#method" for impl blocks
-        assert_eq!(extract_display_name_from_symbol(symbol), "FieldElement51#square");
+        assert_eq!(
+            extract_display_name_from_symbol(symbol),
+            "FieldElement51#square"
+        );
     }
 
     #[test]
@@ -184,4 +191,3 @@ mod tests {
         assert_eq!(parent, "");
     }
 }
-

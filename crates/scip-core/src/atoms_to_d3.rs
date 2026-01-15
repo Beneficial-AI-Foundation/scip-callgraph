@@ -74,8 +74,8 @@ pub fn atoms_to_d3_graph(
                 .unwrap_or(FunctionMode::Exec);
 
             // Check if this is a libsignal node (based on path patterns)
-            let is_libsignal = is_libsignal_path(&atom.code_path) 
-                || atom.scip_name.contains("libsignal");
+            let is_libsignal =
+                is_libsignal_path(&atom.code_path) || atom.scip_name.contains("libsignal");
 
             // Filter dependencies to only include those that exist in atoms
             let dependencies: Vec<String> = atom
@@ -186,9 +186,17 @@ mod tests {
     fn test_detect_function_mode() {
         assert_eq!(detect_function_mode("fn foo()"), FunctionMode::Exec);
         assert_eq!(detect_function_mode("pub fn bar()"), FunctionMode::Exec);
-        assert_eq!(detect_function_mode("proof fn lemma()"), FunctionMode::Proof);
-        assert_eq!(detect_function_mode("spec fn invariant()"), FunctionMode::Spec);
-        assert_eq!(detect_function_mode("open spec fn predicate()"), FunctionMode::Spec);
+        assert_eq!(
+            detect_function_mode("proof fn lemma()"),
+            FunctionMode::Proof
+        );
+        assert_eq!(
+            detect_function_mode("spec fn invariant()"),
+            FunctionMode::Spec
+        );
+        assert_eq!(
+            detect_function_mode("open spec fn predicate()"),
+            FunctionMode::Spec
+        );
     }
 }
-

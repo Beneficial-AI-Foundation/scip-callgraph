@@ -192,10 +192,7 @@ pub fn generate_file_subgraph_dot(
             for path in matching_paths {
                 message.push_str(&format!("  - {path}\n"));
             }
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                message,
-            ));
+            return Err(std::io::Error::new(std::io::ErrorKind::NotFound, message));
         } else {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
@@ -376,9 +373,12 @@ pub fn generate_function_subgraph_dot(
                 }
                 if function_name.contains('#') {
                     if let Some(symbol_suffix) = node.symbol.rsplit('/').next() {
-                        let clean_suffix = symbol_suffix.trim_end_matches('.').trim_end_matches("()");
-                        let clean_query = function_name.trim_end_matches('.').trim_end_matches("()");
-                        if clean_suffix.contains(clean_query) || clean_suffix.ends_with(clean_query) {
+                        let clean_suffix =
+                            symbol_suffix.trim_end_matches('.').trim_end_matches("()");
+                        let clean_query =
+                            function_name.trim_end_matches('.').trim_end_matches("()");
+                        if clean_suffix.contains(clean_query) || clean_suffix.ends_with(clean_query)
+                        {
                             return true;
                         }
                     }
@@ -457,60 +457,70 @@ pub fn generate_function_subgraph_dot(
     }
 
     // Filter for libsignal sources if requested
-    let final_included_symbols = if filter_non_libsignal_sources && include_callers && !include_callees {
-        let mut has_incoming_edge = HashSet::new();
-        for symbol in &included_symbols {
-            if let Some(node) = call_graph.get(symbol) {
-                for callee in &node.callees {
-                    if included_symbols.contains(callee) {
-                        has_incoming_edge.insert(callee.clone());
-                    }
-                }
-            }
-        }
-
-        let source_nodes: Vec<_> = included_symbols
-            .iter()
-            .filter(|symbol| !has_incoming_edge.contains(*symbol))
-            .cloned()
-            .collect();
-
-        let libsignal_sources: Vec<_> = source_nodes
-            .iter()
-            .filter(|symbol| call_graph.get(*symbol).map(is_libsignal_node).unwrap_or(false))
-            .cloned()
-            .collect();
-
-        let mut filtered_symbols = HashSet::new();
-        for source in &libsignal_sources {
-            let mut stack = vec![source.clone()];
-            let mut visited = HashSet::new();
-
-            while let Some(symbol) = stack.pop() {
-                if visited.contains(&symbol) {
-                    continue;
-                }
-                visited.insert(symbol.clone());
-                filtered_symbols.insert(symbol.clone());
-
-                if let Some(node) = call_graph.get(&symbol) {
+    let final_included_symbols =
+        if filter_non_libsignal_sources && include_callers && !include_callees {
+            let mut has_incoming_edge = HashSet::new();
+            for symbol in &included_symbols {
+                if let Some(node) = call_graph.get(symbol) {
                     for callee in &node.callees {
-                        if included_symbols.contains(callee) && !visited.contains(callee) {
-                            stack.push(callee.clone());
+                        if included_symbols.contains(callee) {
+                            has_incoming_edge.insert(callee.clone());
                         }
                     }
                 }
             }
-        }
-        filtered_symbols
-    } else {
-        included_symbols
-    };
+
+            let source_nodes: Vec<_> = included_symbols
+                .iter()
+                .filter(|symbol| !has_incoming_edge.contains(*symbol))
+                .cloned()
+                .collect();
+
+            let libsignal_sources: Vec<_> = source_nodes
+                .iter()
+                .filter(|symbol| {
+                    call_graph
+                        .get(*symbol)
+                        .map(is_libsignal_node)
+                        .unwrap_or(false)
+                })
+                .cloned()
+                .collect();
+
+            let mut filtered_symbols = HashSet::new();
+            for source in &libsignal_sources {
+                let mut stack = vec![source.clone()];
+                let mut visited = HashSet::new();
+
+                while let Some(symbol) = stack.pop() {
+                    if visited.contains(&symbol) {
+                        continue;
+                    }
+                    visited.insert(symbol.clone());
+                    filtered_symbols.insert(symbol.clone());
+
+                    if let Some(node) = call_graph.get(&symbol) {
+                        for callee in &node.callees {
+                            if included_symbols.contains(callee) && !visited.contains(callee) {
+                                stack.push(callee.clone());
+                            }
+                        }
+                    }
+                }
+            }
+            filtered_symbols
+        } else {
+            included_symbols
+        };
 
     // Separate libsignal nodes from non-libsignal nodes
     let mut libsignal_symbols = HashSet::new();
     for symbol in &final_included_symbols {
-        if call_graph.get(symbol).map(is_libsignal_node).unwrap_or(false) {
+        if call_graph
+            .get(symbol)
+            .map(is_libsignal_node)
+            .unwrap_or(false)
+        {
             libsignal_symbols.insert(symbol.clone());
         }
     }
@@ -687,4 +697,3 @@ pub fn generate_call_graph_svg(
     svg.push_str("</svg>");
     std::fs::write(output_path, svg)
 }
-

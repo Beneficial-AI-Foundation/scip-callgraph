@@ -55,7 +55,9 @@ pub fn write_call_graph_as_atoms_json<P: AsRef<std::path::Path>>(
                     .callees
                     .iter()
                     .filter_map(|callee| call_graph.get(callee))
-                    .map(|callee_node| symbol_to_path(&callee_node.symbol, &callee_node.display_name))
+                    .map(|callee_node| {
+                        symbol_to_path(&callee_node.symbol, &callee_node.display_name)
+                    })
                     .collect(),
                 body: body_content,
                 display_name: node.display_name.clone(),
@@ -205,4 +207,3 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
     let json = serde_json::to_string_pretty(&graph)?;
     std::fs::write(output_path, json)
 }
-

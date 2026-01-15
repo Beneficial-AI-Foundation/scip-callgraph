@@ -81,7 +81,9 @@ pub use export_dot::{
     generate_file_subgraph_dot, generate_files_subgraph_dot, generate_function_subgraph_dot,
     generate_svg_and_png_from_dot,
 };
-pub use parser::{extract_display_name_from_symbol, extract_path_info_from_symbol, parse_scip_json};
+pub use parser::{
+    extract_display_name_from_symbol, extract_path_info_from_symbol, parse_scip_json,
+};
 pub use types::{
     Atom, CallLocation, CalleeOccurrence, D3Graph, D3GraphMetadata, D3Link, D3Node, Document,
     FunctionMode, FunctionNode, FunctionSections, Metadata, Occurrence, ScipIndex,

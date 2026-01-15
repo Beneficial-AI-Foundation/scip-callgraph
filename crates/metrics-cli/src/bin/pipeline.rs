@@ -14,7 +14,7 @@
 use clap::Parser;
 use log::{error, info, warn};
 use scip_atoms::verification::{AnalysisResult, AnalysisStatus, VerificationAnalyzer, VerusRunner};
-use scip_atoms::{build_call_graph, convert_to_atoms_with_lines, parse_scip_json};
+use scip_atoms::{build_call_graph, convert_to_atoms_with_parsed_spans, parse_scip_json};
 use scip_core::atoms_to_d3::atoms_to_d3_graph;
 use scip_core::logging::init_logger;
 use std::collections::HashMap;
@@ -63,15 +63,18 @@ struct Args {
     use_rust_analyzer: bool,
 }
 
-
 fn check_command_exists(cmd: &str) -> bool {
     which::which(cmd).is_ok()
 }
 
 /// Run verus-analyzer or rust-analyzer to generate a new SCIP binary
 fn generate_new_scip(project: &Path, use_rust_analyzer: bool) -> Result<PathBuf, String> {
-    let analyzer = if use_rust_analyzer { "rust-analyzer" } else { "verus-analyzer" };
-    
+    let analyzer = if use_rust_analyzer {
+        "rust-analyzer"
+    } else {
+        "verus-analyzer"
+    };
+
     // Check prerequisites
     if !check_command_exists(analyzer) {
         let install_hint = if use_rust_analyzer {
@@ -82,7 +85,11 @@ fn generate_new_scip(project: &Path, use_rust_analyzer: bool) -> Result<PathBuf,
         return Err(format!("{} not found in PATH. {}", analyzer, install_hint));
     }
 
-    info!("Generating SCIP index using {} for {}...", analyzer, project.display());
+    info!(
+        "Generating SCIP index using {} for {}...",
+        analyzer,
+        project.display()
+    );
     info!("  (This may take a while for large projects)");
 
     // Run analyzer scip command
@@ -103,7 +110,10 @@ fn generate_new_scip(project: &Path, use_rust_analyzer: bool) -> Result<PathBuf,
 
     let generated_scip_path = project.join("index.scip");
     if !generated_scip_path.exists() {
-        return Err(format!("index.scip not found after running {} scip", analyzer));
+        return Err(format!(
+            "index.scip not found after running {} scip",
+            analyzer
+        ));
     }
 
     info!("✓ SCIP index generated using {}", analyzer);
@@ -111,19 +121,20 @@ fn generate_new_scip(project: &Path, use_rust_analyzer: bool) -> Result<PathBuf,
 }
 
 /// Generate SCIP index and JSON for a project
-/// 
+///
 /// By default, always regenerates fresh SCIP data.
 /// If `use_cached` is true, uses existing index.scip.json if available.
-fn generate_scip(project: &Path, use_cached: bool, use_rust_analyzer: bool) -> Result<PathBuf, String> {
+fn generate_scip(
+    project: &Path,
+    use_cached: bool,
+    use_rust_analyzer: bool,
+) -> Result<PathBuf, String> {
     let root_json_path = project.join("index.scip.json");
 
     // If caching is enabled, check for existing JSON
     if use_cached {
         if root_json_path.exists() {
-            info!(
-                "Using cached SCIP JSON: {}",
-                root_json_path.display()
-            );
+            info!("Using cached SCIP JSON: {}", root_json_path.display());
             return Ok(root_json_path);
         } else {
             info!("No cached SCIP JSON found, generating fresh...");
@@ -135,9 +146,7 @@ fn generate_scip(project: &Path, use_cached: bool, use_rust_analyzer: bool) -> R
 
     // Convert SCIP to JSON
     if !check_command_exists("scip") {
-        return Err(
-            "scip not found in PATH. Install with: cargo install scip-cli".to_string(),
-        );
+        return Err("scip not found in PATH. Install with: cargo install scip-cli".to_string());
     }
     info!("Converting SCIP to JSON...");
     let scip_output = Command::new("scip")
@@ -161,7 +170,12 @@ fn generate_scip(project: &Path, use_cached: bool, use_rust_analyzer: bool) -> R
 }
 
 /// Export call graph to D3 format using scip-atoms' unique name resolution
-fn export_call_graph(scip_json: &Path, output: &Path, project_root: &str, github_url: Option<String>) -> Result<(), String> {
+fn export_call_graph(
+    scip_json: &Path,
+    output: &Path,
+    project_root: &Path,
+    github_url: Option<String>,
+) -> Result<(), String> {
     info!("Building call graph from SCIP data (using scip-atoms)...");
 
     let scip_data = parse_scip_json(scip_json.to_str().unwrap())
@@ -170,9 +184,11 @@ fn export_call_graph(scip_json: &Path, output: &Path, project_root: &str, github
     let (call_graph, symbol_to_display_name) = build_call_graph(&scip_data);
     info!("  Call graph contains {} functions", call_graph.len());
 
-    info!("Converting to atoms with unique scip_names...");
-    let atoms = convert_to_atoms_with_lines(&call_graph, &symbol_to_display_name);
-    
+    info!("Converting to atoms with unique scip_names and accurate line spans...");
+    info!("  Parsing source files with verus_syn for accurate function body spans...");
+    let atoms =
+        convert_to_atoms_with_parsed_spans(&call_graph, &symbol_to_display_name, project_root);
+
     // Convert to HashMap keyed by scip_name for the D3 converter
     let atoms_map: HashMap<String, _> = atoms
         .into_iter()
@@ -181,23 +197,24 @@ fn export_call_graph(scip_json: &Path, output: &Path, project_root: &str, github
     info!("  Generated {} atoms with unique names", atoms_map.len());
 
     info!("Exporting to D3 format...");
-    let d3_graph = atoms_to_d3_graph(&atoms_map, &call_graph, project_root, github_url);
-    
+    let project_root_str = project_root.to_string_lossy().to_string();
+    let d3_graph = atoms_to_d3_graph(&atoms_map, &call_graph, &project_root_str, github_url);
+
     let json = serde_json::to_string_pretty(&d3_graph)
         .map_err(|e| format!("Failed to serialize D3 graph: {}", e))?;
-    std::fs::write(output, json)
-        .map_err(|e| format!("Failed to write output: {}", e))?;
+    std::fs::write(output, json).map_err(|e| format!("Failed to write output: {}", e))?;
 
     info!("✓ Call graph exported to {}", output.display());
-    info!("  {} nodes, {} edges", d3_graph.nodes.len(), d3_graph.links.len());
+    info!(
+        "  {} nodes, {} edges",
+        d3_graph.nodes.len(),
+        d3_graph.links.len()
+    );
     Ok(())
 }
 
 /// Run verification and return the analysis result
-fn run_verification(
-    project: &Path,
-    package: Option<&str>,
-) -> Result<AnalysisResult, String> {
+fn run_verification(project: &Path, package: Option<&str>) -> Result<AnalysisResult, String> {
     info!("Running Verus verification...");
     info!("  (This may take a while)");
 
@@ -214,13 +231,19 @@ fn run_verification(
     match result.status {
         AnalysisStatus::Success => info!("✓ Verification succeeded!"),
         AnalysisStatus::VerificationFailed => {
-            warn!("⚠ Verification completed with {} errors", result.summary.failed_functions);
+            warn!(
+                "⚠ Verification completed with {} errors",
+                result.summary.failed_functions
+            );
         }
         AnalysisStatus::CompilationFailed => {
             warn!("⚠ Compilation failed");
             // Show compilation errors for debugging
             if !result.compilation.errors.is_empty() {
-                warn!("  Compilation errors ({}):", result.compilation.errors.len());
+                warn!(
+                    "  Compilation errors ({}):",
+                    result.compilation.errors.len()
+                );
                 for (i, err) in result.compilation.errors.iter().enumerate() {
                     if let (Some(file), Some(line)) = (&err.file, err.line) {
                         warn!("  {}. {}:{} - {}", i + 1, file, line, err.message);
@@ -235,7 +258,10 @@ fn run_verification(
                     }
                 }
                 if result.compilation.errors.len() > 3 {
-                    warn!("  ... and {} more errors", result.compilation.errors.len() - 3);
+                    warn!(
+                        "  ... and {} more errors",
+                        result.compilation.errors.len() - 3
+                    );
                 }
             } else {
                 // No parsed errors - might be a different issue
@@ -276,10 +302,10 @@ fn enrich_with_verification_status(
     info!("Enriching graph with verification status...");
 
     // Read the graph
-    let graph_content = std::fs::read_to_string(graph_path)
-        .map_err(|e| format!("Failed to read graph: {}", e))?;
-    let mut graph: serde_json::Value =
-        serde_json::from_str(&graph_content).map_err(|e| format!("Failed to parse graph: {}", e))?;
+    let graph_content =
+        std::fs::read_to_string(graph_path).map_err(|e| format!("Failed to read graph: {}", e))?;
+    let mut graph: serde_json::Value = serde_json::from_str(&graph_content)
+        .map_err(|e| format!("Failed to parse graph: {}", e))?;
 
     // Build lookup: (display_name, normalized_path) -> status
     let mut lookup: HashMap<(String, String), String> = HashMap::new();
@@ -287,18 +313,36 @@ fn enrich_with_verification_status(
 
     for func in &verification.verification.verified_functions {
         let norm_path = normalize_path(&func.code_path);
-        lookup.insert((func.display_name.clone(), norm_path.clone()), "verified".to_string());
-        by_name.entry(func.display_name.clone()).or_default().push("verified".to_string());
+        lookup.insert(
+            (func.display_name.clone(), norm_path.clone()),
+            "verified".to_string(),
+        );
+        by_name
+            .entry(func.display_name.clone())
+            .or_default()
+            .push("verified".to_string());
     }
     for func in &verification.verification.failed_functions {
         let norm_path = normalize_path(&func.code_path);
-        lookup.insert((func.display_name.clone(), norm_path.clone()), "failed".to_string());
-        by_name.entry(func.display_name.clone()).or_default().push("failed".to_string());
+        lookup.insert(
+            (func.display_name.clone(), norm_path.clone()),
+            "failed".to_string(),
+        );
+        by_name
+            .entry(func.display_name.clone())
+            .or_default()
+            .push("failed".to_string());
     }
     for func in &verification.verification.unverified_functions {
         let norm_path = normalize_path(&func.code_path);
-        lookup.insert((func.display_name.clone(), norm_path.clone()), "unverified".to_string());
-        by_name.entry(func.display_name.clone()).or_default().push("unverified".to_string());
+        lookup.insert(
+            (func.display_name.clone(), norm_path.clone()),
+            "unverified".to_string(),
+        );
+        by_name
+            .entry(func.display_name.clone())
+            .or_default()
+            .push("unverified".to_string());
     }
 
     // Enrich nodes
@@ -313,10 +357,7 @@ fn enrich_with_verification_status(
                 .get("relative_path")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            let full_path = node
-                .get("full_path")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let full_path = node.get("full_path").and_then(|v| v.as_str()).unwrap_or("");
 
             // Try to find status
             let mut status: Option<&str> = None;
@@ -363,7 +404,10 @@ fn enrich_with_verification_status(
     );
     info!("  Verified: {}", verification.summary.verified_functions);
     info!("  Failed: {}", verification.summary.failed_functions);
-    info!("  Unverified (assume/admit): {}", verification.summary.unverified_functions);
+    info!(
+        "  Unverified (assume/admit): {}",
+        verification.summary.unverified_functions
+    );
 
     Ok(enriched_count)
 }
@@ -375,16 +419,14 @@ fn enrich_with_similar_lemmas(graph_path: &Path, _project: &Path) -> Result<(), 
     // Find Python script and verus_lemma_finder
     let repo_root = std::env::current_dir().unwrap_or_default();
     let script_path = repo_root.join("scripts/enrich_graph_with_similar_lemmas.py");
-    
+
     // Find vstd index (prefer submodule, then data/)
     let vstd_index_candidates = [
         repo_root.join("external/verus_lemma_finder/data/vstd_lemma_index.json"),
         repo_root.join("data/vstd_lemma_index.json"),
     ];
-    
-    let vstd_index = vstd_index_candidates
-        .iter()
-        .find(|p| p.exists());
+
+    let vstd_index = vstd_index_candidates.iter().find(|p| p.exists());
 
     if !script_path.exists() {
         return Err(format!(
@@ -396,7 +438,10 @@ fn enrich_with_similar_lemmas(graph_path: &Path, _project: &Path) -> Result<(), 
     let vstd_index = match vstd_index {
         Some(p) => p,
         None => {
-            return Err("vstd_lemma_index.json not found. Check external/verus_lemma_finder submodule.".to_string());
+            return Err(
+                "vstd_lemma_index.json not found. Check external/verus_lemma_finder submodule."
+                    .to_string(),
+            );
         }
     };
 
@@ -422,10 +467,7 @@ fn enrich_with_similar_lemmas(graph_path: &Path, _project: &Path) -> Result<(), 
             info!("✓ Enriched with similar lemmas from vstd");
             Ok(())
         }
-        Ok(status) => Err(format!(
-            "Python script failed with status: {}",
-            status
-        )),
+        Ok(status) => Err(format!("Python script failed with status: {}", status)),
         Err(e) => Err(format!("Failed to run uv: {}", e)),
     }
 }
@@ -465,7 +507,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.use_rust_analyzer {
         info!("Using rust-analyzer (non-Verus mode)");
     }
-    let scip_json = match generate_scip(&args.project, args.use_cached_scip, args.use_rust_analyzer) {
+    let scip_json = match generate_scip(&args.project, args.use_cached_scip, args.use_rust_analyzer)
+    {
         Ok(path) => path,
         Err(e) => {
             error!("Failed to generate SCIP: {}", e);
@@ -476,14 +519,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 2: Export call graph
     println!("─── Step 2: Export Call Graph ─────────────────────────────────");
-    
+
     // Ensure output directory exists
     if let Some(parent) = args.output.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
-    let project_root = args.project.to_string_lossy().to_string();
-    if let Err(e) = export_call_graph(&scip_json, &args.output, &project_root, args.github_url.clone()) {
+
+    if let Err(e) = export_call_graph(
+        &scip_json,
+        &args.output,
+        &args.project,
+        args.github_url.clone(),
+    ) {
         error!("Failed to export call graph: {}", e);
         std::process::exit(1);
     }
@@ -596,7 +643,7 @@ mod tests {
     #[test]
     fn test_enrich_with_verification_status_basic() {
         use scip_atoms::verification::{
-            AnalysisSummary, CompilationResult, FunctionLocation, VerificationResult, CodeTextInfo,
+            AnalysisSummary, CodeTextInfo, CompilationResult, FunctionLocation, VerificationResult,
         };
 
         let temp_dir = TempDir::new().unwrap();
@@ -639,14 +686,20 @@ mod tests {
                     display_name: "my_function".to_string(),
                     scip_name: None,
                     code_path: "src/lib.rs".to_string(),
-                    code_text: CodeTextInfo { lines_start: 1, lines_end: 10 },
+                    code_text: CodeTextInfo {
+                        lines_start: 1,
+                        lines_end: 10,
+                    },
                 }],
                 failed_functions: vec![],
                 unverified_functions: vec![FunctionLocation {
                     display_name: "other_function".to_string(),
                     scip_name: None,
                     code_path: "src/other.rs".to_string(),
-                    code_text: CodeTextInfo { lines_start: 1, lines_end: 5 },
+                    code_text: CodeTextInfo {
+                        lines_start: 1,
+                        lines_end: 5,
+                    },
                 }],
                 errors: vec![],
             },
@@ -665,17 +718,23 @@ mod tests {
             serde_json::from_str(&fs::read_to_string(&graph_path).unwrap()).unwrap();
         let nodes = enriched_graph["nodes"].as_array().unwrap();
 
-        let my_func = nodes.iter().find(|n| n["display_name"] == "my_function").unwrap();
+        let my_func = nodes
+            .iter()
+            .find(|n| n["display_name"] == "my_function")
+            .unwrap();
         assert_eq!(my_func["verification_status"], "verified");
 
-        let other_func = nodes.iter().find(|n| n["display_name"] == "other_function").unwrap();
+        let other_func = nodes
+            .iter()
+            .find(|n| n["display_name"] == "other_function")
+            .unwrap();
         assert_eq!(other_func["verification_status"], "unverified");
     }
 
     #[test]
     fn test_enrich_with_verification_status_handles_failed() {
         use scip_atoms::verification::{
-            AnalysisSummary, CompilationResult, FunctionLocation, VerificationResult, CodeTextInfo,
+            AnalysisSummary, CodeTextInfo, CompilationResult, FunctionLocation, VerificationResult,
         };
 
         let temp_dir = TempDir::new().unwrap();
@@ -711,7 +770,10 @@ mod tests {
                     display_name: "failing_proof".to_string(),
                     scip_name: None,
                     code_path: "src/proofs.rs".to_string(),
-                    code_text: CodeTextInfo { lines_start: 1, lines_end: 20 },
+                    code_text: CodeTextInfo {
+                        lines_start: 1,
+                        lines_end: 20,
+                    },
                 }],
                 unverified_functions: vec![],
                 errors: vec![],
@@ -796,19 +858,27 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let scip_json_path = temp_dir.path().join("index.scip.json");
         let output_path = temp_dir.path().join("graph.json");
-        
+
         // Write mock SCIP JSON
         let mock_scip = create_mock_scip_json();
-        fs::write(&scip_json_path, serde_json::to_string_pretty(&mock_scip).unwrap()).unwrap();
+        fs::write(
+            &scip_json_path,
+            serde_json::to_string_pretty(&mock_scip).unwrap(),
+        )
+        .unwrap();
 
         // Run export
         let result = export_call_graph(
             &scip_json_path,
             &output_path,
-            "/mock/project",
+            Path::new("/mock/project"),
             None,
         );
-        assert!(result.is_ok(), "export_call_graph should succeed: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "export_call_graph should succeed: {:?}",
+            result
+        );
 
         // Verify output exists and is valid JSON
         assert!(output_path.exists());
@@ -821,7 +891,7 @@ mod tests {
 
         let nodes = graph["nodes"].as_array().unwrap();
         let links = graph["links"].as_array().unwrap();
-        
+
         // The minimal mock may not produce nodes (depends on function-like kind detection)
         // but the output structure should be valid
         eprintln!(
@@ -829,7 +899,7 @@ mod tests {
             nodes.len(),
             links.len()
         );
-        
+
         // If there are nodes, verify their structure
         if !nodes.is_empty() {
             let first_node = &nodes[0];
@@ -846,23 +916,26 @@ mod tests {
 
         // Write mock SCIP JSON
         let mock_scip = create_mock_scip_json();
-        fs::write(&scip_json_path, serde_json::to_string_pretty(&mock_scip).unwrap()).unwrap();
+        fs::write(
+            &scip_json_path,
+            serde_json::to_string_pretty(&mock_scip).unwrap(),
+        )
+        .unwrap();
 
         // Run export with GitHub URL
         let github_url = Some("https://github.com/test/repo".to_string());
         let result = export_call_graph(
             &scip_json_path,
             &output_path,
-            "/mock/project",
+            Path::new("/mock/project"),
             github_url,
         );
         assert!(result.is_ok());
 
         // Verify output
-        let graph: serde_json::Value = serde_json::from_str(
-            &fs::read_to_string(&output_path).unwrap()
-        ).unwrap();
-        
+        let graph: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&output_path).unwrap()).unwrap();
+
         // Graph should be valid
         assert!(graph["nodes"].is_array());
     }
@@ -875,7 +948,7 @@ mod tests {
     fn test_generate_scip_uses_cached_json() {
         let temp_dir = TempDir::new().unwrap();
         let project_dir = temp_dir.path().to_path_buf();
-        
+
         // Create a mock cached SCIP JSON
         let cached_json = project_dir.join("index.scip.json");
         fs::write(&cached_json, r#"{"metadata": {}, "documents": []}"#).unwrap();
@@ -890,23 +963,24 @@ mod tests {
     fn test_generate_scip_returns_error_without_cache_or_tools() {
         let temp_dir = TempDir::new().unwrap();
         let project_dir = temp_dir.path().to_path_buf();
-        
+
         // No cached JSON, and verus-analyzer likely not installed
         // This should either use cache (if exists) or fail gracefully
         let result = generate_scip(&project_dir, true, false);
-        
+
         // With use_cached=true but no cache, it should try to regenerate
         // and likely fail (verus-analyzer not available)
         // We just verify it doesn't panic
-        if result.is_err() {
-            let err = result.unwrap_err();
+        if let Err(err) = result {
             // Should mention verus-analyzer or rust-analyzer or scip
             assert!(
-                err.contains("verus-analyzer") || err.contains("rust-analyzer") || err.contains("scip") || err.contains("not found"),
+                err.contains("verus-analyzer")
+                    || err.contains("rust-analyzer")
+                    || err.contains("scip")
+                    || err.contains("not found"),
                 "Error should mention missing tool: {}",
                 err
             );
         }
     }
 }
-

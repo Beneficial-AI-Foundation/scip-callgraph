@@ -252,7 +252,7 @@ mod tests {
         let exec_json = serde_json::to_string(&FunctionMode::Exec).unwrap();
         let proof_json = serde_json::to_string(&FunctionMode::Proof).unwrap();
         let spec_json = serde_json::to_string(&FunctionMode::Spec).unwrap();
-        
+
         assert_eq!(exec_json, "\"exec\"");
         assert_eq!(proof_json, "\"proof\"");
         assert_eq!(spec_json, "\"spec\"");
@@ -263,7 +263,7 @@ mod tests {
         let exec: FunctionMode = serde_json::from_str("\"exec\"").unwrap();
         let proof: FunctionMode = serde_json::from_str("\"proof\"").unwrap();
         let spec: FunctionMode = serde_json::from_str("\"spec\"").unwrap();
-        
+
         assert_eq!(exec, FunctionMode::Exec);
         assert_eq!(proof, FunctionMode::Proof);
         assert_eq!(spec, FunctionMode::Spec);
@@ -291,9 +291,9 @@ mod tests {
             target: "b".to_string(),
             link_type: "inner".to_string(),
         };
-        
+
         let json = serde_json::to_string(&link).unwrap();
-        
+
         // Should serialize as "type" not "link_type"
         assert!(json.contains("\"type\""));
         assert!(!json.contains("\"link_type\""));
@@ -303,7 +303,7 @@ mod tests {
     fn test_d3_link_deserialization_from_type() {
         let json = r#"{"source":"a","target":"b","type":"precondition"}"#;
         let link: D3Link = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(link.source, "a");
         assert_eq!(link.target, "b");
         assert_eq!(link.link_type, "precondition");
@@ -326,10 +326,10 @@ mod tests {
             file_name: "file.rs".to_string(),
             parent_folder: "src".to_string(),
         };
-        
+
         let json = serde_json::to_string(&atom).unwrap();
         let parsed: Atom = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed.identifier, atom.identifier);
         assert_eq!(parsed.deps.len(), 2);
         assert_eq!(parsed.display_name, atom.display_name);
@@ -356,9 +356,9 @@ mod tests {
             dependents: vec![],
             mode: FunctionMode::Exec,
         };
-        
+
         let json = serde_json::to_string(&node).unwrap();
-        
+
         // start_line and end_line should not appear in JSON when None
         assert!(!json.contains("start_line"));
         assert!(!json.contains("end_line"));
@@ -381,11 +381,10 @@ mod tests {
             dependents: vec![],
             mode: FunctionMode::Exec,
         };
-        
+
         let json = serde_json::to_string(&node).unwrap();
-        
+
         assert!(json.contains("\"start_line\":10"));
         assert!(json.contains("\"end_line\":20"));
     }
 }
-
