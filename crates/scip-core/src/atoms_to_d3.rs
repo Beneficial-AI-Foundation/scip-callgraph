@@ -1,20 +1,20 @@
-//! Convert scip-atoms output to D3.js graph format.
+//! Convert probe-verus output to D3.js graph format.
 //!
-//! This module provides a converter that takes scip-atoms' `AtomWithLines` output
+//! This module provides a converter that takes probe-verus' `AtomWithLines` output
 //! and enriches it with additional visualization data for the D3.js web viewer.
 //!
-//! This approach keeps scip-atoms unchanged while extending its output for our needs.
+//! This approach keeps probe-verus unchanged while extending its output for our needs.
 
 use crate::types::{D3Graph, D3GraphMetadata, D3Link, D3Node, FunctionMode};
-use scip_atoms::{AtomWithLines, FunctionNode};
-use std::collections::HashMap;
+use probe_verus::{AtomWithLines, CallLocation, FunctionNode};
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-/// Convert scip-atoms' call graph and atoms to D3Graph format.
+/// Convert probe-verus' call graph and atoms to D3Graph format.
 ///
 /// This function takes:
-/// - `atoms`: The HashMap of scip_name -> AtomWithLines from scip-atoms
-/// - `call_graph`: The original FunctionNode map (for signature_text to detect mode)
+/// - `atoms`: The HashMap of scip_name -> AtomWithLines from probe-verus
+/// - `call_graph`: The original FunctionNode map (unused, kept for API compatibility)
 /// - `project_root`: The project root path for metadata
 /// - `github_url`: Optional GitHub URL for source links
 ///
@@ -22,18 +22,10 @@ use std::path::Path;
 /// for O(1) lookups in the browser.
 pub fn atoms_to_d3_graph(
     atoms: &HashMap<String, AtomWithLines>,
-    call_graph: &HashMap<String, FunctionNode>,
+    _call_graph: &HashMap<String, FunctionNode>,
     project_root: &str,
     github_url: Option<String>,
 ) -> D3Graph {
-    // Build a lookup from scip_name to FunctionNode for mode detection
-    // The key in call_graph is the unique_key (symbol|signature|self_type@line)
-    // We need to match by display_name + relative_path
-    let mut node_lookup: HashMap<(&str, &str), &FunctionNode> = HashMap::new();
-    for node in call_graph.values() {
-        node_lookup.insert((&node.display_name, &node.relative_path), node);
-    }
-
     // Build dependents map: for each scip_name, collect all scip_names that depend on it
     // This is the inverse of dependencies - enables O(1) "who calls me" lookups
     let mut dependents_map: HashMap<&str, Vec<String>> = HashMap::new();
@@ -67,11 +59,8 @@ pub fn atoms_to_d3_graph(
                 .unwrap_or("unknown")
                 .to_string();
 
-            // Detect mode from signature_text if we have the original FunctionNode
-            let mode = node_lookup
-                .get(&(atom.display_name.as_str(), atom.code_path.as_str()))
-                .map(|node| detect_function_mode(&node.signature_text))
-                .unwrap_or(FunctionMode::Exec);
+            // Get mode directly from atom (parsed by probe-verus using verus_syn)
+            let mode = mode_from_string(&atom.mode);
 
             // Check if this is a libsignal node (based on path patterns)
             let is_libsignal =
@@ -109,24 +98,45 @@ pub fn atoms_to_d3_graph(
         })
         .collect();
 
-    // Convert dependencies to D3Links
-    // Note: scip-atoms doesn't distinguish call location (inner/precondition/postcondition)
-    // so all links are "inner" by default
+    // Convert dependencies to D3Links with proper call location types
+    // Uses dependencies_with_locations which tracks where each call occurs
+    // (precondition/postcondition/inner)
+    let mut link_set: HashSet<(String, String, String)> = HashSet::new();
     let links: Vec<D3Link> = atoms
         .values()
         .flat_map(|atom| {
-            atom.dependencies.iter().filter_map(|dep_scip_name| {
-                // Only create link if the target exists in atoms
-                if atoms.contains_key(dep_scip_name) {
-                    Some(D3Link {
-                        source: atom.scip_name.clone(),
-                        target: dep_scip_name.clone(),
-                        link_type: "inner".to_string(),
-                    })
-                } else {
-                    None
-                }
-            })
+            atom.dependencies_with_locations
+                .iter()
+                .filter_map(|dep| {
+                    // Only create link if the target exists in atoms
+                    if atoms.contains_key(&dep.scip_name) {
+                        let link_type = match dep.location {
+                            CallLocation::Precondition => "precondition",
+                            CallLocation::Postcondition => "postcondition",
+                            CallLocation::Inner => "inner",
+                        }
+                        .to_string();
+
+                        // Deduplicate links (same source, target, type)
+                        let key = (
+                            atom.scip_name.clone(),
+                            dep.scip_name.clone(),
+                            link_type.clone(),
+                        );
+                        if link_set.insert(key) {
+                            Some(D3Link {
+                                source: atom.scip_name.clone(),
+                                target: dep.scip_name.clone(),
+                                link_type,
+                            })
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
         })
         .collect();
 
@@ -147,26 +157,13 @@ pub fn atoms_to_d3_graph(
     }
 }
 
-/// Detect the Verus function mode from a function signature text.
-fn detect_function_mode(signature: &str) -> FunctionMode {
-    let signature_lower = signature.to_lowercase();
-
-    // Check for spec functions (including open/closed spec)
-    if signature_lower.contains("spec fn")
-        || signature_lower.contains("spec(checked) fn")
-        || signature_lower.contains("open spec fn")
-        || signature_lower.contains("closed spec fn")
-    {
-        return FunctionMode::Spec;
+/// Convert a mode string from probe-verus to FunctionMode enum.
+fn mode_from_string(mode: &str) -> FunctionMode {
+    match mode {
+        "spec" => FunctionMode::Spec,
+        "proof" => FunctionMode::Proof,
+        _ => FunctionMode::Exec,
     }
-
-    // Check for proof functions
-    if signature_lower.contains("proof fn") {
-        return FunctionMode::Proof;
-    }
-
-    // Default to exec (regular executable functions)
-    FunctionMode::Exec
 }
 
 /// Check if a path belongs to the libsignal project.
@@ -183,20 +180,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_detect_function_mode() {
-        assert_eq!(detect_function_mode("fn foo()"), FunctionMode::Exec);
-        assert_eq!(detect_function_mode("pub fn bar()"), FunctionMode::Exec);
-        assert_eq!(
-            detect_function_mode("proof fn lemma()"),
-            FunctionMode::Proof
-        );
-        assert_eq!(
-            detect_function_mode("spec fn invariant()"),
-            FunctionMode::Spec
-        );
-        assert_eq!(
-            detect_function_mode("open spec fn predicate()"),
-            FunctionMode::Spec
-        );
+    fn test_mode_from_string() {
+        assert_eq!(mode_from_string("exec"), FunctionMode::Exec);
+        assert_eq!(mode_from_string("proof"), FunctionMode::Proof);
+        assert_eq!(mode_from_string("spec"), FunctionMode::Spec);
+        // Unknown modes default to exec
+        assert_eq!(mode_from_string("unknown"), FunctionMode::Exec);
+        assert_eq!(mode_from_string(""), FunctionMode::Exec);
     }
 }

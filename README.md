@@ -19,7 +19,6 @@ scip-callgraph/
 │   ├── verus-metrics/       # Halstead metrics for Verus specs/proofs
 │   └── metrics-cli/         # All command-line tools (38 binaries, including pipeline)
 ├── external/                # Git submodules
-│   ├── scip-atoms/          # Verification analysis (github.com/Beneficial-AI-Foundation/scip-atoms)
 │   └── verus_lemma_finder/  # Similar lemma search (github.com/Beneficial-AI-Foundation/verus_lemma_finder)
 ├── web/                     # Interactive web viewer
 ├── examples/                # Example data and test projects
@@ -341,7 +340,7 @@ See [docs/guides/CALLGRAPH_CI_INTEGRATION.md](docs/guides/CALLGRAPH_CI_INTEGRATI
 
 | Script | Description |
 |--------|-------------|
-| `scripts/add_verification_status.py` | Enrich graph.json with verification status from scip-atoms |
+| `scripts/add_verification_status.py` | Enrich graph.json with verification status from probe-verus |
 | `scripts/enrich_graph_with_similar_lemmas.py` | Enrich graph.json with similar lemmas from verus_lemma_finder |
 | `scripts/visualize_metrics.py` | Generate visualization plots from metrics data |
 

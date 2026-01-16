@@ -13,8 +13,10 @@
 
 use clap::Parser;
 use log::{error, info, warn};
-use scip_atoms::verification::{AnalysisResult, AnalysisStatus, VerificationAnalyzer, VerusRunner};
-use scip_atoms::{build_call_graph, convert_to_atoms_with_parsed_spans, parse_scip_json};
+use probe_verus::verification::{
+    AnalysisResult, AnalysisStatus, VerificationAnalyzer, VerusRunner,
+};
+use probe_verus::{build_call_graph, convert_to_atoms_with_parsed_spans, parse_scip_json};
 use scip_core::atoms_to_d3::atoms_to_d3_graph;
 use scip_core::logging::init_logger;
 use std::collections::HashMap;
@@ -169,14 +171,14 @@ fn generate_scip(
     Ok(root_json_path)
 }
 
-/// Export call graph to D3 format using scip-atoms' unique name resolution
+/// Export call graph to D3 format using probe-verus' unique name resolution
 fn export_call_graph(
     scip_json: &Path,
     output: &Path,
     project_root: &Path,
     github_url: Option<String>,
 ) -> Result<(), String> {
-    info!("Building call graph from SCIP data (using scip-atoms)...");
+    info!("Building call graph from SCIP data (using probe-verus)...");
 
     let scip_data = parse_scip_json(scip_json.to_str().unwrap())
         .map_err(|e| format!("Failed to parse SCIP JSON: {}", e))?;
@@ -186,8 +188,13 @@ fn export_call_graph(
 
     info!("Converting to atoms with unique scip_names and accurate line spans...");
     info!("  Parsing source files with verus_syn for accurate function body spans...");
-    let atoms =
-        convert_to_atoms_with_parsed_spans(&call_graph, &symbol_to_display_name, project_root);
+    // Pass with_locations=true to get call location tracking (precondition/postcondition/inner)
+    let atoms = convert_to_atoms_with_parsed_spans(
+        &call_graph,
+        &symbol_to_display_name,
+        project_root,
+        true, // with_locations - enables requires/ensures tracking
+    );
 
     // Convert to HashMap keyed by scip_name for the D3 converter
     let atoms_map: HashMap<String, _> = atoms
@@ -642,7 +649,7 @@ mod tests {
 
     #[test]
     fn test_enrich_with_verification_status_basic() {
-        use scip_atoms::verification::{
+        use probe_verus::verification::{
             AnalysisSummary, CodeTextInfo, CompilationResult, FunctionLocation, VerificationResult,
         };
 
@@ -733,7 +740,7 @@ mod tests {
 
     #[test]
     fn test_enrich_with_verification_status_handles_failed() {
-        use scip_atoms::verification::{
+        use probe_verus::verification::{
             AnalysisSummary, CodeTextInfo, CompilationResult, FunctionLocation, VerificationResult,
         };
 

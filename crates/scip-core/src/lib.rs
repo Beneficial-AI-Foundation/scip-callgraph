@@ -18,7 +18,7 @@
 //! - [`scip_reader`]: Alternative SCIP file reader
 //! - [`scip_utils`]: Utility functions for SCIP data manipulation
 //! - [`call_graph_svg`]: Legacy SVG visualization
-//! - [`atoms_to_d3`]: Convert scip-atoms output to D3.js graph format
+//! - [`atoms_to_d3`]: Convert probe-verus output to D3.js graph format
 //! - [`logging`]: Logging utilities
 //!
 //! ## Quick Start

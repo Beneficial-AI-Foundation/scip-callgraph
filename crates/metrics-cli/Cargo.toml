@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 scip-core = { path = "../scip-core" }
 verus-metrics = { path = "../verus-metrics" }
-scip-atoms = { workspace = true }
+probe-verus = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

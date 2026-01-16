@@ -255,7 +255,10 @@ export class CallGraphVisualization {
       .data(links, (d: D3Link) => {
         const source = typeof d.source === 'string' ? d.source : d.source.id;
         const target = typeof d.target === 'string' ? d.target : d.target.id;
-        return `${source}-${target}`;
+        // Include link type in key to distinguish multiple edges between same nodes
+        // (e.g., inner edge vs postcondition edge from same source to same target)
+        const linkType = d.type || 'inner';
+        return `${source}-${target}-${linkType}`;
       });
 
     this.linkElements.exit().remove();

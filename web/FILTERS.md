@@ -124,6 +124,13 @@ When both Source and Sink are set:
 - `showPreconditionCalls`: Calls in `requires` clauses (default: false)
 - `showPostconditionCalls`: Calls in `ensures` clauses (default: false)
 
+**Important:** Requires/Ensures edges typically connect to **Spec functions** (since `requires` and `ensures` clauses call specification predicates). If "Show Spec Functions" is disabled, these edges won't be visible even when their respective toggles are enabled, because:
+1. Spec nodes are excluded by the mode filter (step 1 in filter order)
+2. Links to excluded nodes are removed (step 4: "Only links between included nodes")
+3. The call type filter runs after node filtering, so it never sees edges to filtered-out Spec nodes
+
+To see Requires/Ensures edges, enable **both** the call type toggle AND "Show Spec Functions".
+
 ### 9. Source Type Filters
 **UI Elements:** Checkboxes for Libsignal/External  
 **Function:** Filter by code source
