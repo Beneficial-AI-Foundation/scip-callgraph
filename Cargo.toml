@@ -59,5 +59,4 @@ rust-lapper = "1.1"
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
 
 # External crates from GitHub
-scip-atoms = { git = "https://github.com/Beneficial-AI-Foundation/scip-atoms" }
-
+scip-atoms = { git = "https://github.com/Beneficial-AI-Foundation/scip-atoms", tag = "v0.1.0" }
