@@ -196,10 +196,10 @@ fn export_call_graph(
         true, // with_locations - enables requires/ensures tracking
     );
 
-    // Convert to HashMap keyed by scip_name for the D3 converter
+    // Convert to HashMap keyed by code_name for the D3 converter
     let atoms_map: HashMap<String, _> = atoms
         .into_iter()
-        .map(|atom| (atom.scip_name.clone(), atom))
+        .map(|atom| (atom.code_name.clone(), atom))
         .collect();
     info!("  Generated {} atoms with unique names", atoms_map.len());
 
@@ -650,8 +650,9 @@ mod tests {
     #[test]
     fn test_enrich_with_verification_status_basic() {
         use probe_verus::verification::{
-            AnalysisSummary, CodeTextInfo, CompilationResult, FunctionLocation, VerificationResult,
+            AnalysisSummary, CompilationResult, FunctionLocation, VerificationResult,
         };
+        use probe_verus::CodeTextInfo;
 
         let temp_dir = TempDir::new().unwrap();
         let graph_path = temp_dir.path().join("test_graph.json");
@@ -691,7 +692,7 @@ mod tests {
             verification: VerificationResult {
                 verified_functions: vec![FunctionLocation {
                     display_name: "my_function".to_string(),
-                    scip_name: None,
+                    code_name: None,
                     code_path: "src/lib.rs".to_string(),
                     code_text: CodeTextInfo {
                         lines_start: 1,
@@ -701,7 +702,7 @@ mod tests {
                 failed_functions: vec![],
                 unverified_functions: vec![FunctionLocation {
                     display_name: "other_function".to_string(),
-                    scip_name: None,
+                    code_name: None,
                     code_path: "src/other.rs".to_string(),
                     code_text: CodeTextInfo {
                         lines_start: 1,
@@ -741,8 +742,9 @@ mod tests {
     #[test]
     fn test_enrich_with_verification_status_handles_failed() {
         use probe_verus::verification::{
-            AnalysisSummary, CodeTextInfo, CompilationResult, FunctionLocation, VerificationResult,
+            AnalysisSummary, CompilationResult, FunctionLocation, VerificationResult,
         };
+        use probe_verus::CodeTextInfo;
 
         let temp_dir = TempDir::new().unwrap();
         let graph_path = temp_dir.path().join("test_graph.json");
@@ -775,7 +777,7 @@ mod tests {
                 verified_functions: vec![],
                 failed_functions: vec![FunctionLocation {
                     display_name: "failing_proof".to_string(),
-                    scip_name: None,
+                    code_name: None,
                     code_path: "src/proofs.rs".to_string(),
                     code_text: CodeTextInfo {
                         lines_start: 1,

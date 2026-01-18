@@ -36,7 +36,7 @@ pub fn atoms_to_d3_graph(
                 dependents_map
                     .entry(dep.as_str())
                     .or_default()
-                    .push(atom.scip_name.clone());
+                    .push(atom.code_name.clone());
             }
         }
     }
@@ -60,11 +60,11 @@ pub fn atoms_to_d3_graph(
                 .to_string();
 
             // Get mode directly from atom (parsed by probe-verus using verus_syn)
-            let mode = mode_from_string(&atom.mode);
+            let mode = convert_function_mode(&atom.mode);
 
             // Check if this is a libsignal node (based on path patterns)
             let is_libsignal =
-                is_libsignal_path(&atom.code_path) || atom.scip_name.contains("libsignal");
+                is_libsignal_path(&atom.code_path) || atom.code_name.contains("libsignal");
 
             // Filter dependencies to only include those that exist in atoms
             let dependencies: Vec<String> = atom
@@ -76,14 +76,14 @@ pub fn atoms_to_d3_graph(
 
             // Get dependents (who calls this function)
             let dependents = dependents_map
-                .get(atom.scip_name.as_str())
+                .get(atom.code_name.as_str())
                 .cloned()
                 .unwrap_or_default();
 
             D3Node {
-                id: atom.scip_name.clone(),
+                id: atom.code_name.clone(),
                 display_name: atom.display_name.clone(),
-                symbol: atom.scip_name.clone(), // Use scip_name as symbol for consistency
+                symbol: atom.code_name.clone(), // Use scip_name as symbol for consistency
                 full_path: atom.code_path.clone(), // Use relative path (full_path is legacy)
                 relative_path: atom.code_path.clone(),
                 file_name,
@@ -109,7 +109,7 @@ pub fn atoms_to_d3_graph(
                 .iter()
                 .filter_map(|dep| {
                     // Only create link if the target exists in atoms
-                    if atoms.contains_key(&dep.scip_name) {
+                    if atoms.contains_key(&dep.code_name) {
                         let link_type = match dep.location {
                             CallLocation::Precondition => "precondition",
                             CallLocation::Postcondition => "postcondition",
@@ -119,14 +119,14 @@ pub fn atoms_to_d3_graph(
 
                         // Deduplicate links (same source, target, type)
                         let key = (
-                            atom.scip_name.clone(),
-                            dep.scip_name.clone(),
+                            atom.code_name.clone(),
+                            dep.code_name.clone(),
                             link_type.clone(),
                         );
                         if link_set.insert(key) {
                             Some(D3Link {
-                                source: atom.scip_name.clone(),
-                                target: dep.scip_name.clone(),
+                                source: atom.code_name.clone(),
+                                target: dep.code_name.clone(),
                                 link_type,
                             })
                         } else {
@@ -157,12 +157,12 @@ pub fn atoms_to_d3_graph(
     }
 }
 
-/// Convert a mode string from probe-verus to FunctionMode enum.
-fn mode_from_string(mode: &str) -> FunctionMode {
+/// Convert probe-verus FunctionMode to our local FunctionMode enum.
+fn convert_function_mode(mode: &probe_verus::FunctionMode) -> FunctionMode {
     match mode {
-        "spec" => FunctionMode::Spec,
-        "proof" => FunctionMode::Proof,
-        _ => FunctionMode::Exec,
+        probe_verus::FunctionMode::Spec => FunctionMode::Spec,
+        probe_verus::FunctionMode::Proof => FunctionMode::Proof,
+        probe_verus::FunctionMode::Exec => FunctionMode::Exec,
     }
 }
 
@@ -180,12 +180,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_mode_from_string() {
-        assert_eq!(mode_from_string("exec"), FunctionMode::Exec);
-        assert_eq!(mode_from_string("proof"), FunctionMode::Proof);
-        assert_eq!(mode_from_string("spec"), FunctionMode::Spec);
-        // Unknown modes default to exec
-        assert_eq!(mode_from_string("unknown"), FunctionMode::Exec);
-        assert_eq!(mode_from_string(""), FunctionMode::Exec);
+    fn test_convert_function_mode() {
+        assert_eq!(
+            convert_function_mode(&probe_verus::FunctionMode::Exec),
+            FunctionMode::Exec
+        );
+        assert_eq!(
+            convert_function_mode(&probe_verus::FunctionMode::Proof),
+            FunctionMode::Proof
+        );
+        assert_eq!(
+            convert_function_mode(&probe_verus::FunctionMode::Spec),
+            FunctionMode::Spec
+        );
     }
 }
