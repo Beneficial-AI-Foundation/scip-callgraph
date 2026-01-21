@@ -9,6 +9,56 @@ export interface SimilarLemma {
   source: string;  // "project" or "vstd"
 }
 
+// ============================================================================
+// Simplified JSON Format (curve25519-dalek.json style)
+// ============================================================================
+
+/**
+ * Node format used in simplified JSON files (like curve25519-dalek.json)
+ * This is a flat array format without explicit links/metadata
+ */
+export interface SimplifiedNode {
+  identifier: string;           // Maps to id
+  statement_type?: string;      // e.g., "function" - informational only
+  deps: string[];               // Maps to dependencies
+  body?: string;                // Function body (code) - optional
+  display_name: string;
+  full_path: string;            // May have file:// prefix
+  relative_path: string;
+  file_name: string;
+  parent_folder: string;
+}
+
+/**
+ * Type guard to check if data is in simplified format (array of SimplifiedNode)
+ */
+export function isSimplifiedFormat(data: unknown): data is SimplifiedNode[] {
+  if (!Array.isArray(data)) return false;
+  if (data.length === 0) return true;  // Empty array could be either, default to simplified
+  
+  const firstItem = data[0];
+  // Check for simplified format markers: has 'identifier' and 'deps' fields
+  return (
+    typeof firstItem === 'object' &&
+    firstItem !== null &&
+    'identifier' in firstItem &&
+    'deps' in firstItem &&
+    !('id' in firstItem)  // Make sure it's not a D3Node that happens to have deps
+  );
+}
+
+/**
+ * Type guard to check if data is in D3Graph format
+ */
+export function isD3GraphFormat(data: unknown): data is D3Graph {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'nodes' in data &&
+    Array.isArray((data as any).nodes)
+  );
+}
+
 /** Verus function mode */
 export type FunctionMode = 'exec' | 'proof' | 'spec';
 

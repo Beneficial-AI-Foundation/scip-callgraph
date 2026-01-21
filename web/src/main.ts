@@ -1,6 +1,134 @@
-import { D3Graph, D3Node, GraphState, FilterOptions } from './types';
+import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
+
+// ============================================================================
+// JSON Format Conversion
+// ============================================================================
+
+/**
+ * Convert simplified JSON format (array of nodes with deps) to D3Graph format.
+ * This handles JSON files like curve25519-dalek.json that have a simpler structure.
+ * 
+ * The simplified format:
+ * - Is a flat array of nodes (no nodes/links/metadata wrapper)
+ * - Uses 'identifier' instead of 'id'
+ * - Uses 'deps' instead of 'dependencies'
+ * - May have 'body' (code) instead of start_line/end_line
+ * - Missing fields: symbol, is_libsignal, dependents, mode, links
+ * 
+ * This conversion:
+ * - Maps field names to D3Graph format
+ * - Computes 'dependents' as inverse of 'deps'
+ * - Generates links from deps
+ * - Creates minimal metadata
+ * - Handles file:// prefix in full_path
+ */
+function convertSimplifiedToD3Graph(nodes: SimplifiedNode[]): D3Graph {
+  // Build a set of known node IDs for filtering external dependencies
+  const knownIds = new Set(nodes.map(n => n.identifier));
+  
+  // Build dependents map (inverse of deps)
+  const dependentsMap = new Map<string, string[]>();
+  for (const node of nodes) {
+    // Initialize empty array for each node
+    if (!dependentsMap.has(node.identifier)) {
+      dependentsMap.set(node.identifier, []);
+    }
+    
+    // For each dep, add this node as a dependent
+    for (const dep of node.deps) {
+      if (!dependentsMap.has(dep)) {
+        dependentsMap.set(dep, []);
+      }
+      dependentsMap.get(dep)!.push(node.identifier);
+    }
+  }
+  
+  // Convert nodes
+  const d3Nodes: D3Node[] = nodes.map(node => {
+    // Clean up full_path (remove file:// prefix if present)
+    let fullPath = node.full_path;
+    if (fullPath.startsWith('file://')) {
+      fullPath = fullPath.substring(7);  // Remove 'file://'
+    }
+    
+    // Filter dependencies to only include known nodes
+    const filteredDeps = node.deps.filter(dep => knownIds.has(dep));
+    
+    // Get dependents (inverse relationship)
+    const dependents = dependentsMap.get(node.identifier) || [];
+    
+    return {
+      id: node.identifier,
+      display_name: node.display_name,
+      symbol: node.identifier,  // Use identifier as symbol (no separate symbol in simplified format)
+      full_path: fullPath,
+      relative_path: node.relative_path,
+      file_name: node.file_name,
+      parent_folder: node.parent_folder,
+      // No line numbers in simplified format
+      start_line: undefined,
+      end_line: undefined,
+      is_libsignal: false,  // Default to false
+      dependencies: filteredDeps,
+      dependents: dependents.filter(dep => knownIds.has(dep)),  // Also filter dependents
+      mode: 'exec' as const,  // Default mode (could try to infer from body/statement_type)
+    };
+  });
+  
+  // Generate links from dependencies
+  const links: D3Link[] = [];
+  for (const node of d3Nodes) {
+    for (const dep of node.dependencies) {
+      links.push({
+        source: node.id,
+        target: dep,
+        type: 'inner',  // Default link type
+      });
+    }
+  }
+  
+  // Create minimal metadata
+  const metadata = {
+    total_nodes: d3Nodes.length,
+    total_edges: links.length,
+    project_root: 'Simplified JSON (no project root)',
+    generated_at: new Date().toISOString(),
+    // No github_url available in simplified format
+  };
+  
+  return {
+    nodes: d3Nodes,
+    links,
+    metadata,
+  };
+}
+
+/**
+ * Parse JSON data and convert to D3Graph format if needed.
+ * Supports both D3Graph format and simplified format (curve25519-dalek.json style).
+ * 
+ * @param data - Parsed JSON data (either D3Graph or SimplifiedNode[])
+ * @returns D3Graph in the expected format
+ */
+function parseAndNormalizeGraph(data: unknown): D3Graph {
+  // Check if it's already in D3Graph format
+  if (isD3GraphFormat(data)) {
+    console.log('Detected D3Graph format');
+    return data;
+  }
+  
+  // Check if it's in simplified format
+  if (isSimplifiedFormat(data)) {
+    console.log('Detected simplified format, converting to D3Graph');
+    return convertSimplifiedToD3Graph(data);
+  }
+  
+  // Unknown format - try to treat as D3Graph and hope for the best
+  console.warn('Unknown JSON format, attempting to use as D3Graph');
+  return data as D3Graph;
+}
 
 // ============================================================================
 // VS Code Integration
@@ -761,7 +889,8 @@ async function autoLoadGraph(): Promise<void> {
       }
 
       const text = await response.text();
-      const graph: D3Graph = JSON.parse(text);
+      const rawData = JSON.parse(text);
+      const graph = parseAndNormalizeGraph(rawData);
       
       const source = jsonUrlParam ? 'URL parameter' : 'configured default';
       loadGraph(graph, `Loaded from ${source}: ${jsonUrl}`);
@@ -797,7 +926,8 @@ async function autoLoadGraph(): Promise<void> {
     }
 
     const text = await response.text();
-    const graph: D3Graph = JSON.parse(text);
+    const rawData = JSON.parse(text);
+    const graph = parseAndNormalizeGraph(rawData);
     
     loadGraph(graph, 'Auto-loaded from local file');
   } catch (error) {
@@ -844,7 +974,8 @@ async function loadDeferredGraph(): Promise<void> {
     }
     
     const text = await response.text();
-    const graph: D3Graph = JSON.parse(text);
+    const rawData = JSON.parse(text);
+    const graph = parseAndNormalizeGraph(rawData);
     
     deferredGraphUrl = null; // Clear the deferred URL
     loadGraph(graph, 'Loaded from deferred graph');
@@ -894,7 +1025,8 @@ async function loadDeferredGraphWithDisambiguation(): Promise<void> {
     }
     
     const text = await response.text();
-    const graph: D3Graph = JSON.parse(text);
+    const rawData = JSON.parse(text);
+    const graph = parseAndNormalizeGraph(rawData);
     
     deferredGraphUrl = null; // Clear the deferred URL
     
@@ -1048,7 +1180,8 @@ async function handleFileLoad(event: Event): Promise<void> {
 
   try {
     const text = await file.text();
-    const graph: D3Graph = JSON.parse(text);
+    const rawData = JSON.parse(text);
+    const graph = parseAndNormalizeGraph(rawData);
     
     loadGraph(graph, `Loaded from file: ${file.name}`);
   } catch (error) {
@@ -1989,7 +2122,9 @@ function handleVSCodeMessage(event: MessageEvent): void {
     case 'loadGraph':
       // Load graph data sent from extension
       if (message.graph) {
-        console.log('[VS Code] Received graph data:', message.graph.nodes?.length, 'nodes');
+        // Normalize the graph format (supports both D3Graph and simplified formats)
+        const normalizedGraph = parseAndNormalizeGraph(message.graph);
+        console.log('[VS Code] Received graph data:', normalizedGraph.nodes?.length, 'nodes');
         
         // Store the selected node ID for exact matching
         if (message.selectedNodeId) {
@@ -1999,7 +2134,7 @@ function handleVSCodeMessage(event: MessageEvent): void {
           selectedNodeId = null;
         }
         
-        loadGraph(message.graph as D3Graph, 'Loaded from VS Code extension');
+        loadGraph(normalizedGraph, 'Loaded from VS Code extension');
         
         // Apply initial query if provided
         if (message.initialQuery) {

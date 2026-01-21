@@ -588,7 +588,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("Next steps:");
     println!("  cd web && npm install && npm run dev");
-    println!("  Open http://localhost:5173");
+    println!("  Open http://localhost:3000");
     println!();
 
     Ok(())
