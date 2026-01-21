@@ -235,7 +235,8 @@ jobs:
       - name: Build web viewer
         working-directory: scip-callgraph/web
         env:
-          VITE_GITHUB_URL: ${{ inputs.github_url }}
+          # Auto-detect github_url if not explicitly provided (same as pipeline step)
+          VITE_GITHUB_URL: ${{ inputs.github_url || format('{0}/{1}', github.server_url, github.repository) }}
           VITE_GITHUB_PATH_PREFIX: ${{ inputs.github_path_prefix }}
         run: |
           npm ci
@@ -245,9 +246,9 @@ jobs:
             echo "Building for subpath: /${{ inputs.subpath }}/"
             npx vite build --base=/${{ inputs.subpath }}/
           else
-            # Extract repo name from github_url for standalone deployment
+            # Extract repo name from auto-detected github_url for standalone deployment
             # e.g., https://github.com/org/repo -> /repo/
-            REPO_NAME=$(echo "${{ inputs.github_url }}" | sed 's|.*/||')
+            REPO_NAME=$(echo "$VITE_GITHUB_URL" | sed 's|.*/||')
             echo "Building for standalone deployment: /${REPO_NAME}/"
             npx vite build --base=/${REPO_NAME}/
           fi
