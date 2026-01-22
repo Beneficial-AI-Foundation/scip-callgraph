@@ -5,6 +5,13 @@
 #     callgraph:
 #       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
 #
+# Specify a Verus version (recommended for reproducibility):
+#   jobs:
+#     callgraph:
+#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+#       with:
+#         verus_version: '0.2025.11.23.41c5885'
+#
 # For non-Verus projects, use rust-analyzer instead:
 #   jobs:
 #     callgraph:
@@ -70,6 +77,11 @@ on:
         required: false
         default: false
         type: boolean
+      verus_version:
+        description: 'Verus release version (e.g., "0.2025.11.23.41c5885"). If not provided, installs the latest release.'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   build:
@@ -143,15 +155,31 @@ jobs:
 
       - name: Install Verus (for verification)
         if: ${{ !inputs.skip_verification }}
+        env:
+          VERUS_VERSION: ${{ inputs.verus_version }}
         run: |
-          # Use specific Verus version compatible with Rust 1.91.0
-          # Same as dalek-lite CI: https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/.github/workflows/ci.yml
-          wget https://github.com/verus-lang/verus/releases/download/release%2F0.2025.11.23.41c5885/verus-0.2025.11.23.41c5885-x86-linux.zip
-          unzip verus-0.2025.11.23.41c5885-x86-linux.zip
+          if [ -n "$VERUS_VERSION" ]; then
+            echo "Installing specified Verus version: $VERUS_VERSION"
+            RELEASE_TAG="release/$VERUS_VERSION"
+          else
+            echo "No Verus version specified, fetching latest release..."
+            RELEASE_TAG=$(curl -s https://api.github.com/repos/verus-lang/verus/releases/latest | jq -r '.tag_name')
+            # Extract version from tag (e.g., "release/0.2025.11.23.41c5885" -> "0.2025.11.23.41c5885")
+            VERUS_VERSION="${RELEASE_TAG#release/}"
+            echo "Latest Verus version: $VERUS_VERSION"
+          fi
+          
+          # URL-encode the release tag (replace / with %2F)
+          ENCODED_TAG=$(echo "$RELEASE_TAG" | sed 's|/|%2F|g')
+          DOWNLOAD_URL="https://github.com/verus-lang/verus/releases/download/${ENCODED_TAG}/verus-${VERUS_VERSION}-x86-linux.zip"
+          
+          echo "Downloading from: $DOWNLOAD_URL"
+          wget "$DOWNLOAD_URL" -O verus.zip
+          unzip verus.zip
           mv verus-x86-linux ~/.cargo/bin
           cd ~/.cargo/bin
           ln -s verus-x86-linux/cargo-verus
-          echo "Verus installed"
+          echo "Verus $VERUS_VERSION installed successfully"
 
       - name: Install scip CLI
         run: |
