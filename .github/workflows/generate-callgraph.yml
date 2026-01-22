@@ -82,6 +82,11 @@ on:
         required: false
         default: ''
         type: string
+      rust_version:
+        description: 'Rust toolchain version (must be compatible with the Verus version). Defaults to 1.84.0.'
+        required: false
+        default: '1.91.0'
+        type: string
 
 jobs:
   build:
@@ -92,6 +97,24 @@ jobs:
       artifact_name: callgraph-viewer
     
     steps:
+      - name: Print workflow parameters
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "  Workflow Parameters"
+          echo "═══════════════════════════════════════════════════════════"
+          echo "  project_path:       ${{ inputs.project_path }}"
+          echo "  github_url:         ${{ inputs.github_url || '(auto-detect)' }}"
+          echo "  github_path_prefix: ${{ inputs.github_path_prefix || '(none)' }}"
+          echo "  package:            ${{ inputs.package || '(none)' }}"
+          echo "  skip_verification:  ${{ inputs.skip_verification }}"
+          echo "  skip_similar_lemmas: ${{ inputs.skip_similar_lemmas }}"
+          echo "  deploy_mode:        ${{ inputs.deploy_mode }}"
+          echo "  subpath:            ${{ inputs.subpath }}"
+          echo "  use_rust_analyzer:  ${{ inputs.use_rust_analyzer }}"
+          echo "  verus_version:      ${{ inputs.verus_version || '(latest)' }}"
+          echo "  rust_version:       ${{ inputs.rust_version }}"
+          echo "═══════════════════════════════════════════════════════════"
+
       - name: Checkout calling repository
         uses: actions/checkout@v4
         with:
@@ -105,7 +128,9 @@ jobs:
           submodules: recursive
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.91.0
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust_version }}
 
       - name: Install Node.js
         uses: actions/setup-node@v4
