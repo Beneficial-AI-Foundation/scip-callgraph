@@ -54,7 +54,7 @@
               <span class="postcondition-badge">Ensures</span>
             </label>
             <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-              💡 Show/hide dependencies from pre/postconditions
+              💡 Requires/Ensures edges typically connect to Spec functions
             </small>
           </div>
 
@@ -117,16 +117,21 @@
 
           <div class="filter-group">
             <h3>📁 Include Files</h3>
-            <label class="input-label">
-              <input 
-                type="text" 
-                id="include-files" 
-                placeholder="e.g., edwards.rs, decompress*.rs" 
-                class="search-input"
-              />
-            </label>
+            <div class="input-with-dropdown">
+              <label class="input-label">
+                <input 
+                  type="text" 
+                  id="include-files" 
+                  placeholder="e.g., edwards.rs, decompress*.rs" 
+                  class="search-input"
+                />
+              </label>
+              <div id="file-disambiguation-dropdown" class="disambiguation-dropdown" style="display: none;">
+                <!-- Populated dynamically when ambiguous filename is detected -->
+              </div>
+            </div>
             <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-              💡 Empty = all files. Glob: <code>*.rs</code>, <code>field_*.rs</code>
+              💡 Empty = all files. Use path like <code>ifma/edwards.rs</code> to disambiguate
             </small>
             <details class="file-list-details">
               <summary>📋 Available files (<span id="file-count">0</span>)</summary>

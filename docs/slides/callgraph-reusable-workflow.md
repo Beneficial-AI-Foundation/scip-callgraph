@@ -76,9 +76,113 @@ The pipeline doesn't just extract calls. It enriches the graph with:
 
 | Enrichment | What it does |
 |---|---|
-| **Verus verification status** | Marks each function as verified / unverified / proof / exec / spec |
+| **Verus verification status** | Marks each function as verified / failed / unverified |
+| **Function modes** | Distinguishes `exec`, `proof`, and `spec` functions |
+| **Spec clause visualization** | Separate edge types for `requires` and `ensures` calls |
 | **Similar lemmas detection** | Finds structurally similar lemmas (potential deduplication targets) |
+| **Unused specs detection** | Identifies spec/proof functions with no callers |
+| **Complexity metrics** | Cyclomatic, cognitive, Halstead difficulty/effort/length |
+| **Source code embedding** | Function bodies included for in-viewer reading |
 | **GitHub deep links** | Every node links to its exact file and line range |
+
+---
+
+## Visualizing Specs: Requires and Ensures as Edges
+
+A call graph typically shows "function A calls function B in its body." But in Verus, calls also happen in **specification clauses** — and those relationships matter.
+
+The callgraph distinguishes **three edge types**:
+
+```
+ ┌────────────┐                          ┌────────────┐
+ │  my_func   │ ── solid gray ────────►  │  helper    │   Body call
+ │            │ ── dashed orange ──────► │  is_valid  │   requires clause
+ │            │ ── dashed pink ────────► │  result_ok │   ensures clause
+ └────────────┘                          └────────────┘
+```
+
+| Edge style | Color | Meaning |
+|---|---|---|
+| **Solid line** | Gray | Call in the function body (exec/proof code) |
+| **Dashed line** | Orange | Call in a `requires` clause (precondition) |
+| **Dashed line** | Pink | Call in an `ensures` clause (postcondition) |
+
+Toggle each type independently in the viewer. Default: body calls on, spec calls off — turn them on to see the full contract landscape.
+
+---
+
+## Why Spec Edges Matter
+
+Seeing which spec functions appear in `requires` vs `ensures` answers questions that a body-only call graph cannot:
+
+- **Which specs guard entry to this function?** (requires edges)
+- **Which specs describe what this function promises?** (ensures edges)
+- **Which spec functions are used only in contracts, never in bodies?**
+- **If I change this spec, which contracts break?** (follow the dashed edges backward)
+- **Are my preconditions and postconditions using the same vocabulary?** (shared spec callees)
+
+This turns the call graph from a tool for understanding *implementation* into a tool for understanding *verification architecture*.
+
+---
+
+## Questions the Callgraph Answers: Navigation
+
+**Understanding structure and dependencies**
+
+- What functions does `my_function` call?
+- What functions call `my_function`?
+- What is the call chain between function A and function B?
+- What is the neighborhood within N steps of a function?
+- Which functions are entry points (many callers, few callees)?
+- Which functions are hubs (many callees)?
+
+---
+
+## Questions the Callgraph Answers: Verification Status
+
+**Tracking verification progress**
+
+- Which functions are verified? Which have failed? Which haven't been attempted?
+- What is the overall verification coverage of the codebase?
+- Are the functions I depend on verified?
+- Which unverified functions are on the critical path?
+
+Nodes are color-coded: **green** = verified, **red** = failed, **gray** = unverified.
+
+---
+
+## Questions the Callgraph Answers: Proof Strategy
+
+**Planning and prioritizing verification work**
+
+- Which spec functions are unused — written but never referenced in any contract?
+- Which lemmas are structurally similar to ones already proved (in my project or in vstd)?
+- How complex is this function? (cyclomatic, cognitive, Halstead metrics)
+- What is the transitive proof burden — how many lemmas does proving this function pull in?
+- Where does proof effort concentrate in the codebase?
+
+---
+
+## Questions the Callgraph Answers: Code Review and Impact
+
+**Assessing the blast radius of a change**
+
+- If I change function X, what else is affected? (follow callers)
+- If I change a spec function, which `requires`/`ensures` clauses reference it?
+- What does this function depend on? (follow callees)
+- Are there isolated clusters of functions with no external callers? (potential dead code)
+
+---
+
+## Questions the Callgraph Answers: Onboarding
+
+**Getting up to speed on an unfamiliar codebase**
+
+- What are the main entry points?
+- How are modules organized and connected?
+- What does function X do? (read its body, callers, and callees in the viewer)
+- Which functions are central to the architecture? (high connectivity)
+- What patterns exist in the proof structure? (similar lemmas)
 
 ---
 
@@ -179,15 +283,16 @@ All cached where possible. Runs on `ubuntu-latest`.
 
 ---
 
-## Use Cases
+## Who Benefits
 
-| Who | How they use it |
+| Who | What they get |
 |---|---|
-| **Verification engineers** | Identify unverified functions, prioritize by complexity, find similar lemmas to reuse |
-| **New contributors** | Explore the codebase visually, understand call chains before reading code |
-| **Code reviewers** | Check what a changed function affects (callers), what it depends on (callees) |
-| **Project leads** | Track verification progress, spot dead code, assess codebase health |
-| **Security auditors** | Trace data flow through the call graph, identify critical paths |
+| **Verification engineers** | Verification status at a glance, unused specs, similar lemmas to reuse, proof complexity metrics |
+| **New contributors** | Visual codebase map, click-to-explore call chains, function bodies in the viewer |
+| **Code reviewers** | Impact analysis — callers, callees, spec dependencies of any changed function |
+| **Project leads** | Verification coverage dashboard, dead code detection, codebase health over time |
+| **Security auditors** | Data flow tracing, critical path identification, dependency analysis |
+| **Researchers** | Proof effort prediction, complexity correlation, lemma reuse patterns |
 
 ---
 
@@ -221,12 +326,82 @@ jobs:
 
 ---
 
+## Meeting Engineers Where They Are
+
+Good tooling doesn't ask engineers to change how they work. It shows up where they already are.
+
+Engineers live in two places:
+
+- **GitHub** — where code is reviewed, merged, and deployed
+- **Their editor** — where code is written, read, and debugged
+
+If a tool only exists in one of those places, half the team won't use it.
+
+Our approach: **deliver the call graph to both.**
+
+---
+
+## On GitHub: Reusable Workflows
+
+The reusable workflow deploys an interactive call graph to **GitHub Pages** — accessible to anyone with a browser.
+
+- Runs automatically on every push to `main` (and can be triggered on PR branches)
+- No local tooling required — works for the whole team, including non-Rust contributors
+- Shareable URL: paste a link in a PR comment, a Slack thread, or a design doc
+- Always up to date with the latest code
+
+**Result:** the call graph becomes a living artifact of the project, not a one-off analysis someone ran on their laptop.
+
+---
+
+## In the Editor: VS Code Extension
+
+The same call graph viewer runs as a **VS Code webview panel** — embedded directly in the editor.
+
+- **Open in Editor** — click any node and jump straight to that function in your editor
+- **No context switching** — explore the graph and read code side by side
+- **Bidirectional** — the extension sends graph data to the viewer, the viewer sends navigation commands back
+- **Same UI** — identical D3.js visualization, search, filtering, and depth exploration
+
+```
+┌──────────────────────────────────────────────────┐
+│  VS Code                                         │
+│  ┌─────────────────┐  ┌───────────────────────┐  │
+│  │  src/lib.rs     │  │  Call Graph Explorer  │  │
+│  │                 │  │                       │  │
+│  │  fn my_func() { │◄─│  [my_func] ──► ...    │  │
+│  │    ...          │  │                       │  │
+│  │  }              │  │                       │  │
+│  └─────────────────┘  └───────────────────────┘  │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## Two Surfaces, One Pipeline
+
+The web viewer and the editor extension are built from the **same codebase**.
+
+| | GitHub Pages | VS Code Extension |
+|---|---|---|
+| **Graph data** | Loaded from static JSON | Sent via extension message |
+| **Source navigation** | Opens GitHub at file + line | Opens file in editor |
+| **Audience** | Whole team, external reviewers | Individual developer |
+| **Update cadence** | On every push (CI) | On demand / workspace reload |
+| **Zero install?** | Yes (just a URL) | Yes (install extension once) |
+
+Same enrichments. Same search. Same visualization. Different delivery.
+
+---
+
 ## Summary
 
 - **Any Verus project** can get an interactive call graph by adding a single workflow file
 - **Zero local setup** — everything runs in GitHub Actions
-- **Rich enrichments** — verification status, similar lemmas
+- **Rich enrichments** — verification status, similar lemmas, source code
 - **Two deployment modes** — standalone or alongside existing sites
 - **Works for plain Rust too** — just flip `use_rust_analyzer: true`
+- **Meet engineers where they are** — on GitHub via Pages, in the editor via VS Code extension
+- **One codebase, two surfaces** — same viewer, same data, delivered to both
 
 **Try it today:** [github.com/Beneficial-AI-Foundation/scip-callgraph](https://github.com/Beneficial-AI-Foundation/scip-callgraph)
