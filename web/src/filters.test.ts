@@ -63,6 +63,7 @@ function createFilters(overrides: Partial<FilterOptions> = {}): FilterOptions {
     selectedNodes: new Set(),
     expandedNodes: new Set(),
     hiddenNodes: new Set(),
+    focusNodeIds: new Set(),
     ...overrides,
   };
 }

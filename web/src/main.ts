@@ -218,6 +218,9 @@ let deferredGraphUrl: string | null = null;
 // Prevent multiple simultaneous deferred graph loads
 let isDeferredLoadInProgress = false;
 
+// Focus set URL (from ?focus= URL parameter)
+let focusJsonUrl: string | null = null;
+
 // Debounce timer for search inputs
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const SEARCH_DEBOUNCE_MS = 300; // Wait 300ms after user stops typing
@@ -363,6 +366,11 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
     (filters as any)._hiddenNames = hiddenNames;
   }
   
+  // Focus set URL (stored separately, fetched after graph loads)
+  if (params.has('focus')) {
+    focusJsonUrl = params.get('focus')!;
+  }
+  
   return filters;
 }
 
@@ -375,7 +383,7 @@ function generateShareableURL(): string {
   
   // Clear existing filter params (keep json, github, etc.)
   ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec', 
-   'inner', 'pre', 'post', 'libsignal', 'external', 'hidden'].forEach(k => params.delete(k));
+   'inner', 'pre', 'post', 'libsignal', 'external', 'hidden', 'focus'].forEach(k => params.delete(k));
   
   // Add current filter state
   if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
@@ -411,6 +419,11 @@ function generateShareableURL(): string {
     if (hiddenNames.length > 0) {
       params.set('hidden', hiddenNames.join(','));
     }
+  }
+  
+  // Focus set URL
+  if (focusJsonUrl && state.filters.focusNodeIds.size > 0) {
+    params.set('focus', focusJsonUrl);
   }
   
   return url.toString();
@@ -493,6 +506,7 @@ const initialFilters: FilterOptions = {
   selectedNodes: new Set(),
   expandedNodes: new Set(),
   hiddenNodes: new Set(),
+  focusNodeIds: new Set(),        // Focus set: when non-empty, restricts view to these node IDs
 };
 
 let state: GraphState = {
@@ -1082,7 +1096,104 @@ function isLargeGraph(graph: D3Graph): boolean {
 function hasSearchFilters(): boolean {
   return state.filters.sourceQuery.trim() !== '' || 
          state.filters.sinkQuery.trim() !== '' ||
-         state.filters.includeFiles.trim() !== '';
+         state.filters.includeFiles.trim() !== '' ||
+         state.filters.focusNodeIds.size > 0;
+}
+
+/**
+ * Fetch and load a focus set JSON file.
+ * 
+ * The JSON should have:
+ * - focus_nodes: string[] - SCIP node IDs for exact matching
+ * - focus_functions: Array<{display_name, relative_path}> - for fuzzy matching
+ *   across different analyzers (rust-analyzer vs verus-analyzer produce different IDs)
+ * 
+ * The loader first tries exact ID matching. If few IDs match (suggesting an analyzer
+ * mismatch), it falls back to matching by (display_name, relative_path).
+ * 
+ * @param url - URL to the focus set JSON file
+ * @returns Promise that resolves when focus set is loaded
+ */
+async function loadFocusSet(url: string): Promise<void> {
+  try {
+    console.log('Loading focus set from:', url);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch focus set: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.focus_nodes || !Array.isArray(data.focus_nodes)) {
+      throw new Error('Invalid focus set JSON: missing "focus_nodes" array');
+    }
+    
+    // Try exact ID matching first
+    const focusIdSet = new Set<string>(data.focus_nodes);
+    const resolvedIds = new Set<string>();
+    
+    if (state.fullGraph) {
+      const graphIds = new Set(state.fullGraph.nodes.map(n => n.id));
+      
+      // Count exact matches
+      for (const id of focusIdSet) {
+        if (graphIds.has(id)) {
+          resolvedIds.add(id);
+        }
+      }
+      
+      console.log(`Focus set: ${resolvedIds.size}/${focusIdSet.size} exact ID matches`);
+      
+      // If less than half matched and we have focus_functions, fall back to fuzzy matching
+      if (resolvedIds.size < focusIdSet.size / 2 && data.focus_functions && Array.isArray(data.focus_functions)) {
+        console.log('Few exact matches - falling back to (display_name, relative_path) matching');
+        
+        // Build index of graph nodes by (display_name, relative_path)
+        const graphByNamePath = new Map<string, string[]>();
+        for (const node of state.fullGraph.nodes) {
+          const key = `${node.display_name}\0${node.relative_path}`;
+          if (!graphByNamePath.has(key)) {
+            graphByNamePath.set(key, []);
+          }
+          graphByNamePath.get(key)!.push(node.id);
+        }
+        
+        // Match each focus function by name+path
+        let fuzzyMatched = 0;
+        for (const func of data.focus_functions) {
+          const key = `${func.display_name}\0${func.relative_path}`;
+          const matches = graphByNamePath.get(key);
+          if (matches) {
+            for (const id of matches) {
+              resolvedIds.add(id);
+            }
+            fuzzyMatched++;
+          }
+        }
+        console.log(`Fuzzy matching: ${fuzzyMatched}/${data.focus_functions.length} functions resolved to ${resolvedIds.size} node IDs`);
+      }
+    } else {
+      // No graph loaded yet - use raw IDs and hope for the best
+      for (const id of focusIdSet) {
+        resolvedIds.add(id);
+      }
+    }
+    
+    // Populate focusNodeIds in state
+    state.filters.focusNodeIds = resolvedIds;
+    
+    const description = data.metadata?.description || 'unknown';
+    console.log(`Focus set active: ${resolvedIds.size} nodes (${description})`);
+    
+    // Update the focus indicator UI
+    updateFocusIndicator();
+    
+    // Re-apply filters with the focus set active
+    applyFiltersAndUpdate();
+  } catch (error) {
+    console.error('Failed to load focus set:', error);
+    showError(`Failed to load focus set: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**
@@ -1097,11 +1208,14 @@ function loadGraph(graph: D3Graph, message: string): void {
     metadata: { ...graph.metadata },
   };
   // Deep copy filters - spread only does shallow copy, so Sets would be shared!
+  // Preserve focusNodeIds across graph reloads (it's set from URL param, not graph data)
+  const preservedFocusNodes = state.filters.focusNodeIds;
   state.filters = { 
     ...initialFilters,
     selectedNodes: new Set(),
     expandedNodes: new Set(),
     hiddenNodes: new Set(),
+    focusNodeIds: preservedFocusNodes.size > 0 ? new Set(preservedFocusNodes) : new Set(),
   };
   
   // Set GitHub URL from metadata if not already set via URL param
@@ -1126,6 +1240,14 @@ function loadGraph(graph: D3Graph, message: string): void {
   }
   
   applyFiltersAndUpdate();
+  
+  // Load focus set if URL parameter is present and not already loaded
+  if (focusJsonUrl && state.filters.focusNodeIds.size === 0) {
+    loadFocusSet(focusJsonUrl);
+  } else if (state.filters.focusNodeIds.size > 0) {
+    // Focus set already loaded (preserved from previous graph load) - update indicator
+    updateFocusIndicator();
+  }
   
   console.log(message, {
     nodes: graph.nodes.length,
@@ -2013,8 +2135,10 @@ function resetFilters(): void {
     selectedNodes: new Set(),
     expandedNodes: new Set(),
     hiddenNodes: new Set(),
+    focusNodeIds: new Set(),  // Clear focus set on reset
   };
   state.selectedNode = null;
+  focusJsonUrl = null;  // Clear focus URL on reset
   
   // Reset UI controls
   (document.getElementById('show-libsignal') as HTMLInputElement).checked = true;
@@ -2036,6 +2160,60 @@ function resetFilters(): void {
   // Update file list selection to clear all
   updateFileListSelection();
   
+  // Update focus indicator
+  updateFocusIndicator();
+  
+  applyFiltersAndUpdate();
+}
+
+/**
+ * Update the focus set indicator in the UI
+ */
+function updateFocusIndicator(): void {
+  const container = document.getElementById('focus-indicator');
+  if (!container) return;
+  
+  const focusCount = state.filters.focusNodeIds.size;
+  
+  if (focusCount === 0) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div style="background: #e3f2fd; padding: 10px; border-radius: 6px; border-left: 4px solid #1976d2;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong style="color: #1565c0;">Focus Set Active</strong>
+          <div style="font-size: 0.85rem; color: #555; margin-top: 2px;">
+            Showing <strong>${focusCount}</strong> entry-point functions
+          </div>
+        </div>
+        <button id="clear-focus-btn" style="background: #1976d2; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+          Clear
+        </button>
+      </div>
+      <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">
+        Use Source/Sink to expand beyond the focus set
+      </div>
+    </div>
+  `;
+  
+  // Add click handler for Clear button
+  document.getElementById('clear-focus-btn')?.addEventListener('click', () => {
+    clearFocusSet();
+  });
+}
+
+/**
+ * Clear the focus set and return to the full graph view
+ */
+function clearFocusSet(): void {
+  state.filters.focusNodeIds = new Set();
+  focusJsonUrl = null;
+  updateFocusIndicator();
   applyFiltersAndUpdate();
 }
 

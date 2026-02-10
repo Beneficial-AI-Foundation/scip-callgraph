@@ -406,6 +406,7 @@ export function applyFilters(
   // Filter nodes based on source/sink constraints or pre-filters
   const queryEntered = sourceQuery !== '' || sinkQuery !== '';
   const queryMatched = hasSource || hasSink;
+  const hasFocusSet = filters.focusNodeIds.size > 0;
   
   if (queryEntered && !queryMatched) {
     // Query was entered but matched nothing - return empty graph
@@ -420,10 +421,16 @@ export function applyFilters(
     };
   } else if (queryMatched) {
     // Apply source/sink traversal results
+    // When source/sink is active, ignore focus set to allow expanding into the full graph
     filteredNodes = filteredNodes.filter(node => includedNodeIds.has(node.id));
   } else {
     // No source/sink query - apply pre-filters (mode, exclude patterns, include files)
     filteredNodes = filteredNodes.filter(node => modeAllowedNodeIds.has(node.id));
+    
+    // Apply focus set filter: when active, restrict to only focus node IDs
+    if (hasFocusSet) {
+      filteredNodes = filteredNodes.filter(node => filters.focusNodeIds.has(node.id));
+    }
   }
 
   // Filter by libsignal flag

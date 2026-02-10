@@ -40,6 +40,8 @@ Usage:
     python scripts/find_dalek_called_by_signal.py csv      # CSV output
     python scripts/find_dalek_called_by_signal.py md       # Markdown file
     python scripts/find_dalek_called_by_signal.py md out.md  # Custom filename
+    python scripts/find_dalek_called_by_signal.py focus    # Focus set JSON for web UI
+    python scripts/find_dalek_called_by_signal.py focus out.json  # Custom filename
 """
 
 import json
@@ -624,6 +626,55 @@ def output_markdown(result_map, output_file=None, include_specs=True):
     print(f"Markdown file written to: {output_file}")
     return output_file
 
+def output_focus_json(result_map, output_file=None):
+    """Generate a focus set JSON file for the web UI.
+    
+    This file can be loaded by the web UI via the ?focus= URL parameter
+    to show only these entry-point functions in the graph visualization.
+    
+    Includes both SCIP node IDs (for exact matching) and display_name +
+    relative_path pairs (for fuzzy matching across different analyzers,
+    since rust-analyzer and verus-analyzer produce different SCIP IDs
+    for the same function).
+    """
+    if output_file is None:
+        output_file = PROJECT_ROOT / 'web' / 'public' / 'focus_dalek_entrypoints.json'
+    
+    # Build focus_functions list with name+path for analyzer-agnostic matching
+    # Use a set to deduplicate (same function may appear via multiple SCIP IDs)
+    seen = set()
+    focus_functions = []
+    for ra_id, info in sorted(result_map.items(), key=lambda x: x[1]['dalek_function']):
+        name = info['dalek_function']
+        path = info['dalek_path']
+        key = (name, path)
+        if key not in seen:
+            seen.add(key)
+            focus_functions.append({
+                'display_name': name,
+                'relative_path': path,
+            })
+    
+    focus_data = {
+        'focus_nodes': sorted(result_map.keys()),
+        'focus_functions': focus_functions,
+        'metadata': {
+            'description': 'curve25519-dalek functions called by libsignal',
+            'generated_at': datetime.now().isoformat(),
+            'total': len(result_map),
+            'unique_functions': len(focus_functions),
+        }
+    }
+    
+    with open(output_file, 'w') as f:
+        json.dump(focus_data, f, indent=2)
+    
+    print(f"Focus set JSON written to: {output_file}")
+    print(f"  Contains {len(result_map)} node IDs, {len(focus_functions)} unique functions")
+    print(f"  Load in UI with: ?focus=focus_dalek_entrypoints.json")
+    return output_file
+
+
 def main():
     result_map = get_dalek_functions_called_by_signal()
     
@@ -649,6 +700,8 @@ def main():
             ])
     elif output_format == 'md':
         output_markdown(result_map, output_file)
+    elif output_format == 'focus':
+        output_focus_json(result_map, output_file)
     else:  # text (default)
         print(f"Found {len(result_map)} curve25519-dalek functions called by libsignal:\n")
         

@@ -137,6 +137,7 @@ export interface FilterOptions {
   selectedNodes: Set<string>;
   expandedNodes: Set<string>;
   hiddenNodes: Set<string>;  // Nodes hidden by user (Shift+click)
+  focusNodeIds: Set<string>;  // When non-empty, restricts initial view to these node IDs (loaded via ?focus= URL param)
 }
 
 export interface GraphState {
