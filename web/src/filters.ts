@@ -564,6 +564,8 @@ export function applyFilters(
   
   // Remove isolated nodes (nodes with no edges in the filtered graph)
   // This includes query matches - if a sink has no callers, don't show it
+  // Exception: when a focus set is active, keep all focus nodes even if isolated
+  // (they are explicitly requested entry points)
   const connectedNodeIds = new Set<string>();
   
   for (const link of filteredLinks) {
@@ -573,8 +575,10 @@ export function applyFilters(
     connectedNodeIds.add(targetId);
   }
   
-  // Only keep nodes that have at least one edge
-  filteredNodes = filteredNodes.filter(node => connectedNodeIds.has(node.id));
+  // Only keep nodes that have at least one edge, OR are in the focus set
+  filteredNodes = filteredNodes.filter(node => 
+    connectedNodeIds.has(node.id) || (hasFocusSet && filters.focusNodeIds.has(node.id))
+  );
 
   // Create fresh copies of nodes and links to prevent D3 from mutating the originals
   // D3's force simulation modifies link.source/target from string IDs to node references
