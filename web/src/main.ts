@@ -1149,6 +1149,7 @@ async function loadFocusSet(url: string): Promise<void> {
         console.log('Few exact matches - falling back to (display_name, relative_path) matching');
         
         // Build index of graph nodes by (display_name, relative_path)
+        // Index by BOTH the full path and the path as-is for flexible matching
         const graphByNamePath = new Map<string, string[]>();
         for (const node of state.fullGraph.nodes) {
           const key = `${node.display_name}\0${node.relative_path}`;
@@ -1159,10 +1160,28 @@ async function loadFocusSet(url: string): Promise<void> {
         }
         
         // Match each focus function by name+path
+        // Handles path prefix mismatches (e.g., focus has "curve25519-dalek/src/foo.rs"
+        // but graph has "src/foo.rs", or vice versa) by trying suffix matching
         let fuzzyMatched = 0;
         for (const func of data.focus_functions) {
-          const key = `${func.display_name}\0${func.relative_path}`;
-          const matches = graphByNamePath.get(key);
+          // Try exact path match first
+          const exactKey = `${func.display_name}\0${func.relative_path}`;
+          let matches = graphByNamePath.get(exactKey);
+          
+          // If no exact match, try suffix-based matching
+          // (handles different path prefixes between analyzers/graphs)
+          if (!matches) {
+            for (const [key, ids] of graphByNamePath) {
+              const [name, path] = key.split('\0');
+              if (name !== func.display_name) continue;
+              // Check if one path is a suffix of the other
+              if (path.endsWith(func.relative_path) || func.relative_path.endsWith(path)) {
+                matches = ids;
+                break;
+              }
+            }
+          }
+          
           if (matches) {
             for (const id of matches) {
               resolvedIds.add(id);
