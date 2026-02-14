@@ -215,6 +215,50 @@ describe('Path-Qualified Queries', () => {
 });
 
 // ============================================================================
+// Category 2b: Type::method display names (enriched from probe-verus)
+// ============================================================================
+
+describe('Type::method display name queries', () => {
+  const nodeWithTypeMethod = createNode({
+    id: 'probe:crate/1.0/edwards/CompressedEdwardsY#ct_eq().',
+    display_name: 'CompressedEdwardsY::ct_eq',
+    file_name: 'edwards.rs',
+    parent_folder: 'src',
+  });
+
+  const nodeWithAdd = createNode({
+    id: 'probe:crate/1.0/edwards/&EdwardsPoint#Add<&EdwardsPoint>#add().',
+    display_name: 'EdwardsPoint::add',
+    file_name: 'edwards.rs',
+    parent_folder: 'src',
+  });
+
+  it('exact Type::method query matches display_name', () => {
+    expect(matchesQuery(nodeWithTypeMethod, 'CompressedEdwardsY::ct_eq')).toBe(true);
+    expect(matchesQuery(nodeWithAdd, 'EdwardsPoint::add')).toBe(true);
+  });
+
+  it('Type::method query does not false-match other types', () => {
+    expect(matchesQuery(nodeWithTypeMethod, 'EdwardsPoint::ct_eq')).toBe(false);
+    expect(matchesQuery(nodeWithAdd, 'CompressedEdwardsY::add')).toBe(false);
+  });
+
+  it('path::function still works when path matches a file', () => {
+    // "edwards::ct_eq" should NOT match because display_name is "CompressedEdwardsY::ct_eq"
+    // but file_name matches "edwards" and display_name does not match bare "ct_eq"
+    // However, display_name does not equal "ct_eq", so path-qualified fails,
+    // and full display_name "CompressedEdwardsY::ct_eq" != "edwards::ct_eq", so it fails
+    expect(matchesQuery(nodeWithTypeMethod, 'edwards::ct_eq')).toBe(false);
+  });
+
+  it('wildcard glob on Type::method display_name works', () => {
+    expect(matchesQuery(nodeWithTypeMethod, '*::ct_eq')).toBe(true);
+    expect(matchesQuery(nodeWithTypeMethod, 'Compressed*::ct_eq')).toBe(true);
+    expect(matchesQuery(nodeWithAdd, '*Point::add')).toBe(true);
+  });
+});
+
+// ============================================================================
 // Category 3: Graph Traversal (Source/Sink/Paths)
 // ============================================================================
 

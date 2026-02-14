@@ -628,13 +628,17 @@ export function matchesQuery(node: D3Node, query: string): boolean {
       pathRegex.test(fileNameWithoutExt) ||
       pathRegex.test(node.parent_folder);
     
-    if (!pathMatches) {
-      return false;
+    if (pathMatches) {
+      // Check if function name matches using glob pattern
+      const funcRegex = globToRegex(funcPart);
+      if (funcRegex.test(node.display_name)) {
+        return true;
+      }
     }
     
-    // Check if function name matches using glob pattern
-    const funcRegex = globToRegex(funcPart);
-    return funcRegex.test(node.display_name);
+    // Fall through: the query may contain "::" as part of the display_name
+    // (e.g., "CompressedEdwardsY::as_bytes" where display_name is the full
+    // Type::method name, not a file::function path-qualified query)
   }
   
   // Use glob pattern matching:
