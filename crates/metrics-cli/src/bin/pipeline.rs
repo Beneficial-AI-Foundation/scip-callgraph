@@ -381,12 +381,47 @@ fn enrich_with_verification_status(
                 }
             }
 
-            // Strategy 2: Match by name only if unique status
+            // Strategy 2: Match by bare method name for impl methods
+            // Graph nodes use "Type::method" but verification uses bare "method"
+            if status.is_none() {
+                if let Some(bare_name) = display_name.rsplit("::").next() {
+                    if bare_name != display_name {
+                        for path in [relative_path, full_path] {
+                            if path.is_empty() {
+                                continue;
+                            }
+                            let norm_path = normalize_path(path);
+                            if let Some(s) =
+                                lookup.get(&(bare_name.to_string(), norm_path))
+                            {
+                                status = Some(s.as_str());
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Strategy 3: Match by name only if unique status
             if status.is_none() {
                 if let Some(statuses) = by_name.get(display_name) {
                     let unique: std::collections::HashSet<_> = statuses.iter().collect();
                     if unique.len() == 1 {
                         status = Some(statuses[0].as_str());
+                    }
+                }
+            }
+
+            // Strategy 4: Same as 3 but with bare method name
+            if status.is_none() {
+                if let Some(bare_name) = display_name.rsplit("::").next() {
+                    if bare_name != display_name {
+                        if let Some(statuses) = by_name.get(bare_name) {
+                            let unique: std::collections::HashSet<_> = statuses.iter().collect();
+                            if unique.len() == 1 {
+                                status = Some(statuses[0].as_str());
+                            }
+                        }
                     }
                 }
             }
