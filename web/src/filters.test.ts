@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { globToRegex, matchesQuery, applyFilters, pathPatternToRegex } from './filters';
+import { globToRegex, asSubstringGlob, matchesQuery, applyFilters, pathPatternToRegex } from './filters';
 import { D3Graph, D3Node, D3Link, FilterOptions } from './types';
 
 // ============================================================================
@@ -166,6 +166,22 @@ describe('Glob Pattern Matching', () => {
       expect(regex.test('comm_extra')).toBe(false);
     });
   });
+
+  describe('asSubstringGlob', () => {
+    it('wraps plain text with wildcards', () => {
+      expect(asSubstringGlob('decompress')).toBe('*decompress*');
+    });
+
+    it('does not modify patterns already containing *', () => {
+      expect(asSubstringGlob('*decompress')).toBe('*decompress');
+      expect(asSubstringGlob('decompress*')).toBe('decompress*');
+      expect(asSubstringGlob('*decompress*')).toBe('*decompress*');
+    });
+
+    it('does not modify patterns containing ?', () => {
+      expect(asSubstringGlob('decomp?ess')).toBe('decomp?ess');
+    });
+  });
 });
 
 // ============================================================================
@@ -243,18 +259,61 @@ describe('Type::method display name queries', () => {
     expect(matchesQuery(nodeWithAdd, 'CompressedEdwardsY::add')).toBe(false);
   });
 
-  it('path::function still works when path matches a file', () => {
-    // "edwards::ct_eq" should NOT match because display_name is "CompressedEdwardsY::ct_eq"
-    // but file_name matches "edwards" and display_name does not match bare "ct_eq"
-    // However, display_name does not equal "ct_eq", so path-qualified fails,
-    // and full display_name "CompressedEdwardsY::ct_eq" != "edwards::ct_eq", so it fails
-    expect(matchesQuery(nodeWithTypeMethod, 'edwards::ct_eq')).toBe(false);
+  it('path::function matches Type::method when function part is a substring of display_name', () => {
+    // "edwards::ct_eq" should match: file "edwards.rs" matches path, and "ct_eq" is a
+    // substring of display_name "CompressedEdwardsY::ct_eq"
+    expect(matchesQuery(nodeWithTypeMethod, 'edwards::ct_eq')).toBe(true);
+    expect(matchesQuery(nodeWithAdd, 'edwards::add')).toBe(true);
   });
 
   it('wildcard glob on Type::method display_name works', () => {
     expect(matchesQuery(nodeWithTypeMethod, '*::ct_eq')).toBe(true);
     expect(matchesQuery(nodeWithTypeMethod, 'Compressed*::ct_eq')).toBe(true);
     expect(matchesQuery(nodeWithAdd, '*Point::add')).toBe(true);
+  });
+});
+
+// ============================================================================
+// Category 2c: Substring matching for verus-analyzer display names
+// ============================================================================
+
+describe('Substring matching (verus-analyzer style display names)', () => {
+  const edwardsDecompress = createNode({
+    id: 'probe:curve25519-dalek/4.1.3/edwards/CompressedEdwardsY#decompress().',
+    display_name: 'CompressedEdwardsY::decompress',
+    file_name: 'edwards.rs',
+    parent_folder: 'src',
+  });
+
+  const ristrettoDecompress = createNode({
+    id: 'probe:curve25519-dalek/4.1.3/ristretto/CompressedRistretto#decompress().',
+    display_name: 'CompressedRistretto::decompress',
+    file_name: 'ristretto.rs',
+    parent_folder: 'src',
+  });
+
+  it('plain query matches as substring of Type::method display_name', () => {
+    expect(matchesQuery(edwardsDecompress, 'decompress')).toBe(true);
+    expect(matchesQuery(ristrettoDecompress, 'decompress')).toBe(true);
+  });
+
+  it('path-qualified query matches when func part is substring', () => {
+    expect(matchesQuery(edwardsDecompress, 'edwards::decompress')).toBe(true);
+    expect(matchesQuery(ristrettoDecompress, 'ristretto::decompress')).toBe(true);
+  });
+
+  it('path-qualified query does not match wrong file', () => {
+    expect(matchesQuery(edwardsDecompress, 'ristretto::decompress')).toBe(false);
+    expect(matchesQuery(ristrettoDecompress, 'edwards::decompress')).toBe(false);
+  });
+
+  it('explicit wildcards still provide anchored control', () => {
+    // "Compressed*" starts-with anchor works
+    expect(matchesQuery(edwardsDecompress, 'Compressed*')).toBe(true);
+    // "decompress*" should match because display_name ends with "decompress"
+    expect(matchesQuery(edwardsDecompress, '*decompress')).toBe(true);
+    // "Ristretto*" should not match EdwardsY
+    expect(matchesQuery(edwardsDecompress, 'Ristretto*')).toBe(false);
   });
 });
 

@@ -36,6 +36,20 @@ export function globToRegex(pattern: string): RegExp {
 }
 
 /**
+ * If the pattern has no glob wildcards (* or ?), wrap it with * on both sides
+ * so that globToRegex produces a substring match instead of an exact match.
+ * Patterns that already contain wildcards are returned unchanged.
+ *
+ * @public Exported for testing
+ */
+export function asSubstringGlob(pattern: string): string {
+  if (pattern.includes('*') || pattern.includes('?')) {
+    return pattern;
+  }
+  return `*${pattern}*`;
+}
+
+/**
  * Check if a node matches any of the exclude NAME patterns
  * Returns true if node should be EXCLUDED (hidden)
  * Matches against node.display_name (function name)
@@ -596,16 +610,15 @@ export function applyFilters(
 /**
  * Check if a node matches a search query
  * 
- * Supports three modes:
- * - Substring match (default): "foo" matches anything containing "foo"
- * - Exact match: '"foo"' (with quotes) matches only nodes where:
- *   - display_name equals exactly, OR
- *   - the function name part of symbol equals exactly
- * - Path-qualified match: "path:function" matches functions in files/paths containing "path"
+ * Supports two modes:
+ * - Substring match (default): "foo" matches anything containing "foo" in display_name.
+ *   Glob wildcards (* and ?) opt into anchored matching instead (e.g. "p_*" matches
+ *   only names starting with "p_").
+ * - Path-qualified match: "path::function" matches functions in files/paths matching
+ *   "path" whose display_name contains "function".
  *   Examples:
- *   - "edwards.rs:decompress" → decompress in edwards.rs
- *   - "edwards:decompress" → decompress in any path containing "edwards"
- *   - "u64:mul" → mul in any path containing "u64"
+ *   - "edwards::decompress" → decompress in edwards.rs
+ *   - "ristretto::*compress*" → explicit glob in path-qualified mode
  */
 /**
  * @public Exported for testing
@@ -629,8 +642,7 @@ export function matchesQuery(node: D3Node, query: string): boolean {
       pathRegex.test(node.parent_folder);
     
     if (pathMatches) {
-      // Check if function name matches using glob pattern
-      const funcRegex = globToRegex(funcPart);
+      const funcRegex = globToRegex(asSubstringGlob(funcPart));
       if (funcRegex.test(node.display_name)) {
         return true;
       }
@@ -641,12 +653,7 @@ export function matchesQuery(node: D3Node, query: string): boolean {
     // Type::method name, not a file::function path-qualified query)
   }
   
-  // Use glob pattern matching:
-  // - "decompress" (no wildcards) → exact match
-  // - "*decompress*" → contains
-  // - "decompress*" → starts with
-  // - "*decompress" → ends with
-  const regex = globToRegex(query);
+  const regex = globToRegex(asSubstringGlob(query));
   return regex.test(node.display_name);
 }
 
