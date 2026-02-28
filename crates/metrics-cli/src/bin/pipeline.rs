@@ -16,7 +16,9 @@ use log::{error, info, warn};
 use probe_verus::verification::{
     AnalysisResult, AnalysisStatus, VerificationAnalyzer, VerusRunner,
 };
-use probe_verus::{build_call_graph, convert_to_atoms_with_parsed_spans, parse_scip_json};
+use probe_verus::{
+    add_external_stubs, build_call_graph, convert_to_atoms_with_parsed_spans, parse_scip_json,
+};
 use scip_core::atoms_to_d3::atoms_to_d3_graph;
 use scip_core::logging::init_logger;
 use std::collections::HashMap;
@@ -197,11 +199,17 @@ fn export_call_graph(
     );
 
     // Convert to HashMap keyed by code_name for the D3 converter
-    let atoms_map: HashMap<String, _> = atoms
+    let mut atoms_map: HashMap<String, _> = atoms
         .into_iter()
         .map(|atom| (atom.code_name.clone(), atom))
         .collect();
     info!("  Generated {} atoms with unique names", atoms_map.len());
+
+    // Add stub atoms for external function dependencies
+    let stub_count = add_external_stubs(&mut atoms_map);
+    if stub_count > 0 {
+        info!("  Added {} external function stub(s)", stub_count);
+    }
 
     info!("Exporting to D3 format...");
     let project_root_str = project_root.to_string_lossy().to_string();
