@@ -35,6 +35,36 @@ body {
   font-weight: 600;
 }
 
+/* View Switcher */
+.view-switcher {
+  display: flex;
+  gap: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+.view-btn {
+  background: transparent;
+  color: rgba(255,255,255,0.8);
+  border: none;
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-btn.active {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+}
+
+.view-btn:hover:not(.active) {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
 .file-input-container {
   position: relative;
 }
@@ -853,5 +883,81 @@ body {
 .sidebar::-webkit-scrollbar-thumb:hover,
 .node-list::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* ================================================================
+   Blueprint View
+   ================================================================ */
+
+.bp-legend {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 0;
+  font-size: 0.78rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  z-index: 10;
+  max-width: 220px;
+  user-select: none;
+}
+
+.bp-legend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #e8e8e8;
+  border-radius: 8px 8px 0 0;
+  background: #fafafa;
+}
+
+.bp-legend-header:hover {
+  background: #f0f0f0;
+}
+
+.bp-legend-body {
+  padding: 6px 10px 8px;
+}
+
+.bp-legend-section {
+  margin-top: 6px;
+  margin-bottom: 2px;
+  color: #555;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bp-legend-section:first-child {
+  margin-top: 0;
+}
+
+.bp-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+  color: #444;
+}
+
+.bp-legend-item svg {
+  flex-shrink: 0;
+}
+
+.bp-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.bp-legend-arrow {
+  font-size: 0.65rem;
+  color: #888;
 }
 

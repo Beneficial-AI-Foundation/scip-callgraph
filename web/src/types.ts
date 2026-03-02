@@ -65,6 +65,12 @@ export type FunctionMode = 'exec' | 'proof' | 'spec';
 /** Verification status from Verus verification results */
 export type VerificationStatus = 'verified' | 'failed' | 'unverified';
 
+/** Derived border status (this node's readiness to be verified) */
+export type BorderStatus = 'verified' | 'ready' | 'blocked' | 'not_ready' | 'unknown';
+
+/** Derived fill status (subtree completeness) */
+export type FillStatus = 'fully_verified' | 'verified' | 'ready' | 'none';
+
 export interface D3Node {
   id: string;
   display_name: string;
@@ -83,6 +89,9 @@ export interface D3Node {
   similar_lemmas?: SimilarLemma[];
   mode: FunctionMode;  // Verus function mode: exec, proof, or spec
   verification_status?: VerificationStatus;  // Verification status: verified, failed, unverified
+  // Derived statuses computed by DAG walk (used by Blueprint view)
+  border_status?: BorderStatus;
+  fill_status?: FillStatus;
   // D3-specific properties added during simulation
   x?: number;
   y?: number;

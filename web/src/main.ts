@@ -1,6 +1,8 @@
 import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
+import { BlueprintVisualization } from './blueprint';
+import { computeDerivedStatuses } from './status';
 
 // ============================================================================
 // JSON Format Conversion
@@ -383,7 +385,10 @@ function generateShareableURL(): string {
   
   // Clear existing filter params (keep json, github, etc.)
   ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec', 
-   'inner', 'pre', 'post', 'libsignal', 'external', 'hidden', 'focus'].forEach(k => params.delete(k));
+   'inner', 'pre', 'post', 'libsignal', 'external', 'hidden', 'focus', 'view'].forEach(k => params.delete(k));
+
+  // View param (only set for non-default)
+  if (activeView === 'blueprint') params.set('view', 'blueprint');
   
   // Add current filter state
   if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
@@ -517,7 +522,9 @@ let state: GraphState = {
   hoveredNode: null,
 };
 
-let visualization: CallGraphVisualization | null = null;
+type ActiveView = 'callgraph' | 'blueprint';
+let activeView: ActiveView = 'callgraph';
+let visualization: CallGraphVisualization | BlueprintVisualization | null = null;
 
 /**
  * Sync input field values to state (handles browser auto-fill after refresh)
@@ -574,8 +581,14 @@ function init(): void {
     return;
   }
 
-  // Initialize visualization
-  visualization = new CallGraphVisualization(graphContainer, state, handleStateChange);
+  // Check URL for initial view
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('view') === 'blueprint') {
+    activeView = 'blueprint';
+  }
+
+  // Initialize visualization for the active view
+  createVisualization(graphContainer);
 
   // Set up UI event handlers
   setupUIHandlers();
@@ -597,9 +610,61 @@ function init(): void {
 }
 
 /**
+ * Create the visualization for the active view, destroying the previous one.
+ */
+function createVisualization(container: HTMLElement): void {
+  // Destroy existing visualization
+  if (visualization) {
+    if ('destroy' in visualization) {
+      (visualization as BlueprintVisualization).destroy();
+    } else {
+      // CallGraphVisualization doesn't have destroy, just clear + remove SVG
+      visualization.clear();
+      container.querySelector('svg')?.remove();
+    }
+    visualization = null;
+  }
+
+  // Also remove any leftover blueprint legend
+  container.querySelector('.bp-legend')?.remove();
+
+  // Update button states
+  document.getElementById('view-callgraph')?.classList.toggle('active', activeView === 'callgraph');
+  document.getElementById('view-blueprint')?.classList.toggle('active', activeView === 'blueprint');
+
+  if (activeView === 'blueprint') {
+    visualization = new BlueprintVisualization(container, state, handleStateChange);
+  } else {
+    visualization = new CallGraphVisualization(container, state, handleStateChange);
+  }
+}
+
+/**
+ * Switch between call graph and blueprint views.
+ */
+function switchView(view: ActiveView): void {
+  if (view === activeView) return;
+  activeView = view;
+
+  const graphContainer = document.getElementById('graph-container');
+  if (!graphContainer) return;
+
+  createVisualization(graphContainer);
+
+  // Re-render with current filtered graph
+  if (state.filteredGraph) {
+    visualization?.update(state.filteredGraph);
+  }
+}
+
+/**
  * Set up UI event handlers
  */
 function setupUIHandlers(): void {
+  // View switcher
+  document.getElementById('view-callgraph')?.addEventListener('click', () => switchView('callgraph'));
+  document.getElementById('view-blueprint')?.addEventListener('click', () => switchView('blueprint'));
+
   // File input
   const fileInput = document.getElementById('file-input') as HTMLInputElement;
   fileInput?.addEventListener('change', handleFileLoad);
@@ -1237,6 +1302,9 @@ function loadGraph(graph: D3Graph, message: string): void {
     focusNodeIds: preservedFocusNodes.size > 0 ? new Set(preservedFocusNodes) : new Set(),
   };
   
+  // Compute derived statuses for Blueprint view
+  computeDerivedStatuses(state.fullGraph);
+
   // Set GitHub URL from metadata if not already set via URL param
   if (!githubBaseUrl && graph.metadata.github_url) {
     githubBaseUrl = graph.metadata.github_url;
