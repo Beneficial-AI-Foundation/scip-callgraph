@@ -113,6 +113,7 @@ export interface D3Graph {
   nodes: D3Node[];
   links: D3Link[];
   metadata: D3GraphMetadata;
+  nodeDepths?: Map<string, number>;
 }
 
 export interface FilterOptions {

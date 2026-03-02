@@ -80,58 +80,144 @@ function computeTopologicalDepth(nodes: D3Node[], links: D3Link[]): Map<string, 
 }
 
 /**
- * Assign initial positions based on topological order.
- * X position is based on depth (layers from left to right).
- * Y position spreads nodes evenly within each layer.
+ * Minimize edge crossings using the barycenter heuristic (Sugiyama framework).
+ * For each layer, reorder nodes by the average position of their neighbors in
+ * the adjacent layer. Multiple forward+backward sweeps converge toward a
+ * crossing-minimal ordering.
+ */
+function minimizeCrossings(
+  nodesByDepth: Map<number, D3Node[]>,
+  links: D3Link[],
+  iterations: number = 6
+): void {
+  const nodeIds = new Set<string>();
+  for (const layer of nodesByDepth.values()) {
+    for (const n of layer) nodeIds.add(n.id);
+  }
+
+  // Build bidirectional adjacency limited to displayed nodes
+  const forward = new Map<string, string[]>();   // source → targets
+  const backward = new Map<string, string[]>();   // target → sources
+  for (const link of links) {
+    const s = typeof link.source === 'string' ? link.source : link.source.id;
+    const t = typeof link.target === 'string' ? link.target : link.target.id;
+    if (!nodeIds.has(s) || !nodeIds.has(t)) continue;
+    if (!forward.has(s)) forward.set(s, []);
+    forward.get(s)!.push(t);
+    if (!backward.has(t)) backward.set(t, []);
+    backward.get(t)!.push(s);
+  }
+
+  // Map node id → current index within its layer (updated each sweep)
+  const positionOf = new Map<string, number>();
+  const refreshPositions = () => {
+    for (const layer of nodesByDepth.values()) {
+      layer.forEach((n, i) => positionOf.set(n.id, i));
+    }
+  };
+
+  const sortedDepths = [...nodesByDepth.keys()].sort((a, b) => a - b);
+
+  for (let iter = 0; iter < iterations; iter++) {
+    refreshPositions();
+
+    // Forward sweep (low depth → high): order by neighbors in previous layer
+    for (let di = 1; di < sortedDepths.length; di++) {
+      const layer = nodesByDepth.get(sortedDepths[di])!;
+      const bary = new Map<string, number>();
+      for (const node of layer) {
+        const neighbors = backward.get(node.id);
+        if (neighbors && neighbors.length > 0) {
+          let sum = 0;
+          for (const nid of neighbors) sum += positionOf.get(nid) ?? 0;
+          bary.set(node.id, sum / neighbors.length);
+        } else {
+          bary.set(node.id, positionOf.get(node.id) ?? 0);
+        }
+      }
+      layer.sort((a, b) => bary.get(a.id)! - bary.get(b.id)!);
+      layer.forEach((n, i) => positionOf.set(n.id, i));
+    }
+
+    // Backward sweep (high depth → low): order by neighbors in next layer
+    for (let di = sortedDepths.length - 2; di >= 0; di--) {
+      const layer = nodesByDepth.get(sortedDepths[di])!;
+      const bary = new Map<string, number>();
+      for (const node of layer) {
+        const neighbors = forward.get(node.id);
+        if (neighbors && neighbors.length > 0) {
+          let sum = 0;
+          for (const nid of neighbors) sum += positionOf.get(nid) ?? 0;
+          bary.set(node.id, sum / neighbors.length);
+        } else {
+          bary.set(node.id, positionOf.get(node.id) ?? 0);
+        }
+      }
+      layer.sort((a, b) => bary.get(a.id)! - bary.get(b.id)!);
+      layer.forEach((n, i) => positionOf.set(n.id, i));
+    }
+  }
+}
+
+interface LayoutInfo {
+  depths: Map<string, number>;
+  maxDepth: number;
+  maxLayerWidth: number;
+  nodesByDepth: Map<number, D3Node[]>;
+}
+
+/**
+ * Assign initial positions based on topological or traversal-provided depth.
+ * Uses barycenter heuristic to minimize edge crossings within each layer.
  */
 function assignTopologicalPositions(
   nodes: D3Node[],
   links: D3Link[],
   width: number,
-  height: number
-): void {
-  const depths = computeTopologicalDepth(nodes, links);
-  
-  // Group nodes by depth
+  height: number,
+  precomputedDepths?: Map<string, number>
+): LayoutInfo {
+  const depths = precomputedDepths ?? computeTopologicalDepth(nodes, links);
+
   const nodesByDepth = new Map<number, D3Node[]>();
   let maxDepth = 0;
-  
+
   for (const node of nodes) {
-    const depth = depths.get(node.id) || 0;
+    const depth = depths.get(node.id) ?? 0;
     maxDepth = Math.max(maxDepth, depth);
-    
-    if (!nodesByDepth.has(depth)) {
-      nodesByDepth.set(depth, []);
-    }
+    if (!nodesByDepth.has(depth)) nodesByDepth.set(depth, []);
     nodesByDepth.get(depth)!.push(node);
   }
-  
-  // Sort nodes within each depth by their display name for consistency
-  for (const [depth, nodesAtDepth] of nodesByDepth) {
-    nodesAtDepth.sort((a, b) => a.display_name.localeCompare(b.display_name));
-    nodesByDepth.set(depth, nodesAtDepth);
+
+  // Initial ordering: alphabetical (deterministic seed for barycenter)
+  for (const layer of nodesByDepth.values()) {
+    layer.sort((a, b) => a.display_name.localeCompare(b.display_name));
   }
-  
-  // Assign positions
+
+  // Apply barycenter crossing minimization
+  minimizeCrossings(nodesByDepth, links);
+
+  let maxLayerWidth = 0;
+  for (const layer of nodesByDepth.values()) {
+    maxLayerWidth = Math.max(maxLayerWidth, layer.length);
+  }
+
   const padding = 100;
   const usableWidth = width - 2 * padding;
   const usableHeight = height - 2 * padding;
-  
-  // Calculate x spacing based on number of depths
   const xSpacing = maxDepth > 0 ? usableWidth / maxDepth : usableWidth / 2;
-  
+
   for (const [depth, nodesAtDepth] of nodesByDepth) {
-    // X position based on depth (left to right)
     const x = padding + depth * xSpacing;
-    
-    // Y positions spread evenly
     const ySpacing = usableHeight / (nodesAtDepth.length + 1);
-    
+
     nodesAtDepth.forEach((node, index) => {
       node.x = x;
       node.y = padding + (index + 1) * ySpacing;
     });
   }
+
+  return { depths, maxDepth, maxLayerWidth, nodesByDepth };
 }
 
 export class CallGraphVisualization {
@@ -143,7 +229,7 @@ export class CallGraphVisualization {
   private state: GraphState;
   private onStateChange: (state: GraphState, selectionChanged?: boolean) => void;
 
-  private linkElements: d3.Selection<SVGLineElement, D3Link, SVGGElement, unknown> | null = null;
+  private linkElements: d3.Selection<SVGPathElement, D3Link, SVGGElement, unknown> | null = null;
   private nodeElements: d3.Selection<SVGCircleElement, D3Node, SVGGElement, unknown> | null = null;
   private textElements: d3.Selection<SVGTextElement, D3Node, SVGGElement, unknown> | null = null;
 
@@ -214,23 +300,58 @@ export class CallGraphVisualization {
     const nodes = filteredGraph.nodes.map(node => ({ ...node }));
     const links = filteredGraph.links.map(link => ({ ...link }));
 
-    // Assign initial positions based on topological order
-    // This ensures consistent, deterministic layout
-    assignTopologicalPositions(nodes, links, this.width, this.height);
+    // Use filter-provided depths when available (semantically correct for
+    // source/sink queries), otherwise fall back to topological BFS.
+    const precomputedDepths = filteredGraph.nodeDepths;
 
-    // Compute target X positions for each node based on depth (for x-force)
-    const depths = computeTopologicalDepth(nodes, links);
-    const maxDepth = Math.max(...depths.values(), 1);
-    const padding = 100;
-    const usableWidth = this.width - 2 * padding;
-    const xSpacing = maxDepth > 0 ? usableWidth / maxDepth : usableWidth / 2;
-    
-    // Store target x position for each node
-    const targetX = new Map<string, number>();
-    for (const node of nodes) {
-      const depth = depths.get(node.id) || 0;
-      targetX.set(node.id, padding + depth * xSpacing);
+    // Assign initial positions with barycenter crossing minimization
+    const layout = assignTopologicalPositions(
+      nodes, links, this.width, this.height, precomputedDepths
+    );
+
+    // Adaptive canvas: expand the effective layout area for large graphs
+    const effectiveWidth = Math.max(this.width, layout.maxDepth * 200 + 200);
+    const effectiveHeight = Math.max(this.height, layout.maxLayerWidth * 60 + 200);
+
+    // Recompute positions if the effective area changed
+    if (effectiveWidth !== this.width || effectiveHeight !== this.height) {
+      const padding = 100;
+      const usableW = effectiveWidth - 2 * padding;
+      const usableH = effectiveHeight - 2 * padding;
+      const xSp = layout.maxDepth > 0 ? usableW / layout.maxDepth : usableW / 2;
+
+      for (const [depth, layer] of layout.nodesByDepth) {
+        const x = padding + depth * xSp;
+        const ySp = usableH / (layer.length + 1);
+        layer.forEach((node, i) => {
+          node.x = x;
+          node.y = padding + (i + 1) * ySp;
+        });
+      }
     }
+
+    // Compute target X positions for the x-force
+    const padding = 100;
+    const layoutWidth = Math.max(effectiveWidth, this.width);
+    const usableWidth = layoutWidth - 2 * padding;
+    const xSpacing = layout.maxDepth > 0 ? usableWidth / layout.maxDepth : usableWidth / 2;
+
+    const targetX = new Map<string, number>();
+    const targetY = new Map<string, number>();
+    for (const node of nodes) {
+      const depth = layout.depths.get(node.id) ?? 0;
+      targetX.set(node.id, padding + depth * xSpacing);
+      targetY.set(node.id, node.y!);
+    }
+
+    // Adaptive force parameters based on graph size
+    const nodeCount = nodes.length;
+    const charge = Math.max(-600, Math.min(-150, -150 - nodeCount * 3));
+    const linkDist = Math.max(60, Math.min(200, 60 + layout.maxLayerWidth * 8));
+    const collisionRadius = 25 + Math.min(nodeCount * 0.3, 20);
+    const yStrength = layout.maxLayerWidth > 0
+      ? 0.03 + 0.02 * (layout.maxLayerWidth / Math.max(nodeCount, 1))
+      : 0.05;
 
     // Create force simulation with layered layout
     this.simulation = d3
@@ -239,24 +360,20 @@ export class CallGraphVisualization {
         'link',
         d3.forceLink<D3Node, D3Link>(links)
           .id(d => d.id)
-          .distance(80)
+          .distance(linkDist)
           .strength(0.5)
       )
-      .force('charge', d3.forceManyBody().strength(-200))
-      // Use forceX to keep nodes at their topological layer
-      .force('x', d3.forceX<D3Node>(d => targetX.get(d.id) || this.width / 2).strength(0.8))
-      // Use forceY to center vertically with some spread
-      .force('y', d3.forceY(this.height / 2).strength(0.05))
-      .force('collision', d3.forceCollide().radius(35));
+      .force('charge', d3.forceManyBody().strength(charge))
+      .force('x', d3.forceX<D3Node>(d => targetX.get(d.id) || layoutWidth / 2).strength(0.8))
+      .force('y', d3.forceY<D3Node>(d => targetY.get(d.id) || effectiveHeight / 2).strength(yStrength))
+      .force('collision', d3.forceCollide().radius(collisionRadius));
 
-    // Update links
+    // Update links (curved <path> elements instead of straight <line>)
     this.linkElements = this.g
-      .selectAll<SVGLineElement, D3Link>('line')
+      .selectAll<SVGPathElement, D3Link>('path.link')
       .data(links, (d: D3Link) => {
         const source = typeof d.source === 'string' ? d.source : d.source.id;
         const target = typeof d.target === 'string' ? d.target : d.target.id;
-        // Include link type in key to distinguish multiple edges between same nodes
-        // (e.g., inner edge vs postcondition edge from same source to same target)
         const linkType = d.type || 'inner';
         return `${source}-${target}-${linkType}`;
       });
@@ -265,19 +382,18 @@ export class CallGraphVisualization {
 
     const linkEnter = this.linkElements
       .enter()
-      .append('line')
+      .append('path')
       .attr('class', 'link')
+      .attr('fill', 'none')
       .attr('stroke', (d) => {
-        // Color links based on type
         const linkType = d.type || 'inner';
-        if (linkType === 'precondition') return '#e65100';  // Orange for requires
-        if (linkType === 'postcondition') return '#c2185b'; // Pink for ensures
-        return '#999';  // Default gray for inner/body calls
+        if (linkType === 'precondition') return '#e65100';
+        if (linkType === 'postcondition') return '#c2185b';
+        return '#999';
       })
       .attr('stroke-opacity', 0.6)
       .attr('stroke-width', 1.5)
       .attr('stroke-dasharray', (d) => {
-        // Dash pattern for spec links
         const linkType = d.type || 'inner';
         if (linkType === 'precondition' || linkType === 'postcondition') return '5,3';
         return 'none';
@@ -304,7 +420,6 @@ export class CallGraphVisualization {
       .style('cursor', 'pointer')
       .call(this.dragBehavior() as any);
 
-    // Add event handlers
     nodeEnter
       .on('click', (event, d) => this.handleNodeClick(event, d))
       .on('mouseenter', (event, d) => this.handleNodeHover(event, d))
@@ -335,11 +450,14 @@ export class CallGraphVisualization {
 
     // Update positions on each tick
     this.simulation.on('tick', () => {
-      this.linkElements
-        ?.attr('x1', (d) => (d.source as D3Node).x!)
-        .attr('y1', (d) => (d.source as D3Node).y!)
-        .attr('x2', (d) => (d.target as D3Node).x!)
-        .attr('y2', (d) => (d.target as D3Node).y!);
+      this.linkElements?.attr('d', (d) => {
+        const sx = (d.source as D3Node).x!;
+        const sy = (d.source as D3Node).y!;
+        const tx = (d.target as D3Node).x!;
+        const ty = (d.target as D3Node).y!;
+        const dx = tx - sx;
+        return `M${sx},${sy} C${sx + dx * 0.4},${sy} ${tx - dx * 0.4},${ty} ${tx},${ty}`;
+      });
 
       this.nodeElements
         ?.attr('cx', (d) => d.x!)

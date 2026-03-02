@@ -594,6 +594,23 @@ export function applyFilters(
     connectedNodeIds.has(node.id) || (hasFocusSet && filters.focusNodeIds.has(node.id))
   );
 
+  // Build nodeDepths from traversal results for layout use.
+  // For sink-only: callerDepths (sink=0, callers increase).
+  // For source-only: calleeDepths (source=0, callees increase).
+  // For same query (neighborhood): merge both, preferring minimum depth.
+  let nodeDepths: Map<string, number> | undefined;
+  if (hasSink && !hasSource) {
+    nodeDepths = new Map(callerDepths);
+  } else if (hasSource && !hasSink) {
+    nodeDepths = new Map(calleeDepths);
+  } else if (hasSource && hasSink && isSameQuery) {
+    nodeDepths = new Map<string, number>();
+    for (const [id, d] of callerDepths) nodeDepths.set(id, d);
+    for (const [id, d] of calleeDepths) {
+      if (!nodeDepths.has(id) || d < nodeDepths.get(id)!) nodeDepths.set(id, d);
+    }
+  }
+
   // Create fresh copies of nodes and links to prevent D3 from mutating the originals
   // D3's force simulation modifies link.source/target from string IDs to node references
   return {
@@ -604,6 +621,7 @@ export function applyFilters(
       total_nodes: filteredNodes.length,
       total_edges: filteredLinks.length,
     },
+    nodeDepths,
   };
 }
 
