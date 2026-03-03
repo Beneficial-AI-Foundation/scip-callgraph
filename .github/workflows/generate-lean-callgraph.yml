@@ -106,7 +106,7 @@ jobs:
             echo "Toolchains differ — aligning probe-lean to target project..."
             cp "$PROJECT_TC" "$PROBE_TC"
 
-            LEAN_VERSION=$(sed 's|.*/||' "$PROJECT_TC")
+            LEAN_VERSION=$(sed 's|.*:||' "$PROJECT_TC")
             echo "Lean version tag: $LEAN_VERSION"
             sed -i "s|rev = \".*\"|rev = \"$LEAN_VERSION\"|" probe-lean/lakefile.toml
 
