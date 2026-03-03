@@ -47,8 +47,14 @@ const FILE_GROUP_STROKE_COLORS = [
 
 // --- Node shape constants ---
 
-const NODE_W = 120;
+const NODE_MIN_W = 120;
 const NODE_H = 36;
+const CHAR_WIDTH = 6.5;  // approx width per char at 10px system-ui
+const NODE_PAD = 24;     // horizontal padding inside node shape
+
+function nodeWidthFor(name: string): number {
+  return Math.max(NODE_MIN_W, name.length * CHAR_WIDTH + NODE_PAD);
+}
 
 function borderColor(node: D3Node): string {
   return BORDER_COLORS[node.border_status || 'unknown'];
@@ -68,27 +74,32 @@ function appendShape(
   g: d3.Selection<SVGGElement, D3Node, SVGGElement, unknown>,
   proofKinds: Set<string>,
   specKinds: Set<string>,
+  widths: Map<string, number>,
 ): void {
+  const w = (d: D3Node) => widths.get(d.id) || NODE_MIN_W;
   const isExec = (kind: DeclKind) => !proofKinds.has(kind) && !specKinds.has(kind);
 
   g.filter(d => isExec(d.kind || 'exec'))
     .append('rect')
     .attr('class', 'bp-shape')
-    .attr('x', -NODE_W / 2).attr('y', -NODE_H / 2)
-    .attr('width', NODE_W).attr('height', NODE_H)
+    .attr('x', d => -w(d) / 2).attr('y', -NODE_H / 2)
+    .attr('width', d => w(d)).attr('height', NODE_H)
     .attr('rx', 6).attr('ry', 6);
 
   g.filter(d => proofKinds.has(d.kind || 'exec'))
     .append('ellipse')
     .attr('class', 'bp-shape')
     .attr('cx', 0).attr('cy', 0)
-    .attr('rx', NODE_W / 2).attr('ry', NODE_H / 2);
+    .attr('rx', d => w(d) / 2).attr('ry', NODE_H / 2);
 
-  const hw = NODE_W / 2, hh = NODE_H / 2;
+  const hh = NODE_H / 2;
   g.filter(d => specKinds.has(d.kind || 'exec'))
     .append('polygon')
     .attr('class', 'bp-shape')
-    .attr('points', `0,${-hh} ${hw},0 0,${hh} ${-hw},0`);
+    .attr('points', d => {
+      const hw = w(d) / 2;
+      return `0,${-hh} ${hw},0 0,${hh} ${-hw},0`;
+    });
 }
 
 export class BlueprintVisualization {
@@ -188,8 +199,11 @@ export class BlueprintVisualization {
       gGraph.setNode(groupId, { label: key, clusterLabelPos: 'top' });
     }
 
+    const nodeWidths = new Map<string, number>();
     for (const node of nodes) {
-      gGraph.setNode(node.id, { width: NODE_W + 10, height: NODE_H + 10 });
+      const nw = nodeWidthFor(node.display_name);
+      nodeWidths.set(node.id, nw);
+      gGraph.setNode(node.id, { width: nw + 10, height: NODE_H + 10 });
       const fileKey = node.relative_path || 'unknown';
       gGraph.setParent(node.id, `file:${fileKey}`);
     }
@@ -267,8 +281,10 @@ export class BlueprintVisualization {
         const sp = posMap.get(sId);
         const tp = posMap.get(tId);
         if (!sp || !tp) return '';
+        const sw = (nodeWidths.get(sId) || NODE_MIN_W) / 2;
+        const tw = (nodeWidths.get(tId) || NODE_MIN_W) / 2;
         const dx = tp.x - sp.x;
-        return `M${sp.x + NODE_W / 2},${sp.y} C${sp.x + NODE_W / 2 + dx * 0.4},${sp.y} ${tp.x - NODE_W / 2 - dx * 0.4},${tp.y} ${tp.x - NODE_W / 2},${tp.y}`;
+        return `M${sp.x + sw},${sp.y} C${sp.x + sw + dx * 0.4},${sp.y} ${tp.x - tw - dx * 0.4},${tp.y} ${tp.x - tw},${tp.y}`;
       });
 
     // Render node groups
@@ -282,7 +298,7 @@ export class BlueprintVisualization {
 
     // Append shape based on language-aware kind categories
     const { proofKinds, specKinds } = getKindSetsForLanguage(this.state.projectLanguage);
-    appendShape(this.nodeSel, proofKinds, specKinds);
+    appendShape(this.nodeSel, proofKinds, specKinds, nodeWidths);
 
     // Style shapes with dual-channel colors
     this.nodeSel.selectAll<SVGElement, D3Node>('.bp-shape')
@@ -301,7 +317,7 @@ export class BlueprintVisualization {
         return (fs === 'fully_verified' || fs === 'verified') ? '#1a3a1a' : '#333';
       })
       .attr('pointer-events', 'none')
-      .text(d => truncate(d.display_name, 16));
+      .text(d => d.display_name);
 
     // Interactions
     this.nodeSel
@@ -462,10 +478,6 @@ export class BlueprintVisualization {
     this.nodeSel?.style('opacity', 1);
     this.linkSel?.style('opacity', 0.55);
   }
-}
-
-function truncate(s: string, maxLen: number): string {
-  return s.length > maxLen ? s.slice(0, maxLen - 1) + '\u2026' : s;
 }
 
 function extractFileName(relativePath: string): string {
