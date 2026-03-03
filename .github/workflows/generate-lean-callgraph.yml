@@ -90,6 +90,31 @@ jobs:
           ref: ${{ inputs.probe_lean_version }}
           path: probe-lean
 
+      - name: Align probe-lean toolchain to target project
+        run: |
+          PROJECT_TC="project/${{ inputs.project_path }}/lean-toolchain"
+          PROBE_TC="probe-lean/lean-toolchain"
+          echo "Target project toolchain: $(cat "$PROJECT_TC")"
+          echo "probe-lean toolchain:     $(cat "$PROBE_TC")"
+
+          if ! diff -q "$PROJECT_TC" "$PROBE_TC" > /dev/null 2>&1; then
+            echo "Toolchains differ — aligning probe-lean to target project..."
+            cp "$PROJECT_TC" "$PROBE_TC"
+
+            # Extract version tag (e.g. "v4.28.0-rc1") and update Cli dependency
+            LEAN_VERSION=$(sed 's|.*/||' "$PROJECT_TC")
+            echo "Lean version tag: $LEAN_VERSION"
+            sed -i "s|rev = \".*\"|rev = \"$LEAN_VERSION\"|" probe-lean/lakefile.toml
+
+            echo "Updated probe-lean/lakefile.toml:"
+            grep 'rev =' probe-lean/lakefile.toml
+
+            cd probe-lean && lake update
+            echo "✓ probe-lean realigned to $LEAN_VERSION"
+          else
+            echo "✓ Toolchains already match"
+          fi
+
       - name: Install elan (Lean toolchain manager)
         run: |
           curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
