@@ -21,6 +21,30 @@ const FILL_COLORS: Record<FillStatus, string> = {
   none:           '#ffffff',
 };
 
+// --- File group background palette (soft pastels) ---
+
+const FILE_GROUP_COLORS = [
+  'rgba(66,133,244,0.10)',
+  'rgba(234,67,53,0.10)',
+  'rgba(52,168,83,0.10)',
+  'rgba(251,188,4,0.10)',
+  'rgba(171,71,188,0.10)',
+  'rgba(0,172,193,0.10)',
+  'rgba(255,112,67,0.10)',
+  'rgba(124,179,66,0.10)',
+];
+
+const FILE_GROUP_STROKE_COLORS = [
+  'rgba(66,133,244,0.30)',
+  'rgba(234,67,53,0.30)',
+  'rgba(52,168,83,0.30)',
+  'rgba(251,188,4,0.30)',
+  'rgba(171,71,188,0.30)',
+  'rgba(0,172,193,0.30)',
+  'rgba(255,112,67,0.30)',
+  'rgba(124,179,66,0.30)',
+];
+
 // --- Node shape constants ---
 
 const NODE_W = 120;
@@ -139,8 +163,17 @@ export class BlueprintVisualization {
     // Transitive reduction for cleaner DAG
     links = transitiveReduction(nodes, links);
 
-    // Run dagre layout
-    const gGraph = new dagre.graphlib.Graph();
+    // Group nodes by file for compound graph clustering
+    const fileGroups = new Map<string, D3Node[]>();
+    for (const node of nodes) {
+      const key = node.relative_path || 'unknown';
+      if (!fileGroups.has(key)) fileGroups.set(key, []);
+      fileGroups.get(key)!.push(node);
+    }
+    const fileKeys = [...fileGroups.keys()];
+
+    // Run dagre layout with compound graph mode
+    const gGraph = new dagre.graphlib.Graph({ compound: true });
     gGraph.setGraph({
       rankdir: 'LR',
       nodesep: 30,
@@ -150,8 +183,15 @@ export class BlueprintVisualization {
     });
     gGraph.setDefaultEdgeLabel(() => ({}));
 
+    for (const key of fileKeys) {
+      const groupId = `file:${key}`;
+      gGraph.setNode(groupId, { label: key, clusterLabelPos: 'top' });
+    }
+
     for (const node of nodes) {
       gGraph.setNode(node.id, { width: NODE_W + 10, height: NODE_H + 10 });
+      const fileKey = node.relative_path || 'unknown';
+      gGraph.setParent(node.id, `file:${fileKey}`);
     }
     for (const link of links) {
       const s = typeof link.source === 'string' ? link.source : link.source.id;
@@ -174,6 +214,32 @@ export class BlueprintVisualization {
 
     // Clear previous render
     this.g.selectAll('*').remove();
+
+    // Render file group backgrounds (behind everything else)
+    for (let i = 0; i < fileKeys.length; i++) {
+      const groupId = `file:${fileKeys[i]}`;
+      const info = gGraph.node(groupId);
+      if (!info || !info.width || !info.height) continue;
+      const color = FILE_GROUP_COLORS[i % FILE_GROUP_COLORS.length];
+      const stroke = FILE_GROUP_STROKE_COLORS[i % FILE_GROUP_STROKE_COLORS.length];
+
+      this.g.append('rect')
+        .attr('class', 'bp-file-group')
+        .attr('x', info.x - info.width / 2)
+        .attr('y', info.y - info.height / 2)
+        .attr('width', info.width)
+        .attr('height', info.height)
+        .attr('rx', 8)
+        .attr('fill', color)
+        .attr('stroke', stroke)
+        .attr('stroke-width', 1);
+
+      this.g.append('text')
+        .attr('class', 'bp-file-label')
+        .attr('x', info.x - info.width / 2 + 8)
+        .attr('y', info.y - info.height / 2 + 14)
+        .text(extractFileName(fileKeys[i]));
+    }
 
     // Render links
     this.linkSel = this.g.selectAll<SVGPathElement, D3Link>('path.bp-link')
@@ -400,4 +466,10 @@ export class BlueprintVisualization {
 
 function truncate(s: string, maxLen: number): string {
   return s.length > maxLen ? s.slice(0, maxLen - 1) + '\u2026' : s;
+}
+
+function extractFileName(relativePath: string): string {
+  const parts = relativePath.split('/').filter(Boolean);
+  if (parts.length <= 2) return relativePath;
+  return parts.slice(-2).join('/');
 }

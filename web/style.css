@@ -961,3 +961,16 @@ body {
   color: #888;
 }
 
+/* File group backgrounds */
+.bp-file-group {
+  pointer-events: none;
+}
+
+.bp-file-label {
+  font-size: 9px;
+  font-family: system-ui, sans-serif;
+  fill: rgba(0, 0, 0, 0.45);
+  font-weight: 600;
+  pointer-events: none;
+}
+
