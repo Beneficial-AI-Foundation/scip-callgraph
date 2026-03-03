@@ -4,9 +4,9 @@
 //! - `export_call_graph_d3` - Export to D3.js force-directed graph format
 //! - `write_call_graph_as_atoms_json` - Export as JSON array of Atom objects
 
-use crate::call_graph::{detect_function_mode, symbol_to_path};
+use crate::call_graph::{detect_decl_kind, symbol_to_path};
 use crate::types::{
-    Atom, D3Graph, D3GraphMetadata, D3Link, D3Node, FunctionMode, FunctionNode, ScipIndex,
+    Atom, D3Graph, D3GraphMetadata, D3Link, D3Node, DeclKind, FunctionNode, ScipIndex,
 };
 use log::debug;
 use std::collections::{HashMap, HashSet};
@@ -128,11 +128,11 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
                 (None, None)
             };
 
-            let mode = node
+            let kind = node
                 .body
                 .as_ref()
-                .map(|b| detect_function_mode(b))
-                .unwrap_or(FunctionMode::Exec);
+                .map(|b| detect_decl_kind(b))
+                .unwrap_or(DeclKind::Exec);
 
             D3Node {
                 id: node.symbol.clone(),
@@ -147,7 +147,7 @@ pub fn export_call_graph_d3<P: AsRef<std::path::Path>>(
                 is_libsignal: is_libsignal_node(node),
                 dependencies: node.callees.iter().cloned().collect(),
                 dependents: node.callers.iter().cloned().collect(),
-                mode,
+                kind,
             }
         })
         .collect();

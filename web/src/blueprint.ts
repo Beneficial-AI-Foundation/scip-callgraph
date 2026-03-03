@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
 import dagreModule from '@dagrejs/dagre';
 const dagre = dagreModule as any;
-import { D3Graph, D3Node, D3Link, GraphState, BorderStatus, FillStatus } from './types';
+import { D3Graph, D3Node, D3Link, GraphState, BorderStatus, FillStatus, DeclKind, getKindSetsForLanguage } from './types';
 import { transitiveReduction } from './graph-utils';
 
 // --- Color palettes ---
@@ -35,32 +35,33 @@ function fillColor(node: D3Node): string {
 }
 
 /**
- * Append the correct SVG shape for a node's function mode.
- *  - exec  -> rounded rect (like LeanBlueprint "definitions")
- *  - proof -> ellipse (like LeanBlueprint "theorems/lemmas")
- *  - spec  -> diamond
+ * Append the correct SVG shape for a node's declaration kind.
+ *  - exec/definitions -> rounded rect
+ *  - proof/theorems   -> ellipse
+ *  - spec/axioms      -> diamond
  */
 function appendShape(
   g: d3.Selection<SVGGElement, D3Node, SVGGElement, unknown>,
+  proofKinds: Set<string>,
+  specKinds: Set<string>,
 ): void {
-  // exec -> rect
-  g.filter(d => d.mode === 'exec')
+  const isExec = (kind: DeclKind) => !proofKinds.has(kind) && !specKinds.has(kind);
+
+  g.filter(d => isExec(d.kind || 'exec'))
     .append('rect')
     .attr('class', 'bp-shape')
     .attr('x', -NODE_W / 2).attr('y', -NODE_H / 2)
     .attr('width', NODE_W).attr('height', NODE_H)
     .attr('rx', 6).attr('ry', 6);
 
-  // proof -> ellipse
-  g.filter(d => d.mode === 'proof')
+  g.filter(d => proofKinds.has(d.kind || 'exec'))
     .append('ellipse')
     .attr('class', 'bp-shape')
     .attr('cx', 0).attr('cy', 0)
     .attr('rx', NODE_W / 2).attr('ry', NODE_H / 2);
 
-  // spec -> diamond
   const hw = NODE_W / 2, hh = NODE_H / 2;
-  g.filter(d => d.mode === 'spec')
+  g.filter(d => specKinds.has(d.kind || 'exec'))
     .append('polygon')
     .attr('class', 'bp-shape')
     .attr('points', `0,${-hh} ${hw},0 0,${hh} ${-hw},0`);
@@ -128,6 +129,9 @@ export class BlueprintVisualization {
       this.clear();
       return;
     }
+
+    // Re-render legend in case projectLanguage changed after graph load
+    this.renderLegend();
 
     const nodes = filteredGraph.nodes.map(n => ({ ...n }));
     let links = filteredGraph.links.map(l => ({ ...l }));
@@ -210,8 +214,9 @@ export class BlueprintVisualization {
       .attr('transform', d => `translate(${d.x},${d.y})`)
       .style('cursor', 'pointer');
 
-    // Append shape per mode
-    appendShape(this.nodeSel);
+    // Append shape based on language-aware kind categories
+    const { proofKinds, specKinds } = getKindSetsForLanguage(this.state.projectLanguage);
+    appendShape(this.nodeSel, proofKinds, specKinds);
 
     // Style shapes with dual-channel colors
     this.nodeSel.selectAll<SVGElement, D3Node>('.bp-shape')
@@ -267,6 +272,11 @@ export class BlueprintVisualization {
     const existing = this.container.querySelector('.bp-legend');
     if (existing) existing.remove();
 
+    const lang = this.state.projectLanguage;
+    const rectLabel = lang === 'lean' ? 'Definition' : lang === 'verus' ? 'Exec function' : 'Exec / Definition';
+    const ellipseLabel = lang === 'lean' ? 'Theorem' : lang === 'verus' ? 'Proof / lemma' : 'Proof / Theorem';
+    const diamondLabel = lang === 'lean' ? 'Axiom' : lang === 'verus' ? 'Spec function' : 'Spec / Axiom';
+
     const legend = document.createElement('div');
     legend.className = 'bp-legend';
     legend.innerHTML = `
@@ -277,15 +287,15 @@ export class BlueprintVisualization {
         <div class="bp-legend-section"><strong>Shapes</strong></div>
         <div class="bp-legend-item">
           <svg width="28" height="18"><rect x="2" y="2" width="24" height="14" rx="3" fill="#eee" stroke="#888" stroke-width="1.5"/></svg>
-          <span>Exec function</span>
+          <span>${rectLabel}</span>
         </div>
         <div class="bp-legend-item">
           <svg width="28" height="18"><ellipse cx="14" cy="9" rx="12" ry="7" fill="#eee" stroke="#888" stroke-width="1.5"/></svg>
-          <span>Proof / lemma</span>
+          <span>${ellipseLabel}</span>
         </div>
         <div class="bp-legend-item">
           <svg width="28" height="18"><polygon points="14,1 27,9 14,17 1,9" fill="#eee" stroke="#888" stroke-width="1.5"/></svg>
-          <span>Spec function</span>
+          <span>${diamondLabel}</span>
         </div>
         <div class="bp-legend-section"><strong>Border&nbsp;color</strong></div>
         <div class="bp-legend-item"><span class="bp-swatch" style="background:${BORDER_COLORS.verified}"></span>Verified</div>

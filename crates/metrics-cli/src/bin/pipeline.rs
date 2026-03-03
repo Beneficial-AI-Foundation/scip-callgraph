@@ -21,7 +21,7 @@ use probe_verus::{
 };
 use scip_core::atoms_to_d3::atoms_to_d3_graph;
 use scip_core::logging::init_logger;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -198,8 +198,8 @@ fn export_call_graph(
         true, // with_locations - enables requires/ensures tracking
     );
 
-    // Convert to HashMap keyed by code_name for the D3 converter
-    let mut atoms_map: HashMap<String, _> = atoms
+    // Convert to BTreeMap keyed by code_name for the D3 converter
+    let mut atoms_map: BTreeMap<String, _> = atoms
         .into_iter()
         .map(|atom| (atom.code_name.clone(), atom))
         .collect();

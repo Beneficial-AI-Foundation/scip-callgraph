@@ -5,15 +5,15 @@
 //!
 //! This approach keeps probe-verus unchanged while extending its output for our needs.
 
-use crate::types::{D3Graph, D3GraphMetadata, D3Link, D3Node, FunctionMode};
+use crate::types::{D3Graph, D3GraphMetadata, D3Link, D3Node, DeclKind};
 use probe_verus::{AtomWithLines, CallLocation, FunctionNode};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
 /// Convert probe-verus' call graph and atoms to D3Graph format.
 ///
 /// This function takes:
-/// - `atoms`: The HashMap of scip_name -> AtomWithLines from probe-verus
+/// - `atoms`: The BTreeMap of scip_name -> AtomWithLines from probe-verus
 /// - `call_graph`: The original FunctionNode map (unused, kept for API compatibility)
 /// - `project_root`: The project root path for metadata
 /// - `github_url`: Optional GitHub URL for source links
@@ -21,7 +21,7 @@ use std::path::Path;
 /// Returns a D3Graph suitable for the web viewer with pre-computed dependencies/dependents
 /// for O(1) lookups in the browser.
 pub fn atoms_to_d3_graph(
-    atoms: &HashMap<String, AtomWithLines>,
+    atoms: &BTreeMap<String, AtomWithLines>,
     _call_graph: &HashMap<String, FunctionNode>,
     project_root: &str,
     github_url: Option<String>,
@@ -59,8 +59,8 @@ pub fn atoms_to_d3_graph(
                 .unwrap_or("unknown")
                 .to_string();
 
-            // Get mode directly from atom (parsed by probe-verus using verus_syn)
-            let mode = convert_function_mode(&atom.mode);
+            // Get kind directly from atom (parsed by probe-verus using verus_syn)
+            let kind = convert_decl_kind(&atom.kind);
 
             // Check if this is a libsignal node (based on path patterns)
             let is_libsignal =
@@ -93,7 +93,7 @@ pub fn atoms_to_d3_graph(
                 is_libsignal,
                 dependencies,
                 dependents,
-                mode,
+                kind,
             }
         })
         .collect();
@@ -157,12 +157,12 @@ pub fn atoms_to_d3_graph(
     }
 }
 
-/// Convert probe-verus FunctionMode to our local FunctionMode enum.
-fn convert_function_mode(mode: &probe_verus::FunctionMode) -> FunctionMode {
-    match mode {
-        probe_verus::FunctionMode::Spec => FunctionMode::Spec,
-        probe_verus::FunctionMode::Proof => FunctionMode::Proof,
-        probe_verus::FunctionMode::Exec => FunctionMode::Exec,
+/// Convert probe-verus DeclKind to our local DeclKind enum.
+fn convert_decl_kind(kind: &probe_verus::DeclKind) -> DeclKind {
+    match kind {
+        probe_verus::DeclKind::Spec => DeclKind::Spec,
+        probe_verus::DeclKind::Proof => DeclKind::Proof,
+        _ => DeclKind::Exec,
     }
 }
 
@@ -180,18 +180,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_convert_function_mode() {
-        assert_eq!(
-            convert_function_mode(&probe_verus::FunctionMode::Exec),
-            FunctionMode::Exec
-        );
-        assert_eq!(
-            convert_function_mode(&probe_verus::FunctionMode::Proof),
-            FunctionMode::Proof
-        );
-        assert_eq!(
-            convert_function_mode(&probe_verus::FunctionMode::Spec),
-            FunctionMode::Spec
-        );
+    fn test_convert_decl_kind() {
+        assert_eq!(convert_decl_kind(&probe_verus::DeclKind::Exec), DeclKind::Exec);
+        assert_eq!(convert_decl_kind(&probe_verus::DeclKind::Proof), DeclKind::Proof);
+        assert_eq!(convert_decl_kind(&probe_verus::DeclKind::Spec), DeclKind::Spec);
     }
 }

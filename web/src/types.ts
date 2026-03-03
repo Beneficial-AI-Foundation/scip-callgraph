@@ -59,8 +59,48 @@ export function isD3GraphFormat(data: unknown): data is D3Graph {
   );
 }
 
-/** Verus function mode */
-export type FunctionMode = 'exec' | 'proof' | 'spec';
+/** Declaration kind (Verus: exec/proof/spec, Lean: theorem/def/axiom/...) */
+export type DeclKind = string;
+
+/** Detected project language based on kind values in the graph */
+export type ProjectLanguage = 'verus' | 'lean' | 'unknown';
+
+const VERUS_KINDS = new Set(['exec', 'proof', 'spec']);
+const LEAN_KINDS = new Set([
+  'theorem', 'def', 'abbrev', 'class', 'structure',
+  'inductive', 'instance', 'axiom', 'opaque', 'quot',
+]);
+
+/** Detect whether a graph comes from a Verus or Lean project by scanning kind values. */
+export function detectProjectLanguage(graph: D3Graph): ProjectLanguage {
+  const kinds = new Set<string>();
+  for (const node of graph.nodes) {
+    if (node.kind) kinds.add(node.kind);
+  }
+  const hasVerus = [...kinds].some(k => VERUS_KINDS.has(k));
+  const hasLean = [...kinds].some(k => LEAN_KINDS.has(k) && !VERUS_KINDS.has(k));
+  if (hasVerus && !hasLean) return 'verus';
+  if (hasLean && !hasVerus) return 'lean';
+  return 'unknown';
+}
+
+/**
+ * Get the proof-category and spec-category kind sets for a given language.
+ * Everything not in either set is treated as exec/definitions.
+ */
+export function getKindSetsForLanguage(lang: ProjectLanguage): {
+  proofKinds: Set<string>;
+  specKinds: Set<string>;
+} {
+  switch (lang) {
+    case 'verus':
+      return { proofKinds: new Set(['proof']), specKinds: new Set(['spec']) };
+    case 'lean':
+      return { proofKinds: new Set(['theorem']), specKinds: new Set(['axiom']) };
+    default:
+      return { proofKinds: new Set(['proof', 'theorem']), specKinds: new Set(['spec', 'axiom']) };
+  }
+}
 
 /** Verification status from Verus verification results */
 export type VerificationStatus = 'verified' | 'failed' | 'unverified';
@@ -87,7 +127,7 @@ export interface D3Node {
   dependencies: string[];   // scip_names of functions this calls (outgoing)
   dependents: string[];     // scip_names of functions that call this (incoming)
   similar_lemmas?: SimilarLemma[];
-  mode: FunctionMode;  // Verus function mode: exec, proof, or spec
+  kind: DeclKind;  // Declaration kind: exec, proof, spec (Verus) or theorem, def, axiom, ... (Lean)
   verification_status?: VerificationStatus;  // Verification status: verified, failed, unverified
   // Derived statuses computed by DAG walk (used by Blueprint view)
   border_status?: BorderStatus;
@@ -131,10 +171,10 @@ export interface FilterOptions {
   showInnerCalls: boolean;         // Show calls from function body (default: true)
   showPreconditionCalls: boolean;  // Show calls from requires clauses (default: false)
   showPostconditionCalls: boolean; // Show calls from ensures clauses (default: false)
-  // Function mode filters (Verus)
-  showExecFunctions: boolean;      // Show executable functions (default: true)
-  showProofFunctions: boolean;     // Show proof functions/lemmas (default: true)
-  showSpecFunctions: boolean;      // Show spec functions (default: false)
+  // Declaration kind filters
+  showExecFunctions: boolean;      // Show exec/def/class/structure/... (default: true)
+  showProofFunctions: boolean;     // Show proof/theorem (default: true)
+  showSpecFunctions: boolean;      // Show spec/axiom (default: false)
   // Pattern-based exclusion (comma-separated glob patterns)
   excludeNamePatterns: string;     // Matches display_name, e.g., "*_comm*, lemma_mul_*"
   excludePathPatterns: string;     // Matches node ID path, e.g., "*/specs/*, */common_lemmas/*"
@@ -150,11 +190,48 @@ export interface FilterOptions {
   focusNodeIds: Set<string>;  // When non-empty, restricts initial view to these node IDs (loaded via ?focus= URL param)
 }
 
+// ============================================================================
+// Probe Atom Dict Format (shared by probe-verus and probe-lean)
+// ============================================================================
+
+/**
+ * Atom format used in probe-verus and probe-lean atoms.json output.
+ * This is a dict keyed by atom name (e.g., "probe:double_zero").
+ */
+export interface ProbeAtom {
+  "display-name": string;
+  dependencies: string[];
+  "code-text": { "lines-start": number; "lines-end": number } | null;
+  "code-path": string;
+  "code-module": string;
+  kind: string;
+  "dependencies-with-locations"?: Array<{
+    "code-name": string;
+    location: string;
+    line: number;
+  }>;
+}
+
+/**
+ * Type guard to check if data is in probe atom dict format
+ * (object keyed by atom name, where values have 'dependencies' and 'display-name')
+ */
+export function isAtomDictFormat(data: unknown): data is Record<string, ProbeAtom> {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
+  if ('nodes' in data || 'links' in data) return false;
+  const values = Object.values(data);
+  if (values.length === 0) return false;
+  const first = values[0] as any;
+  return typeof first === 'object' && first !== null
+    && 'dependencies' in first && 'display-name' in first;
+}
+
 export interface GraphState {
   fullGraph: D3Graph | null;
   filteredGraph: D3Graph | null;
   filters: FilterOptions;
   selectedNode: D3Node | null;
   hoveredNode: D3Node | null;
+  projectLanguage: ProjectLanguage;
 }
 

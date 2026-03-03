@@ -1,13 +1,17 @@
-import { D3Graph, D3Node, D3Link, FilterOptions } from './types';
+import { D3Graph, D3Node, D3Link, FilterOptions, ProjectLanguage, getKindSetsForLanguage } from './types';
 
 /**
- * Check if a node should be included based on mode filters
+ * Check if a node should be included based on kind filters.
+ * The proof/spec kind sets vary by language:
+ *   - Verus: proof={proof}, spec={spec}, exec=everything else
+ *   - Lean: proof={theorem}, spec={axiom}, exec=everything else (def, abbrev, class, ...)
+ *   - Unknown: proof={proof,theorem}, spec={spec,axiom}, exec=everything else
  */
-function nodePassesModeFilter(node: D3Node, filters: FilterOptions): boolean {
-  const mode = node.mode || 'exec';
-  if (mode === 'exec' && !filters.showExecFunctions) return false;
-  if (mode === 'proof' && !filters.showProofFunctions) return false;
-  if (mode === 'spec' && !filters.showSpecFunctions) return false;
+function nodePassesKindFilter(node: D3Node, filters: FilterOptions, proofKinds: Set<string>, specKinds: Set<string>): boolean {
+  const kind = node.kind || 'exec';
+  if (proofKinds.has(kind) && !filters.showProofFunctions) return false;
+  if (specKinds.has(kind) && !filters.showSpecFunctions) return false;
+  if (!proofKinds.has(kind) && !specKinds.has(kind) && !filters.showExecFunctions) return false;
   return true;
 }
 
@@ -215,8 +219,11 @@ export interface SelectedNodeOptions {
 export function applyFilters(
   fullGraph: D3Graph,
   filters: FilterOptions,
-  nodeOptions?: SelectedNodeOptions
+  nodeOptions?: SelectedNodeOptions,
+  projectLanguage: ProjectLanguage = 'unknown',
 ): D3Graph {
+  const { proofKinds, specKinds } = getKindSetsForLanguage(projectLanguage);
+
   let filteredNodes = [...fullGraph.nodes];
   let filteredLinks = [...fullGraph.links];
 
@@ -234,7 +241,7 @@ export function applyFilters(
   // This is used to exclude links to/from filtered-out nodes during traversal
   const modeAllowedNodeIds = new Set<string>(
     fullGraph.nodes
-      .filter(node => nodePassesModeFilter(node, filters))
+      .filter(node => nodePassesKindFilter(node, filters, proofKinds, specKinds))
       .filter(node => !nodeMatchesExcludeNamePattern(node, excludeNamePatterns))
       .filter(node => !nodeMatchesExcludePathPattern(node, excludePathPatterns))
       .filter(node => nodeMatchesIncludeFilePattern(node, includeFilePatterns))
@@ -456,15 +463,9 @@ export function applyFilters(
     });
   }
 
-  // Filter by function mode (exec/proof/spec)
+  // Filter by declaration kind
   if (!filters.showExecFunctions || !filters.showProofFunctions || !filters.showSpecFunctions) {
-    filteredNodes = filteredNodes.filter(node => {
-      const mode = node.mode || 'exec';  // Default to exec for legacy data
-      if (mode === 'exec' && !filters.showExecFunctions) return false;
-      if (mode === 'proof' && !filters.showProofFunctions) return false;
-      if (mode === 'spec' && !filters.showSpecFunctions) return false;
-      return true;
-    });
+    filteredNodes = filteredNodes.filter(node => nodePassesKindFilter(node, filters, proofKinds, specKinds));
   }
 
   // Check if Include Files filter is active (non-empty)
@@ -496,15 +497,9 @@ export function applyFilters(
       });
     }
     
-    // Also apply mode filter to depth-expanded nodes
+    // Also apply kind filter to depth-expanded nodes
     if (!filters.showExecFunctions || !filters.showProofFunctions || !filters.showSpecFunctions) {
-      filteredNodes = filteredNodes.filter(node => {
-        const mode = node.mode || 'exec';
-        if (mode === 'exec' && !filters.showExecFunctions) return false;
-        if (mode === 'proof' && !filters.showProofFunctions) return false;
-        if (mode === 'spec' && !filters.showSpecFunctions) return false;
-        return true;
-      });
+      filteredNodes = filteredNodes.filter(node => nodePassesKindFilter(node, filters, proofKinds, specKinds));
     }
   }
 

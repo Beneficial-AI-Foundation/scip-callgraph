@@ -1,4 +1,4 @@
-import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat } from './types';
+import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
@@ -17,7 +17,7 @@ import { computeDerivedStatuses } from './status';
  * - Uses 'identifier' instead of 'id'
  * - Uses 'deps' instead of 'dependencies'
  * - May have 'body' (code) instead of start_line/end_line
- * - Missing fields: symbol, is_libsignal, dependents, mode, links
+ * - Missing fields: symbol, is_libsignal, dependents, kind, links
  * 
  * This conversion:
  * - Maps field names to D3Graph format
@@ -75,7 +75,7 @@ function convertSimplifiedToD3Graph(nodes: SimplifiedNode[]): D3Graph {
       is_libsignal: false,  // Default to false
       dependencies: filteredDeps,
       dependents: dependents.filter(dep => knownIds.has(dep)),  // Also filter dependents
-      mode: 'exec' as const,  // Default mode (could try to infer from body/statement_type)
+      kind: 'exec',  // Default kind (could try to infer from body/statement_type)
     };
   });
   
@@ -108,10 +108,100 @@ function convertSimplifiedToD3Graph(nodes: SimplifiedNode[]): D3Graph {
 }
 
 /**
- * Parse JSON data and convert to D3Graph format if needed.
- * Supports both D3Graph format and simplified format (curve25519-dalek.json style).
+ * Convert probe atom dict format (probe-verus / probe-lean atoms.json) to D3Graph format.
  * 
- * @param data - Parsed JSON data (either D3Graph or SimplifiedNode[])
+ * The atom dict format:
+ * - Is an object keyed by atom name (e.g., "probe:double_zero")
+ * - Uses hyphenated field names: 'display-name', 'code-path', 'code-text', 'code-module'
+ * - Has 'kind' for declaration classification (exec/proof/spec/theorem/def/axiom/...)
+ * - Optionally has 'dependencies-with-locations' for typed links
+ */
+function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
+  const knownIds = new Set(Object.keys(atoms));
+  
+  // Build dependents map (inverse of dependencies)
+  const dependentsMap = new Map<string, string[]>();
+  for (const [atomName, atom] of Object.entries(atoms)) {
+    if (!dependentsMap.has(atomName)) {
+      dependentsMap.set(atomName, []);
+    }
+    for (const dep of atom.dependencies) {
+      if (!dependentsMap.has(dep)) {
+        dependentsMap.set(dep, []);
+      }
+      dependentsMap.get(dep)!.push(atomName);
+    }
+  }
+  
+  // Convert atoms to D3Nodes
+  const d3Nodes: D3Node[] = Object.entries(atoms).map(([atomName, atom]) => {
+    const codePath = atom["code-path"] || '';
+    const parts = codePath.split('/');
+    const fileName = parts[parts.length - 1] || 'unknown';
+    const parentFolder = parts.length >= 2 ? parts[parts.length - 2] : 'unknown';
+    
+    const filteredDeps = atom.dependencies.filter(dep => knownIds.has(dep));
+    const dependents = (dependentsMap.get(atomName) || []).filter(dep => knownIds.has(dep));
+    
+    const codeText = atom["code-text"];
+    
+    return {
+      id: atomName,
+      display_name: atom["display-name"],
+      symbol: atomName,
+      full_path: codePath,
+      relative_path: codePath,
+      file_name: fileName,
+      parent_folder: parentFolder,
+      start_line: codeText ? codeText["lines-start"] : undefined,
+      end_line: codeText ? codeText["lines-end"] : undefined,
+      is_libsignal: false,
+      dependencies: filteredDeps,
+      dependents,
+      kind: atom.kind || 'exec',
+    };
+  });
+  
+  const links: D3Link[] = [];
+  for (const [atomName, atom] of Object.entries(atoms)) {
+    if (atom["dependencies-with-locations"] && atom["dependencies-with-locations"].length > 0) {
+      for (const dep of atom["dependencies-with-locations"]) {
+        if (knownIds.has(dep["code-name"])) {
+          links.push({
+            source: atomName,
+            target: dep["code-name"],
+            type: dep.location || 'inner',
+          });
+        }
+      }
+    } else {
+      for (const dep of atom.dependencies) {
+        if (knownIds.has(dep)) {
+          links.push({
+            source: atomName,
+            target: dep,
+            type: 'inner',
+          });
+        }
+      }
+    }
+  }
+  
+  const metadata = {
+    total_nodes: d3Nodes.length,
+    total_edges: links.length,
+    project_root: 'Probe atom dict',
+    generated_at: new Date().toISOString(),
+  };
+  
+  return { nodes: d3Nodes, links, metadata };
+}
+
+/**
+ * Parse JSON data and convert to D3Graph format if needed.
+ * Supports D3Graph format, simplified format, and probe atom dict format.
+ * 
+ * @param data - Parsed JSON data (D3Graph, SimplifiedNode[], or atom dict)
  * @returns D3Graph in the expected format
  */
 function parseAndNormalizeGraph(data: unknown): D3Graph {
@@ -119,6 +209,12 @@ function parseAndNormalizeGraph(data: unknown): D3Graph {
   if (isD3GraphFormat(data)) {
     console.log('Detected D3Graph format');
     return data;
+  }
+  
+  // Check if it's in probe atom dict format (probe-verus / probe-lean atoms.json)
+  if (isAtomDictFormat(data)) {
+    console.log('Detected probe atom dict format, converting to D3Graph');
+    return convertAtomDictToD3Graph(data);
   }
   
   // Check if it's in simplified format
@@ -520,6 +616,7 @@ let state: GraphState = {
   filters: initialFilters,
   selectedNode: null,
   hoveredNode: null,
+  projectLanguage: 'unknown',
 };
 
 type ActiveView = 'callgraph' | 'blueprint';
@@ -696,21 +793,8 @@ function setupUIHandlers(): void {
     applyFiltersAndUpdate();
   });
 
-  // Function mode filters (Verus)
-  document.getElementById('show-exec-functions')?.addEventListener('change', (e) => {
-    state.filters.showExecFunctions = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
-
-  document.getElementById('show-proof-functions')?.addEventListener('change', (e) => {
-    state.filters.showProofFunctions = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
-
-  document.getElementById('show-spec-functions')?.addEventListener('change', (e) => {
-    state.filters.showSpecFunctions = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
+  // Declaration kind filters are set up dynamically in renderKindFilters()
+  // after graph load detects the project language.
 
   // Exclude name patterns input
   document.getElementById('exclude-name-patterns')?.addEventListener('input', (e) => {
@@ -1281,6 +1365,86 @@ async function loadFocusSet(url: string): Promise<void> {
 }
 
 /**
+ * Dynamically render Declaration Kind filter checkboxes based on detected language.
+ */
+function renderKindFilters(lang: ProjectLanguage): void {
+  const container = document.getElementById('kind-filters-container');
+  if (!container) return;
+
+  let html = '<h3>Declaration Kind</h3>';
+
+  if (lang === 'verus') {
+    html += `
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-exec-functions" checked />
+        <span class="exec-badge">Exec</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-proof-functions" checked />
+        <span class="proof-badge">Proof</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-spec-functions" />
+        <span class="spec-badge">Spec</span>
+      </label>`;
+  } else if (lang === 'lean') {
+    html += `
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-exec-functions" checked />
+        <span class="exec-badge">Definitions</span>
+        <small style="color:#888;margin-left:4px">def, abbrev, class, ...</small>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-proof-functions" checked />
+        <span class="proof-badge">Theorems</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-spec-functions" />
+        <span class="spec-badge">Axioms</span>
+      </label>`;
+  } else {
+    html += `
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-exec-functions" checked />
+        <span class="exec-badge">Exec / Definitions</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-proof-functions" checked />
+        <span class="proof-badge">Proof / Theorems</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-spec-functions" />
+        <span class="spec-badge">Spec / Axioms</span>
+      </label>`;
+  }
+
+  container.innerHTML = html;
+
+  // Re-attach event listeners
+  document.getElementById('show-exec-functions')?.addEventListener('change', (e) => {
+    state.filters.showExecFunctions = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+  document.getElementById('show-proof-functions')?.addEventListener('change', (e) => {
+    state.filters.showProofFunctions = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+  document.getElementById('show-spec-functions')?.addEventListener('change', (e) => {
+    state.filters.showSpecFunctions = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
+  // Sync checkbox state with current filter values
+  const setCheckbox = (id: string, checked: boolean) => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el) el.checked = checked;
+  };
+  setCheckbox('show-exec-functions', state.filters.showExecFunctions);
+  setCheckbox('show-proof-functions', state.filters.showProofFunctions);
+  setCheckbox('show-spec-functions', state.filters.showSpecFunctions);
+}
+
+/**
  * Load a graph and update the UI
  */
 function loadGraph(graph: D3Graph, message: string): void {
@@ -1304,6 +1468,10 @@ function loadGraph(graph: D3Graph, message: string): void {
   
   // Compute derived statuses for Blueprint view
   computeDerivedStatuses(state.fullGraph);
+
+  // Detect project language and update UI accordingly
+  state.projectLanguage = detectProjectLanguage(state.fullGraph);
+  renderKindFilters(state.projectLanguage);
 
   // Set GitHub URL from metadata if not already set via URL param
   if (!githubBaseUrl && graph.metadata.github_url) {
@@ -1421,7 +1589,7 @@ function applyFiltersAndUpdate(): void {
   
   // Pass selectedNodeId for exact matching (VS Code integration)
   const nodeOptions: SelectedNodeOptions = { selectedNodeId };
-  let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions);
+  let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions, state.projectLanguage);
   
   // Limit rendered nodes for large results to prevent D3 freeze
   let wasTruncated = false;
@@ -1609,14 +1777,24 @@ function updateNodeInfo(): void {
     }
   };
 
+  const getKindBadge = (kind: string | undefined): string => {
+    if (!kind) return '';
+    const { proofKinds, specKinds } = getKindSetsForLanguage(state.projectLanguage);
+    let badgeClass = 'exec-badge';
+    if (proofKinds.has(kind)) badgeClass = 'proof-badge';
+    else if (specKinds.has(kind)) badgeClass = 'spec-badge';
+    return `<span class="${badgeClass}" style="font-size: 0.75rem;">${kind}</span>`;
+  };
+
   nodeInfoDiv.innerHTML = `
     <div class="node-detail">
       <h3>${node.display_name}</h3>
-      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
         <div class="node-badge ${node.is_libsignal ? 'badge-libsignal' : 'badge-other'}">
           ${node.is_libsignal ? 'Libsignal' : 'External'}
         </div>
         ${getVerificationBadge(node.verification_status)}
+        ${getKindBadge(node.kind)}
       </div>
     </div>
     <div class="node-detail">

@@ -141,10 +141,10 @@ pub struct Atom {
 // Verus-Specific Types
 // =============================================================================
 
-/// Verus function modes
+/// Declaration kind (Verus: exec/proof/spec, Lean: theorem/def/axiom/...)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum FunctionMode {
+pub enum DeclKind {
     /// Executable code (default Rust functions)
     Exec,
     /// Proof functions (lemmas, verification helpers)
@@ -153,12 +153,12 @@ pub enum FunctionMode {
     Spec,
 }
 
-impl FunctionMode {
+impl DeclKind {
     pub fn as_str(&self) -> &'static str {
         match self {
-            FunctionMode::Exec => "exec",
-            FunctionMode::Proof => "proof",
-            FunctionMode::Spec => "spec",
+            DeclKind::Exec => "exec",
+            DeclKind::Proof => "proof",
+            DeclKind::Spec => "spec",
         }
     }
 }
@@ -199,8 +199,8 @@ pub struct D3Node {
     pub dependencies: Vec<String>,
     /// Functions that call this function (incoming edges) - scip_names for O(1) lookup
     pub dependents: Vec<String>,
-    /// Verus function mode: exec, proof, or spec
-    pub mode: FunctionMode,
+    /// Declaration kind: exec, proof, or spec
+    pub kind: DeclKind,
 }
 
 /// A link (edge) in the D3.js graph
@@ -236,22 +236,21 @@ mod tests {
     use super::*;
 
     // ==========================================================================
-    // FunctionMode tests
+    // DeclKind tests
     // ==========================================================================
 
     #[test]
-    fn test_function_mode_as_str() {
-        assert_eq!(FunctionMode::Exec.as_str(), "exec");
-        assert_eq!(FunctionMode::Proof.as_str(), "proof");
-        assert_eq!(FunctionMode::Spec.as_str(), "spec");
+    fn test_decl_kind_as_str() {
+        assert_eq!(DeclKind::Exec.as_str(), "exec");
+        assert_eq!(DeclKind::Proof.as_str(), "proof");
+        assert_eq!(DeclKind::Spec.as_str(), "spec");
     }
 
     #[test]
-    fn test_function_mode_serialization() {
-        // FunctionMode should serialize to lowercase strings
-        let exec_json = serde_json::to_string(&FunctionMode::Exec).unwrap();
-        let proof_json = serde_json::to_string(&FunctionMode::Proof).unwrap();
-        let spec_json = serde_json::to_string(&FunctionMode::Spec).unwrap();
+    fn test_decl_kind_serialization() {
+        let exec_json = serde_json::to_string(&DeclKind::Exec).unwrap();
+        let proof_json = serde_json::to_string(&DeclKind::Proof).unwrap();
+        let spec_json = serde_json::to_string(&DeclKind::Spec).unwrap();
 
         assert_eq!(exec_json, "\"exec\"");
         assert_eq!(proof_json, "\"proof\"");
@@ -259,14 +258,14 @@ mod tests {
     }
 
     #[test]
-    fn test_function_mode_deserialization() {
-        let exec: FunctionMode = serde_json::from_str("\"exec\"").unwrap();
-        let proof: FunctionMode = serde_json::from_str("\"proof\"").unwrap();
-        let spec: FunctionMode = serde_json::from_str("\"spec\"").unwrap();
+    fn test_decl_kind_deserialization() {
+        let exec: DeclKind = serde_json::from_str("\"exec\"").unwrap();
+        let proof: DeclKind = serde_json::from_str("\"proof\"").unwrap();
+        let spec: DeclKind = serde_json::from_str("\"spec\"").unwrap();
 
-        assert_eq!(exec, FunctionMode::Exec);
-        assert_eq!(proof, FunctionMode::Proof);
-        assert_eq!(spec, FunctionMode::Spec);
+        assert_eq!(exec, DeclKind::Exec);
+        assert_eq!(proof, DeclKind::Proof);
+        assert_eq!(spec, DeclKind::Spec);
     }
 
     // ==========================================================================
@@ -354,7 +353,7 @@ mod tests {
             is_libsignal: false,
             dependencies: vec![],
             dependents: vec![],
-            mode: FunctionMode::Exec,
+            kind: DeclKind::Exec,
         };
 
         let json = serde_json::to_string(&node).unwrap();
@@ -379,7 +378,7 @@ mod tests {
             is_libsignal: false,
             dependencies: vec![],
             dependents: vec![],
-            mode: FunctionMode::Exec,
+            kind: DeclKind::Exec,
         };
 
         let json = serde_json::to_string(&node).unwrap();

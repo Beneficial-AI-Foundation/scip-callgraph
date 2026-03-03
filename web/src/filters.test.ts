@@ -20,7 +20,7 @@ function createNode(props: {
   file_name?: string;
   parent_folder?: string;
   relative_path?: string;
-  mode?: 'exec' | 'proof' | 'spec';
+  kind?: string;
   is_libsignal?: boolean;
 }): D3Node {
   return {
@@ -34,7 +34,7 @@ function createNode(props: {
     is_libsignal: props.is_libsignal ?? true,
     dependencies: [],
     dependents: [],
-    mode: props.mode || 'exec',
+    kind: props.kind || 'exec',
   };
 }
 
@@ -508,13 +508,13 @@ describe('Edge Cases', () => {
 // ============================================================================
 
 describe('Filter Behavior', () => {
-  describe('Mode filters', () => {
+  describe('Kind filters', () => {
     it('hiding spec functions removes them from results', () => {
       const graph: D3Graph = {
         nodes: [
-          createNode({ id: 'exec_fn', display_name: 'exec_fn', mode: 'exec' }),
-          createNode({ id: 'spec_fn', display_name: 'spec_fn', mode: 'spec' }),
-          createNode({ id: 'proof_fn', display_name: 'proof_fn', mode: 'proof' }),
+          createNode({ id: 'exec_fn', display_name: 'exec_fn', kind: 'exec' }),
+          createNode({ id: 'spec_fn', display_name: 'spec_fn', kind: 'spec' }),
+          createNode({ id: 'proof_fn', display_name: 'proof_fn', kind: 'proof' }),
         ],
         links: [
           createLink('exec_fn', 'spec_fn'),

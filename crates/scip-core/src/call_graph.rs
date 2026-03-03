@@ -2,7 +2,7 @@
 //!
 //! This module provides the core functionality for building call graphs from SCIP data:
 //! - `build_call_graph` - Build a call graph from SCIP index
-//! - `detect_function_mode` - Detect Verus function mode (exec/proof/spec)
+//! - `detect_decl_kind` - Detect Verus function mode (exec/proof/spec)
 //! - `parse_function_sections` - Parse requires/ensures/body sections
 //! - `classify_call_location` - Classify where calls occur (precondition/postcondition/inner)
 //! - `generate_filtered_call_graph` - Create depth-limited subgraphs
@@ -10,7 +10,7 @@
 
 use crate::parser::{extract_display_name_from_symbol, extract_path_info_from_symbol};
 use crate::types::{
-    CallLocation, CalleeOccurrence, FunctionMode, FunctionNode, FunctionSections, ScipIndex,
+    CallLocation, CalleeOccurrence, DeclKind, FunctionNode, FunctionSections, ScipIndex,
 };
 use log::{debug, info};
 use regex::Regex;
@@ -42,7 +42,7 @@ pub fn is_function_like(kind: i32) -> bool {
 /// - `fn` or `exec fn` - executable code
 /// - `proof fn` - proof functions (lemmas)
 /// - `spec fn` or `open spec fn` or `closed spec fn` - specification functions
-pub fn detect_function_mode(body: &str) -> FunctionMode {
+pub fn detect_decl_kind(body: &str) -> DeclKind {
     let signature_area: String = body.lines().take(5).collect::<Vec<_>>().join(" ");
     let signature_lower = signature_area.to_lowercase();
 
@@ -51,14 +51,14 @@ pub fn detect_function_mode(body: &str) -> FunctionMode {
         || signature_lower.contains("open spec fn")
         || signature_lower.contains("closed spec fn")
     {
-        return FunctionMode::Spec;
+        return DeclKind::Spec;
     }
 
     if signature_lower.contains("proof fn") {
-        return FunctionMode::Proof;
+        return DeclKind::Proof;
     }
 
-    FunctionMode::Exec
+    DeclKind::Exec
 }
 
 /// Parse a function body to find the line ranges for requires, ensures, and body sections.
@@ -624,60 +624,60 @@ mod tests {
     }
 
     // ==========================================================================
-    // detect_function_mode tests - Verus mode detection
+    // detect_decl_kind tests - Verus mode detection
     // ==========================================================================
 
     #[test]
-    fn test_detect_function_mode_exec_default() {
+    fn test_detect_decl_kind_exec_default() {
         let body = "fn my_function() -> i32 { 42 }";
-        assert_eq!(detect_function_mode(body), FunctionMode::Exec);
+        assert_eq!(detect_decl_kind(body), DeclKind::Exec);
     }
 
     #[test]
-    fn test_detect_function_mode_exec_explicit() {
+    fn test_detect_decl_kind_exec_explicit() {
         let body = "exec fn my_function() -> i32 { 42 }";
-        assert_eq!(detect_function_mode(body), FunctionMode::Exec);
+        assert_eq!(detect_decl_kind(body), DeclKind::Exec);
     }
 
     #[test]
-    fn test_detect_function_mode_proof() {
+    fn test_detect_decl_kind_proof() {
         let body = "proof fn lemma_something()
             requires x > 0
         { }";
-        assert_eq!(detect_function_mode(body), FunctionMode::Proof);
+        assert_eq!(detect_decl_kind(body), DeclKind::Proof);
     }
 
     #[test]
-    fn test_detect_function_mode_spec() {
+    fn test_detect_decl_kind_spec() {
         let body = "spec fn pure_computation(x: nat) -> nat { x + 1 }";
-        assert_eq!(detect_function_mode(body), FunctionMode::Spec);
+        assert_eq!(detect_decl_kind(body), DeclKind::Spec);
     }
 
     #[test]
-    fn test_detect_function_mode_open_spec() {
+    fn test_detect_decl_kind_open_spec() {
         let body = "pub open spec fn visible_spec() -> bool { true }";
-        assert_eq!(detect_function_mode(body), FunctionMode::Spec);
+        assert_eq!(detect_decl_kind(body), DeclKind::Spec);
     }
 
     #[test]
-    fn test_detect_function_mode_closed_spec() {
+    fn test_detect_decl_kind_closed_spec() {
         let body = "closed spec fn hidden_spec() -> nat { 0 }";
-        assert_eq!(detect_function_mode(body), FunctionMode::Spec);
+        assert_eq!(detect_decl_kind(body), DeclKind::Spec);
     }
 
     #[test]
-    fn test_detect_function_mode_spec_checked() {
+    fn test_detect_decl_kind_spec_checked() {
         let body = "spec(checked) fn checked_spec() -> bool { true }";
-        assert_eq!(detect_function_mode(body), FunctionMode::Spec);
+        assert_eq!(detect_decl_kind(body), DeclKind::Spec);
     }
 
     #[test]
-    fn test_detect_function_mode_multiline_signature() {
+    fn test_detect_decl_kind_multiline_signature() {
         // Mode keyword might be on second line
         let body = "pub
             proof fn my_lemma()
             { }";
-        assert_eq!(detect_function_mode(body), FunctionMode::Proof);
+        assert_eq!(detect_decl_kind(body), DeclKind::Proof);
     }
 
     // ==========================================================================

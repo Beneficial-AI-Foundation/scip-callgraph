@@ -72,7 +72,7 @@ pub mod logging {
 
 // Re-export commonly used types and functions for convenience
 pub use call_graph::{
-    build_call_graph, classify_call_location, detect_function_mode, generate_filtered_call_graph,
+    build_call_graph, classify_call_location, detect_decl_kind, generate_filtered_call_graph,
     is_function_like, parse_function_sections, print_call_graph_summary, symbol_to_path,
 };
 pub use export_d3::{export_call_graph_d3, write_call_graph_as_atoms_json};
@@ -86,6 +86,6 @@ pub use parser::{
 };
 pub use types::{
     Atom, CallLocation, CalleeOccurrence, D3Graph, D3GraphMetadata, D3Link, D3Node, Document,
-    FunctionMode, FunctionNode, FunctionSections, Metadata, Occurrence, ScipIndex,
+    DeclKind, FunctionNode, FunctionSections, Metadata, Occurrence, ScipIndex,
     SignatureDocumentation, Symbol, ToolInfo,
 };
