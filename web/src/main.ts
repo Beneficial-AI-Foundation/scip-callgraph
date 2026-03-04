@@ -309,9 +309,10 @@ let githubBaseUrl: string | null = import.meta.env.VITE_GITHUB_URL || null;
 // (e.g., "curve25519-dalek" if repo structure is repo/curve25519-dalek/src/...)
 let githubPathPrefix: string = import.meta.env.VITE_GITHUB_PATH_PREFIX || '';
 
-// Performance threshold: if graph has more links than this, start with empty view
-// to avoid browser freeze. User must filter first.
+// Performance threshold: if graph exceeds either limit, start with empty view
+// to avoid browser freeze. User must apply a filter first.
 const LARGE_GRAPH_LINK_THRESHOLD = 10000;
+const LARGE_GRAPH_NODE_THRESHOLD = 2000;
 
 // File size threshold (in bytes) - files larger than this won't auto-load
 // 5MB is roughly the size where JSON.parse starts to noticeably freeze the browser
@@ -647,6 +648,7 @@ let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVis
 let selectedSourceCrate: string = '';
 let selectedTargetCrate: string = '';
 let crateDependencyMap: Map<string, Set<string>> = new Map();
+let deferredComputationsDone = false;
 
 /**
  * Sync input field values to state (handles browser auto-fill after refresh)
@@ -1347,7 +1349,30 @@ async function loadDeferredGraphWithDisambiguation(): Promise<void> {
  * Check if graph is too large to render without filters
  */
 function isLargeGraph(graph: D3Graph): boolean {
-  return graph.links.length > LARGE_GRAPH_LINK_THRESHOLD;
+  return graph.links.length > LARGE_GRAPH_LINK_THRESHOLD ||
+         graph.nodes.length > LARGE_GRAPH_NODE_THRESHOLD;
+}
+
+/**
+ * Run heavy graph computations that are deferred for large graphs.
+ * Called lazily when the user first applies a filter.
+ */
+function runDeferredComputations(): void {
+  if (deferredComputationsDone || !state.fullGraph) return;
+  deferredComputationsDone = true;
+
+  computeDerivedStatuses(state.fullGraph);
+
+  crateDependencyMap = new Map();
+  const cg = buildCrateGraph(state.fullGraph);
+  for (const edge of cg.edges) {
+    let deps = crateDependencyMap.get(edge.source);
+    if (!deps) {
+      deps = new Set();
+      crateDependencyMap.set(edge.source, deps);
+    }
+    deps.add(edge.target);
+  }
 }
 
 /**
@@ -1585,9 +1610,6 @@ function loadGraph(graph: D3Graph, message: string): void {
     focusNodeIds: preservedFocusNodes.size > 0 ? new Set(preservedFocusNodes) : new Set(),
   };
   
-  // Compute derived statuses for Blueprint view
-  computeDerivedStatuses(state.fullGraph);
-
   // Detect project language and update UI accordingly
   state.projectLanguage = detectProjectLanguage(state.fullGraph);
   renderKindFilters(state.projectLanguage);
@@ -1599,16 +1621,11 @@ function loadGraph(graph: D3Graph, message: string): void {
   
   const isLarge = isLargeGraph(state.fullGraph);
   
-  // Build crate dependency map (source -> set of target crates it calls into)
-  crateDependencyMap = new Map();
-  const cg = buildCrateGraph(state.fullGraph);
-  for (const edge of cg.edges) {
-    let deps = crateDependencyMap.get(edge.source);
-    if (!deps) {
-      deps = new Set();
-      crateDependencyMap.set(edge.source, deps);
-    }
-    deps.add(edge.target);
+  // Defer heavy graph analysis for large graphs to avoid freezing the browser.
+  // These will run on first filter application instead.
+  deferredComputationsDone = false;
+  if (!isLarge) {
+    runDeferredComputations();
   }
 
   // Populate the file list panel and crate dropdowns
@@ -1740,6 +1757,9 @@ function applyFiltersAndUpdate(): void {
     return;
   }
   
+  // Run deferred computations on first real filter application
+  runDeferredComputations();
+
   // Pass selectedNodeId for exact matching (VS Code integration)
   const nodeOptions: SelectedNodeOptions = { selectedNodeId };
   let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions, state.projectLanguage);
@@ -1827,9 +1847,9 @@ function updateStats(truncatedTo?: number): void {
   statsDiv.innerHTML = `
     ${needsFilter ? `
     <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-      <span style="color: #e65100; font-weight: bold;">📊 Large Graph</span>
+      <span style="color: #e65100; font-weight: bold;">📊 Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
-        Enter a <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filter to explore the call graph.
+        Too large to render all at once. Enter a <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filter to explore.
       </p>
     </div>
     ` : ''}
