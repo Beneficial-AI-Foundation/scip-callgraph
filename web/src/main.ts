@@ -1,4 +1,4 @@
-import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName } from './types';
+import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName, VerificationStatus } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
@@ -163,6 +163,7 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
       dependencies: filteredDeps,
       dependents,
       kind: atom.kind || 'exec',
+      verification_status: atom["verification-status"] as VerificationStatus | undefined,
     };
     partial.crate_name = extractCrateName(partial);
     return partial;
@@ -761,8 +762,12 @@ function switchView(view: ActiveView): void {
 
   createVisualization(graphContainer);
 
-  // Re-render with current filtered graph
-  if (state.filteredGraph) {
+  // Re-apply filters: Crate Map bypasses the large-graph guard, so the
+  // previously cached filteredGraph may be empty.  Re-running ensures the
+  // new view gets an appropriate result set.
+  if (state.fullGraph) {
+    applyFiltersAndUpdate();
+  } else if (state.filteredGraph) {
     visualization?.update(state.filteredGraph);
   }
 
@@ -1618,8 +1623,9 @@ const MAX_RENDERED_NODES = 200;
 function applyFiltersAndUpdate(): void {
   if (!state.fullGraph) return;
 
-  // For large graphs, require a search filter to render anything
-  if (isLargeGraph(state.fullGraph) && !hasSearchFilters()) {
+  // For large graphs, require a search filter to render anything —
+  // except in Crate Map view, which aggregates to a compact crate-level graph.
+  if (isLargeGraph(state.fullGraph) && !hasSearchFilters() && activeView !== 'crate-map') {
     state.filteredGraph = { nodes: [], links: [], metadata: state.fullGraph.metadata };
     visualization?.update(state.filteredGraph);
     updateStats();
@@ -1634,8 +1640,9 @@ function applyFiltersAndUpdate(): void {
   let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions, state.projectLanguage);
   
   // Limit rendered nodes for large results to prevent D3 freeze
+  // Crate Map aggregates to crate-level boxes, so truncation would distort results
   let wasTruncated = false;
-  if (filtered.nodes.length > MAX_RENDERED_NODES) {
+  if (activeView !== 'crate-map' && filtered.nodes.length > MAX_RENDERED_NODES) {
     wasTruncated = true;
     
     // Keep nodes with highest connectivity (most relevant)
@@ -1703,7 +1710,7 @@ function updateStats(truncatedTo?: number): void {
 
   const filtered = state.filteredGraph || state.fullGraph;
   const isLarge = isLargeGraph(state.fullGraph);
-  const needsFilter = isLarge && !hasSearchFilters();
+  const needsFilter = isLarge && !hasSearchFilters() && activeView !== 'crate-map';
   const wasTruncated = truncatedTo !== undefined;
   
   // Count verification statuses

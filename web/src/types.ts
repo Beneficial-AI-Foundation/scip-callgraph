@@ -206,6 +206,8 @@ export interface ProbeAtom {
   "code-path": string;
   "code-module": string;
   kind: string;
+  "verification-status"?: string;
+  "specified"?: boolean;
   "dependencies-with-locations"?: Array<{
     "code-name": string;
     location: string;
