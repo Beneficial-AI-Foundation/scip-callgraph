@@ -1196,9 +1196,16 @@ async function autoLoadGraph(): Promise<void> {
     }
 
     const text = await response.text();
+
+    // Yield to browser before heavy synchronous work so the UI stays responsive
+    await new Promise(r => setTimeout(r, 0));
+
     const rawData = JSON.parse(text);
     const graph = parseAndNormalizeGraph(rawData);
-    
+
+    // Yield again before loadGraph (deep copy + initialization)
+    await new Promise(r => setTimeout(r, 0));
+
     loadGraph(graph, 'Auto-loaded from local file');
   } catch (error) {
     console.log('Could not auto-load graph.json:', error);
@@ -1373,6 +1380,8 @@ function runDeferredComputations(): void {
     }
     deps.add(edge.target);
   }
+
+  populateFileList();
 }
 
 /**
@@ -1628,8 +1637,10 @@ function loadGraph(graph: D3Graph, message: string): void {
     runDeferredComputations();
   }
 
-  // Populate the file list panel and crate dropdowns
-  populateFileList();
+  // Populate the file list panel and crate dropdowns (defer for large graphs)
+  if (!isLarge) {
+    populateFileList();
+  }
   populateCrateDropdowns();
 
   // Auto-switch to Crate Map for large graphs so the user sees an overview
