@@ -262,8 +262,23 @@ export interface CrateGraph {
   edges: CrateEdge[];
 }
 
-/** Extract crate name from a D3Node based on its ID format. */
-export function extractCrateName(node: Pick<D3Node, 'id' | 'relative_path'>): string {
+/**
+ * Extract module/crate name from a D3Node based on its ID format.
+ *
+ * For Rust/Verus (or unknown): returns the top-level crate name (first path segment).
+ * For Lean: returns the first two path segments from relative_path (e.g. "ArkLib/Data")
+ * to give a more granular module hierarchy. Falls back to one segment if only one exists.
+ */
+export function extractCrateName(
+  node: Pick<D3Node, 'id' | 'relative_path'>,
+  language: ProjectLanguage = 'unknown',
+): string {
+  if (language === 'lean' && node.relative_path) {
+    const parts = node.relative_path.split('/');
+    if (parts.length >= 2) return `${parts[0]}/${parts[1]}`;
+    return parts[0] || 'unknown';
+  }
+
   // scip:crate_name/version/... → crate_name
   if (node.id.startsWith('scip:')) {
     const afterPrefix = node.id.slice(5);

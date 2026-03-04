@@ -1140,7 +1140,7 @@ export class CrateMapVisualization {
     legend.className = 'cm-legend';
     legend.innerHTML = `
       <div class="cm-legend-header" id="cm-legend-toggle">
-        <strong>Crate Map</strong> <span class="cm-legend-arrow">${this.legendVisible ? '\u25BC' : '\u25B6'}</span>
+        <strong>Module Map</strong> <span class="cm-legend-arrow">${this.legendVisible ? '\u25BC' : '\u25B6'}</span>
       </div>
       <div class="cm-legend-body" style="display:${this.legendVisible ? 'block' : 'none'}">
         <div class="cm-legend-item">

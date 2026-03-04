@@ -78,7 +78,6 @@ function convertSimplifiedToD3Graph(nodes: SimplifiedNode[]): D3Graph {
       dependents: dependents.filter(dep => knownIds.has(dep)),
       kind: 'exec' as const,
     };
-    partial.crate_name = extractCrateName(partial);
     return partial;
   });
   
@@ -165,7 +164,6 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
       kind: atom.kind || 'exec',
       verification_status: atom["verification-status"] as VerificationStatus | undefined,
     };
-    partial.crate_name = extractCrateName(partial);
     return partial;
   });
   
@@ -1314,9 +1312,10 @@ async function loadDeferredGraphWithDisambiguation(): Promise<void> {
       metadata: { ...graph.metadata },
     };
 
+    const earlyLang = detectProjectLanguage(state.fullGraph);
     for (const node of state.fullGraph.nodes) {
       if (!node.crate_name) {
-        node.crate_name = extractCrateName(node);
+        node.crate_name = extractCrateName(node, earlyLang);
       }
     }
     
@@ -1603,13 +1602,6 @@ function loadGraph(graph: D3Graph, message: string): void {
     metadata: { ...graph.metadata },
   };
 
-  // Backfill crate_name on every node (extracted from ID or relative_path)
-  for (const node of state.fullGraph.nodes) {
-    if (!node.crate_name) {
-      node.crate_name = extractCrateName(node);
-    }
-  }
-
   // Deep copy filters - spread only does shallow copy, so Sets would be shared!
   // Preserve focusNodeIds across graph reloads (it's set from URL param, not graph data)
   const preservedFocusNodes = state.filters.focusNodeIds;
@@ -1624,6 +1616,12 @@ function loadGraph(graph: D3Graph, message: string): void {
   // Detect project language and update UI accordingly
   state.projectLanguage = detectProjectLanguage(state.fullGraph);
   renderKindFilters(state.projectLanguage);
+
+  // Backfill crate_name on every node using language-aware extraction
+  // (Lean: two-level module path, Rust/Verus: top-level crate)
+  for (const node of state.fullGraph.nodes) {
+    node.crate_name = extractCrateName(node, state.projectLanguage);
+  }
 
   // Set GitHub URL from metadata if not already set via URL param
   if (!githubBaseUrl && graph.metadata.github_url) {
@@ -1872,7 +1870,7 @@ function updateStats(truncatedTo?: number): void {
     <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
       <span style="color: #e65100; font-weight: bold;">📊 Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
-        Too large to render all at once. Use the <strong>Crate Map</strong> for an overview, or enter a <strong>Source</strong>/<strong>Sink</strong> filter to explore specific call paths.
+        Too large to render all at once. Use the <strong>Module Map</strong> for an overview, or enter a <strong>Source</strong>/<strong>Sink</strong> filter to explore specific call paths.
       </p>
     </div>
     ` : ''}
