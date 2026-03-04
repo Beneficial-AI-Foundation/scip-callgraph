@@ -136,7 +136,7 @@ jobs:
           path: |
             probe-lean/.lake
             project/${{ inputs.project_path }}/.lake
-          key: ${{ runner.os }}-lake-${{ hashFiles('probe-lean/lean-toolchain', 'project/**/lean-toolchain') }}
+          key: ${{ runner.os }}-lake-${{ hashFiles('project/**/lake-manifest.json', 'project/**/lean-toolchain') }}
           restore-keys: |
             ${{ runner.os }}-lake-
 
