@@ -40,6 +40,30 @@ When both Source and Sink are set:
 - Ignores `maxDepth` - shows complete paths regardless of length
 - Uses DFS with backtracking (`findPathNodes()` function)
 
+### 3a. Crate Queries (`crate:name`)
+
+Source and Sink queries accept the `crate:` prefix to match all functions in a crate:
+
+| Query | Matches |
+|-------|---------|
+| `crate:curve25519-dalek` | All functions in the `curve25519-dalek` crate |
+| `crate:libsignal-core` | All functions in the `libsignal-core` crate |
+
+**Crate boundary mode:** When *both* Source and Sink use `crate:` queries (e.g., `crate:A` and `crate:B`), a special **direct boundary mode** activates. Instead of finding paths, it returns only the cross-crate function calls between A and B -- the "API surface" where one crate directly calls into the other.
+
+**Implementation:** `isCrateQuery()` and the boundary branch in `applyFilters()` in `filters.ts`.
+
+### 3b. Crate Frontier (UI)
+
+The **Crate Frontier** dropdowns in the sidebar provide a convenient way to select two crates and see their interface:
+
+- **Source Crate:** The crate being called into
+- **Target Crate:** The crate doing the calling (automatically filtered to dependencies of the source)
+
+In **Crate Map** view, selecting two crates renders the frontier inline. In **Call Graph** or **Blueprint** views, it sets `crate:A` / `crate:B` source/sink queries and applies boundary mode.
+
+Crates can also be selected by clicking on the Crate Map: first click sets source (blue highlight), second click sets target (orange highlight).
+
 ### 4. Include Files (`includeFiles`)
 **UI Element:** "Include Files" input field + File List panel  
 **Function:** Only shows functions defined in the specified files
@@ -198,7 +222,9 @@ For large graphs (>5000 links), the system defers loading until filters are appl
 - Sink query (non-empty)
 - Include Files (non-empty)
 
-**Implementation:** `hasSearchFilters()` in `main.ts`
+**Exception:** The **Crate Map** view bypasses all large-graph guards (link threshold, node truncation, file size deferral) because it aggregates to a compact crate-level graph regardless of function-level size.
+
+**Implementation:** `hasSearchFilters()` and `isLargeGraph()` in `main.ts`
 
 ## Key Functions
 
@@ -221,6 +247,9 @@ For large graphs (>5000 links), the system defers loading until filters are appl
 | `showDisambiguationDropdown()` | main.ts | Show dropdown to select from ambiguous matches |
 | `checkAndShowDisambiguation()` | main.ts | Check patterns and show dropdown if ambiguous |
 | `hasSearchFilters()` | main.ts | Check if meaningful filters are set (for large graph handling) |
+| `isCrateQuery()` | filters.ts | Detect `crate:` prefix in a query |
+| `buildCrateGraph()` | crate-map.ts | Aggregate D3Graph into crate-level nodes and edges |
+| `populateCrateDropdowns()` | main.ts | Populate source/target crate dropdowns (target filtered by source dependencies) |
 
 ## URL Parameters
 
@@ -243,4 +272,7 @@ Filters can be set via URL parameters:
 | `excludeName` | Exclude name patterns |
 | `excludePath` | Exclude path patterns |
 | `hidden` | Hidden node names (comma-separated) |
+| `view` | Active view (`callgraph`, `blueprint`, `crate-map`) |
+| `source-crate` | Source crate for frontier |
+| `target-crate` | Target crate for frontier |
 

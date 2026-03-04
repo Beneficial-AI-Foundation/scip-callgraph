@@ -45,10 +45,11 @@
 │         │            - Depth slider                       │
 │         ▼                                                   │
 │  ┌──────────────┐                                          │
-│  │     D3.js    │──→ Topological force-directed layout    │
-│  │  Simulation  │    - Layered by call depth              │
+│  │  View Layer  │──→ Three visualization modes            │
+│  │              │    - Call Graph (D3 force-directed)      │
+│  │              │    - Blueprint (Dagre, grouped by file)  │
+│  │              │    - Crate Map (Dagre, crate-level)      │
 │  └──────┬───────┘    - Zoom/pan controls                  │
-│         │            - Node dragging                       │
 │         │            - Interactive highlighting            │
 │         ▼                                                   │
 │  ┌──────────────┐                                          │
@@ -78,11 +79,12 @@ SCIP JSON → Parse → Build Graph → Enhance with Metadata → Export D3 JSON
 ### 2. Visualization Phase (TypeScript)
 
 ```
-Load JSON → Initial State → User Interaction → Filter Graph → Update D3 → Render
-    ↓           ↓                ↓                 ↓            ↓          ↓
-Full Graph   Display        Source/Sink       Path Finding   Recompute   New SVG
-            Statistics      Depth Slider      BFS/DFS        Forces      Layout
-                           Hide Node
+Load JSON → Initial State → User Interaction → Filter Graph → View Dispatch → Render
+    ↓           ↓                ↓                 ↓               ↓            ↓
+Full Graph   Display        Source/Sink       Path Finding    Call Graph     New SVG
++ crate_name Statistics     Depth Slider      BFS/DFS        Blueprint      Layout
+ backfill                   Crate Frontier    Crate Boundary  Crate Map
+                            Hide Node
 ```
 
 ## Component Breakdown
@@ -206,12 +208,43 @@ interface FilterOptions {
 }
 ```
 
-#### 2. **Filter Engine** (`src/filters.ts`)
+#### 2. **Crate-Level Types** (`src/types.ts`)
+
+In addition to `D3Node` and `D3Link`, the type system includes crate-level aggregation types:
+
+```typescript
+interface CrateNode {
+  name: string;
+  functionCount: number;
+  fileCount: number;
+  nodeIds: string[];
+  isExternal: boolean;
+}
+
+interface CrateEdge {
+  source: string;          // Source crate name
+  target: string;          // Target crate name
+  callCount: number;
+  calls: Array<{ sourceId: string; targetId: string; type: string }>;
+}
+
+interface CrateGraph {
+  nodes: CrateNode[];
+  edges: CrateEdge[];
+}
+```
+
+Each `D3Node` also carries a `crate_name` field, backfilled on load via `extractCrateName()` which parses the crate name from the node's SCIP/probe ID prefix.
+
+#### 3. **Filter Engine** (`src/filters.ts`)
 
 **Query Syntax:**
 - Substring: `decompress` matches any function containing "decompress"
 - Glob patterns: `*decomp*` for contains, `lemma_*` for prefix
 - Path-qualified: `edwards::decompress` matches decompress in edwards.rs
+- Crate-qualified: `crate:curve25519-dalek` matches all functions in that crate
+
+**Crate Boundary Mode:** When both source and sink are `crate:` queries, `applyFilters()` skips path finding and instead returns only the direct cross-crate calls between the two crates.
 
 **Algorithm: Source→Sink Path Finding**
 ```typescript
@@ -254,7 +287,21 @@ The graph uses a layered layout based on call depth:
 - Precondition (requires): Dashed orange line
 - Postcondition (ensures): Dashed pink line
 
-#### 4. **Main Application** (`src/main.ts`)
+#### 4b. **Blueprint View** (`src/blueprint.ts`)
+
+Dagre-based hierarchical layout that groups functions by file using compound graph nodes. Each file becomes a box containing its function nodes, with cross-file edges drawn between them. Uses the same node coloring as Call Graph but provides a cleaner module-level view.
+
+#### 4c. **Crate Map View** (`src/crate-map.ts`)
+
+Aggregates the function-level graph into a crate-level overview:
+
+- `buildCrateGraph()`: Transforms `D3Graph` into `CrateGraph` by grouping nodes by `crate_name` and counting cross-crate edges.
+- **Collapsed mode**: Renders crates as boxes with function/file counts, edges weighted by call count.
+- **Edge expansion**: Clicking a cross-crate edge expands both crates inline to show the individual function calls, using Dagre compound layout.
+- **Crate frontier**: Selecting two crates (by click or dropdown) renders an inline view of all functions at their interface, with a "View in Call Graph" navigation button.
+- **Dependency-aware dropdowns**: When a source crate is selected, the target dropdown is filtered to only crates the source actually calls into (derived from `CrateGraph` edges).
+
+#### 5. **Main Application** (`src/main.ts`)
 
 **State Management:**
 ```typescript
@@ -265,13 +312,20 @@ let state: GraphState = {
   selectedNode: D3Node | null,    // For details panel
   hoveredNode: D3Node | null,     // For highlighting
 }
+
+// View management
+let activeView: 'callgraph' | 'blueprint' | 'crate-map';
+let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVisualization;
+let crateDependencyMap: Map<string, Set<string>>;  // source crate → set of target crates
 ```
 
 **URL Integration:**
 - Shareable URLs with filter state encoded
 - `?json=URL` to load graph from external URL
 - `?github=URL` to set GitHub base for source links
+- `?view=crate-map` or `?view=blueprint` to set the active view
 - `?source=query&sink=query&depth=N` for filter presets
+- `?source-crate=A&target-crate=B` for crate frontier selection
 
 #### 5. **VS Code Integration** (`src/main.ts`)
 
@@ -374,14 +428,13 @@ vscode.postMessage({
 4. Use in visualization (node info panel, coloring, etc.)
 
 ### Custom Visualizations
-Extend `graph.ts`:
-- Modify force parameters in `update()`
-- Change `getNodeColor()` for different coloring schemes
-- Add new interaction modes in click/hover handlers
-- Implement alternative layouts
+Three views exist (`graph.ts`, `blueprint.ts`, `crate-map.ts`), each implementing `update()`, `destroy()`, `resize()`, `clear()`, and `highlightNodes()`. To add a new view:
+1. Create a new class following the same interface pattern
+2. Add a button in `index.html` and a case in `createVisualization()` in `main.ts`
+3. Register the view name in the `ActiveView` type and URL parameter handling
 
 ---
 
 **Architecture designed for:** Extensibility, Performance, Type Safety, Developer Experience
 
-**Last updated:** December 2024
+**Last updated:** March 2026

@@ -8,7 +8,7 @@ This workspace provides three main capabilities:
 
 1. **Call Graph Generation** - Generate caller/callee graphs from SCIP indices
 2. **Verus Metrics** - Compute Halstead complexity metrics for Verus specifications and proofs
-3. **Interactive Visualization** - Explore call graphs dynamically in your browser
+3. **Interactive Visualization** - Explore call graphs in three views: Call Graph (force-directed), Blueprint (file-grouped), and Crate Map (crate-level dependencies with frontier selection)
 
 ## Workspace Structure
 
@@ -117,7 +117,10 @@ cargo run --release --bin pipeline -- /path/to/verus-project
 cd web && npm install && npm run dev
 ```
 
-Open http://localhost:3000 to explore your call graph interactively.
+Open http://localhost:3000 to explore your call graph interactively. The viewer offers three views:
+- **Call Graph** -- Force-directed layout for function-level exploration and source-to-sink path finding
+- **Blueprint** -- Hierarchical layout grouping functions by file for module-level structure
+- **Crate Map** -- Crate-level overview showing inter-crate dependencies, with a frontier feature to see which functions in crate A are called by crate B
 
 The pipeline automatically:
 1. **Generates SCIP index** from your Verus project
@@ -320,6 +323,28 @@ jobs:
 
 The interactive call graph will be deployed to GitHub Pages.
 
+### For Lean 4 Projects
+
+Use the Lean-specific reusable workflow powered by [probe-lean](https://github.com/Beneficial-AI-Foundation/probe-lean):
+
+```yaml
+jobs:
+  callgraph:
+    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+    with:
+      github_url: https://github.com/YOUR_ORG/YOUR_LEAN_REPO
+```
+
+This runs `probe-lean pipeline` which builds your project, extracts the dependency graph, and detects `sorry` usage to produce verification statuses. The viewer shows theorems, definitions, and other declarations with the same verification color-coding as Verus projects.
+
+**Lean-specific options:**
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `project_path` | Path to Lean project relative to repo root | `.` |
+| `probe_lean_version` | probe-lean git ref (branch, tag, SHA) | `main` |
+| `skip_verification` | Skip sorry detection | `false` |
+
 See [docs/guides/CALLGRAPH_CI_INTEGRATION.md](docs/guides/CALLGRAPH_CI_INTEGRATION.md) for advanced options including:
 - Subpath deployment for existing GitHub Pages sites
 - Workspace support
@@ -333,7 +358,7 @@ See [docs/guides/CALLGRAPH_CI_INTEGRATION.md](docs/guides/CALLGRAPH_CI_INTEGRATI
 - [docs/guides/INTERACTIVE_VIEWER.md](docs/guides/INTERACTIVE_VIEWER.md) - Web viewer documentation
 - [docs/guides/VSCODE_EXTENSION.md](docs/guides/VSCODE_EXTENSION.md) - Embedding in VS Code extensions
 - [docs/guides/GITHUB_PAGES_GUIDE.md](docs/guides/GITHUB_PAGES_GUIDE.md) - Online viewer guide
-- [docs/guides/CALLGRAPH_CI_INTEGRATION.md](docs/guides/CALLGRAPH_CI_INTEGRATION.md) - CI integration for Verus projects
+- [docs/guides/CALLGRAPH_CI_INTEGRATION.md](docs/guides/CALLGRAPH_CI_INTEGRATION.md) - CI integration for Verus and Lean projects
 - [docs/SIMILAR_LEMMAS.md](docs/SIMILAR_LEMMAS.md) - Similar lemmas feature
 
 ## Python Scripts

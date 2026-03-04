@@ -100,13 +100,50 @@ The viewer will open in your browser (usually at `http://localhost:3000`).
 
 ## Key Features
 
-### 🎨 Interactive Visualization
-- **Force-directed layout** using D3.js physics simulation
+### 🎨 Three Visualization Views
+
+Switch between views using the header buttons:
+
+#### Call Graph (default)
+- **Force-directed layout** using D3.js physics simulation with topological layering
 - **Zoom and pan** to navigate large graphs
 - **Drag nodes** to rearrange the layout
-- **Color coding**: Blue = libsignal, Green = external
+- **Color coding** by verification status: green = verified, red = failed, grey = unverified
+- Best for exploring function-level call paths and source-to-sink analysis
+
+#### Blueprint
+- **Dagre hierarchical layout** that groups functions by file
+- Each file is a compound box containing its function nodes
+- Cross-file edges are drawn between file groups
+- Best for understanding module-level structure
+
+#### Crate Map
+- **Crate-level overview** where each crate is a single box showing function and file counts
+- Edges between crates are weighted by the number of cross-crate function calls
+- **Click** a cross-crate edge to expand it inline, showing the individual function calls
+- **Click** crates to select them for the crate frontier (source = blue, target = orange)
+- **Double-click** a crate to switch to Call Graph view filtered to that crate's files
+- Best for understanding inter-crate dependencies at a glance
+
+### 🔗 Crate Frontier
+
+Select two crates to see their interface -- which functions in crate A are called by crate B:
+
+- Use the **Source Crate** / **Target Crate** dropdowns in the sidebar
+- Or **click** crates on the Crate Map (first click = source, second click = target)
+- The target dropdown is automatically filtered to only show crates the source depends on
+- In Crate Map view, the frontier is rendered inline with a "View in Call Graph" button
+- In Call Graph / Blueprint views, it sets `crate:A` / `crate:B` source/sink queries
 
 ### 🔍 Powerful Filtering
+
+#### Source → Sink
+- **Source only**: Shows what the function calls (callees)
+- **Sink only**: Shows who calls the function (callers)
+- **Both**: Shows all paths from source to sink
+
+#### Crate Queries
+Use `crate:name` syntax in Source/Sink fields to match all functions in a crate. When both use `crate:` queries, a direct boundary mode shows only cross-crate calls.
 
 #### Source Type Filter
 Toggle visibility of libsignal vs external dependencies
@@ -123,20 +160,15 @@ Find functions by:
 3. See only functions within N steps of selected nodes
 4. Perfect for understanding local call patterns
 
-#### Connection Thresholds
-- **Min Callers**: Show only functions called by many others
-- **Min Callees**: Show only functions that call many others
-- Great for finding central/hub functions
-
 ### ℹ️ Detailed Node Information
 
 Click or hover over any node to see:
-- Function name and source type
-- File location
-- Full symbol path
-- **List of callers** (who calls this function)
+- Function name, mode, and file location
+- Verification status badge
+- GitHub link (if configured)
+- **List of callers** (who calls this function, filtered items shown dimmed)
 - **List of callees** (who this function calls)
-- Function body (if available)
+- Similar lemmas with similarity scores (if available)
 
 ## Comparison with Static SVG Approach
 
@@ -275,11 +307,12 @@ Potential improvements:
 
 - [ ] Persistent layouts (save/load node positions)
 - [ ] Export filtered views as images
-- [ ] Call path finder (shortest path between two functions)
-- [ ] Clustering/grouping by module
 - [ ] Time-based visualization (if SCIP data includes timestamps)
 - [ ] Compare two versions side-by-side
-- [x] Integration with code editor (jump to definition) — See [VSCODE_EXTENSION.md](./VSCODE_EXTENSION.md)
+- [x] Integration with code editor (jump to definition) -- See [VSCODE_EXTENSION.md](./VSCODE_EXTENSION.md)
+- [x] Clustering/grouping by module -- Blueprint view (grouped by file) and Crate Map view (grouped by crate)
+- [x] Call path finder (shortest path between two functions) -- Source + Sink combined mode
+- [x] Crate-level dependency visualization -- Crate Map view with frontier selection
 
 ## Complementary Tools
 
