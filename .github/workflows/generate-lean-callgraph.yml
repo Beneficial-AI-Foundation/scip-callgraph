@@ -117,10 +117,26 @@ jobs:
           if ! diff -q "$PROJECT_TC" "$PROBE_TC" > /dev/null 2>&1; then
             echo "Toolchains differ — aligning probe-lean to target project..."
             cp "$PROJECT_TC" "$PROBE_TC"
-            echo "Copied target lean-toolchain to probe-lean"
 
-            cd probe-lean && lake update
-            echo "✓ probe-lean dependencies updated for $(cat lean-toolchain)"
+            LEAN_VERSION=$(sed 's|.*:||' "$PROJECT_TC")
+            echo "Target Lean version: $LEAN_VERSION"
+
+            # Update Cli dependency to match target Lean version (lean4-cli tags match Lean releases)
+            sed -i "s|rev = \".*\"|rev = \"$LEAN_VERSION\"|" probe-lean/lakefile.toml
+            echo "Updated Cli rev to $LEAN_VERSION"
+
+            cd probe-lean
+            if lake update 2>&1; then
+              echo "✓ probe-lean dependencies updated for $LEAN_VERSION"
+            else
+              echo "⚠ lake update with rev=$LEAN_VERSION failed, trying without rev constraint..."
+              sed -i '/^\s*rev\s*=/d' lakefile.toml
+              cp "$GITHUB_WORKSPACE/$PROJECT_TC" lean-toolchain
+              lake update
+              echo "✓ probe-lean dependencies updated (Cli rev auto-resolved)"
+            fi
+
+            echo "Final toolchain: $(cat lean-toolchain)"
           else
             echo "✓ Toolchains already match"
           fi
