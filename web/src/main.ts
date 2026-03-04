@@ -2,7 +2,7 @@ import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isS
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
-import { CrateMapVisualization } from './crate-map';
+import { CrateMapVisualization, buildCrateGraph } from './crate-map';
 import { computeDerivedStatuses } from './status';
 
 // ============================================================================
@@ -646,6 +646,7 @@ let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVis
 
 let selectedSourceCrate: string = '';
 let selectedTargetCrate: string = '';
+let crateDependencyMap: Map<string, Set<string>> = new Map();
 
 /**
  * Sync input field values to state (handles browser auto-fill after refresh)
@@ -822,12 +823,22 @@ function setupUIHandlers(): void {
   }) as EventListener);
 
   // Crate frontier dropdown handlers
-  const handleCrateDropdownChange = () => {
+  const handleSourceCrateChange = () => {
     const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
-    const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
     selectedSourceCrate = srcSel?.value || '';
-    selectedTargetCrate = tgtSel?.value || '';
+    // Re-filter the target dropdown to show only dependencies of the new source
+    populateCrateDropdowns();
+    selectedTargetCrate = (document.getElementById('target-crate-select') as HTMLSelectElement | null)?.value || '';
+    triggerFrontierUpdate();
+  };
 
+  const handleTargetCrateChange = () => {
+    const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
+    selectedTargetCrate = tgtSel?.value || '';
+    triggerFrontierUpdate();
+  };
+
+  function triggerFrontierUpdate(): void {
     if (activeView === 'crate-map' && visualization instanceof CrateMapVisualization) {
       visualization.setFrontierCrates(
         selectedSourceCrate || null,
@@ -843,14 +854,16 @@ function setupUIHandlers(): void {
       applyFiltersAndUpdate();
     }
     updateURLWithFilters();
-  };
-  document.getElementById('source-crate-select')?.addEventListener('change', handleCrateDropdownChange);
-  document.getElementById('target-crate-select')?.addEventListener('change', handleCrateDropdownChange);
+  }
+
+  document.getElementById('source-crate-select')?.addEventListener('change', handleSourceCrateChange);
+  document.getElementById('target-crate-select')?.addEventListener('change', handleTargetCrateChange);
 
   // Sync module state when CrateMap updates frontier from click interactions
   window.addEventListener('crate-frontier-changed', ((event: CustomEvent) => {
     selectedSourceCrate = event.detail.source || '';
     selectedTargetCrate = event.detail.target || '';
+    populateCrateDropdowns();
     updateURLWithFilters();
   }) as EventListener);
 
@@ -1586,6 +1599,18 @@ function loadGraph(graph: D3Graph, message: string): void {
   
   const isLarge = isLargeGraph(state.fullGraph);
   
+  // Build crate dependency map (source -> set of target crates it calls into)
+  crateDependencyMap = new Map();
+  const cg = buildCrateGraph(state.fullGraph);
+  for (const edge of cg.edges) {
+    let deps = crateDependencyMap.get(edge.source);
+    if (!deps) {
+      deps = new Set();
+      crateDependencyMap.set(edge.source, deps);
+    }
+    deps.add(edge.target);
+  }
+
   // Populate the file list panel and crate dropdowns
   populateFileList();
   populateCrateDropdowns();
@@ -1605,12 +1630,21 @@ function loadGraph(graph: D3Graph, message: string): void {
 
   // Restore crate frontier selection from URL params
   if (selectedSourceCrate || selectedTargetCrate) {
+    populateCrateDropdowns();
     const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
     const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
     if (srcSel) srcSel.value = selectedSourceCrate;
     if (tgtSel) tgtSel.value = selectedTargetCrate;
     if (activeView === 'crate-map' && visualization instanceof CrateMapVisualization) {
       visualization.setFrontierCrates(selectedSourceCrate || null, selectedTargetCrate || null);
+    } else if (selectedSourceCrate && selectedTargetCrate) {
+      state.filters.sourceQuery = `crate:${selectedSourceCrate}`;
+      state.filters.sinkQuery = `crate:${selectedTargetCrate}`;
+      const sourceInput = document.getElementById('source-input') as HTMLInputElement;
+      const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
+      if (sourceInput) sourceInput.value = state.filters.sourceQuery;
+      if (sinkInput) sinkInput.value = state.filters.sinkQuery;
+      applyFiltersAndUpdate();
     }
   }
   
@@ -2038,28 +2072,47 @@ function computeDisambiguatedPaths(paths: string[]): Map<string, string> {
 function populateCrateDropdowns(): void {
   if (!state.fullGraph) return;
 
-  const crateNames = new Set<string>();
+  const allCrateNames = new Set<string>();
   for (const node of state.fullGraph.nodes) {
     if (node.crate_name && node.crate_name !== 'unknown') {
-      crateNames.add(node.crate_name);
+      allCrateNames.add(node.crate_name);
     }
   }
 
-  const sorted = [...crateNames].sort((a, b) => a.localeCompare(b));
+  const allSorted = [...allCrateNames].sort((a, b) => a.localeCompare(b));
 
-  for (const id of ['source-crate-select', 'target-crate-select']) {
-    const select = document.getElementById(id) as HTMLSelectElement | null;
-    if (!select) continue;
-    const currentVal = select.value;
-    select.innerHTML = '<option value="">--</option>';
-    for (const name of sorted) {
+  // Source dropdown: always shows all crates
+  const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
+  if (srcSel) {
+    const prev = srcSel.value;
+    srcSel.innerHTML = '<option value="">--</option>';
+    for (const name of allSorted) {
       const opt = document.createElement('option');
       opt.value = name;
       opt.textContent = name;
-      select.appendChild(opt);
+      srcSel.appendChild(opt);
     }
-    if (currentVal && sorted.includes(currentVal)) {
-      select.value = currentVal;
+    if (prev && allSorted.includes(prev)) srcSel.value = prev;
+  }
+
+  // Target dropdown: filtered to dependencies of the selected source crate
+  const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
+  if (tgtSel) {
+    const prev = tgtSel.value;
+    const deps = selectedSourceCrate ? crateDependencyMap.get(selectedSourceCrate) : null;
+    const targetList = deps ? allSorted.filter(n => deps.has(n)) : allSorted;
+
+    tgtSel.innerHTML = '<option value="">--</option>';
+    for (const name of targetList) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      tgtSel.appendChild(opt);
+    }
+    if (prev && targetList.includes(prev)) {
+      tgtSel.value = prev;
+    } else if (prev && !targetList.includes(prev)) {
+      selectedTargetCrate = '';
     }
   }
 }
