@@ -152,6 +152,8 @@ jobs:
         if: inputs.use_mathlib_cache
         working-directory: project/${{ inputs.project_path }}
         run: |
+          echo "Cleaning stale cache..."
+          lake exe cache clean 2>&1 || true
           echo "Downloading Mathlib cache artifacts..."
           lake exe cache get 2>&1 || echo "⚠ cache get returned non-zero (may be partial)"
           echo "✓ Mathlib cache step complete"
