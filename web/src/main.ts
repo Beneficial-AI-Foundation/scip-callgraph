@@ -1622,7 +1622,7 @@ function loadGraph(graph: D3Graph, message: string): void {
   const isLarge = isLargeGraph(state.fullGraph);
   
   // Defer heavy graph analysis for large graphs to avoid freezing the browser.
-  // These will run on first filter application instead.
+  // These will run on first filter application (or when switching to Crate Map).
   deferredComputationsDone = false;
   if (!isLarge) {
     runDeferredComputations();
@@ -1631,6 +1631,13 @@ function loadGraph(graph: D3Graph, message: string): void {
   // Populate the file list panel and crate dropdowns
   populateFileList();
   populateCrateDropdowns();
+
+  // Auto-switch to Crate Map for large graphs so the user sees an overview
+  // instead of a blank canvas. Only if no URL view param was specified.
+  const urlViewParam = new URLSearchParams(window.location.search).get('view');
+  if (isLarge && !urlViewParam && activeView !== 'crate-map') {
+    switchView('crate-map');
+  }
   
   // Apply URL filter parameters (if any)
   const urlFilters = parseFiltersFromURL();
@@ -1849,7 +1856,7 @@ function updateStats(truncatedTo?: number): void {
     <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
       <span style="color: #e65100; font-weight: bold;">📊 Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
-        Too large to render all at once. Enter a <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filter to explore.
+        Too large to render all at once. Use the <strong>Crate Map</strong> for an overview, or enter a <strong>Source</strong>/<strong>Sink</strong> filter to explore specific call paths.
       </p>
     </div>
     ` : ''}
