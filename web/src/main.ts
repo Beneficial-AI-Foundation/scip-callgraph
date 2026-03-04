@@ -765,6 +765,8 @@ function switchView(view: ActiveView): void {
   if (state.filteredGraph) {
     visualization?.update(state.filteredGraph);
   }
+
+  updateURLWithFilters();
 }
 
 /**
