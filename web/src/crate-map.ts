@@ -163,7 +163,7 @@ export class CrateMapVisualization {
       .attr('class', 'crate-map-svg');
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.05, 8])
+      .scaleExtent([0.05, 30])
       .on('zoom', (event) => { this.g.attr('transform', event.transform); });
     this.svg.call(zoom);
 
