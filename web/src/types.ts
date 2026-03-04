@@ -119,6 +119,7 @@ export interface D3Node {
   relative_path: string;
   file_name: string;
   parent_folder: string;
+  crate_name: string;
   // Note: body removed - use start_line/end_line to fetch code on demand
   start_line?: number;
   end_line?: number;
@@ -233,5 +234,49 @@ export interface GraphState {
   selectedNode: D3Node | null;
   hoveredNode: D3Node | null;
   projectLanguage: ProjectLanguage;
+}
+
+// ============================================================================
+// Crate Map Types
+// ============================================================================
+
+export interface CrateNode {
+  name: string;
+  functionCount: number;
+  fileCount: number;
+  nodeIds: string[];
+  isExternal: boolean;
+}
+
+export interface CrateEdge {
+  source: string;
+  target: string;
+  callCount: number;
+  calls: Array<{ sourceId: string; targetId: string; type: string }>;
+}
+
+export interface CrateGraph {
+  nodes: CrateNode[];
+  edges: CrateEdge[];
+}
+
+/** Extract crate name from a D3Node based on its ID format. */
+export function extractCrateName(node: Pick<D3Node, 'id' | 'relative_path'>): string {
+  if (node.id.startsWith('scip:')) {
+    const afterPrefix = node.id.slice(5);
+    const slashIdx = afterPrefix.indexOf('/');
+    return slashIdx > 0 ? afterPrefix.slice(0, slashIdx) : afterPrefix;
+  }
+  if (node.id.startsWith('probe:')) {
+    if (node.relative_path) {
+      const firstSlash = node.relative_path.indexOf('/');
+      return firstSlash > 0 ? node.relative_path.slice(0, firstSlash) : node.relative_path;
+    }
+  }
+  if (node.relative_path) {
+    const firstSlash = node.relative_path.indexOf('/');
+    return firstSlash > 0 ? node.relative_path.slice(0, firstSlash) : node.relative_path;
+  }
+  return 'unknown';
 }
 

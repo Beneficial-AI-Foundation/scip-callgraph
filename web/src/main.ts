@@ -1,7 +1,8 @@
-import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage } from './types';
+import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
+import { CrateMapVisualization } from './crate-map';
 import { computeDerivedStatuses } from './status';
 
 // ============================================================================
@@ -61,22 +62,24 @@ function convertSimplifiedToD3Graph(nodes: SimplifiedNode[]): D3Graph {
     // Get dependents (inverse relationship)
     const dependents = dependentsMap.get(node.identifier) || [];
     
-    return {
+    const partial = {
       id: node.identifier,
       display_name: node.display_name,
-      symbol: node.identifier,  // Use identifier as symbol (no separate symbol in simplified format)
+      symbol: node.identifier,
       full_path: fullPath,
       relative_path: node.relative_path,
       file_name: node.file_name,
       parent_folder: node.parent_folder,
-      // No line numbers in simplified format
+      crate_name: '',
       start_line: undefined,
       end_line: undefined,
-      is_libsignal: false,  // Default to false
+      is_libsignal: false,
       dependencies: filteredDeps,
-      dependents: dependents.filter(dep => knownIds.has(dep)),  // Also filter dependents
-      kind: 'exec',  // Default kind (could try to infer from body/statement_type)
+      dependents: dependents.filter(dep => knownIds.has(dep)),
+      kind: 'exec' as const,
     };
+    partial.crate_name = extractCrateName(partial);
+    return partial;
   });
   
   // Generate links from dependencies
@@ -145,7 +148,7 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
     
     const codeText = atom["code-text"];
     
-    return {
+    const partial = {
       id: atomName,
       display_name: atom["display-name"],
       symbol: atomName,
@@ -153,6 +156,7 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
       relative_path: codePath,
       file_name: fileName,
       parent_folder: parentFolder,
+      crate_name: '',
       start_line: codeText ? codeText["lines-start"] : undefined,
       end_line: codeText ? codeText["lines-end"] : undefined,
       is_libsignal: false,
@@ -160,6 +164,8 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
       dependents,
       kind: atom.kind || 'exec',
     };
+    partial.crate_name = extractCrateName(partial);
+    return partial;
   });
   
   const links: D3Link[] = [];
@@ -485,6 +491,7 @@ function generateShareableURL(): string {
 
   // View param (only set for non-default)
   if (activeView === 'blueprint') params.set('view', 'blueprint');
+  if (activeView === 'crate-map') params.set('view', 'crate-map');
   
   // Add current filter state
   if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
@@ -619,9 +626,9 @@ let state: GraphState = {
   projectLanguage: 'unknown',
 };
 
-type ActiveView = 'callgraph' | 'blueprint';
+type ActiveView = 'callgraph' | 'blueprint' | 'crate-map';
 let activeView: ActiveView = 'callgraph';
-let visualization: CallGraphVisualization | BlueprintVisualization | null = null;
+let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVisualization | null = null;
 
 /**
  * Sync input field values to state (handles browser auto-fill after refresh)
@@ -680,8 +687,11 @@ function init(): void {
 
   // Check URL for initial view
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('view') === 'blueprint') {
+  const viewParam = urlParams.get('view');
+  if (viewParam === 'blueprint') {
     activeView = 'blueprint';
+  } else if (viewParam === 'crate-map') {
+    activeView = 'crate-map';
   }
 
   // Initialize visualization for the active view
@@ -713,23 +723,26 @@ function createVisualization(container: HTMLElement): void {
   // Destroy existing visualization
   if (visualization) {
     if ('destroy' in visualization) {
-      (visualization as BlueprintVisualization).destroy();
+      (visualization as BlueprintVisualization | CrateMapVisualization).destroy();
     } else {
-      // CallGraphVisualization doesn't have destroy, just clear + remove SVG
       visualization.clear();
       container.querySelector('svg')?.remove();
     }
     visualization = null;
   }
 
-  // Also remove any leftover blueprint legend
+  // Remove any leftover view legends
   container.querySelector('.bp-legend')?.remove();
+  container.querySelector('.cm-legend')?.remove();
 
   // Update button states
   document.getElementById('view-callgraph')?.classList.toggle('active', activeView === 'callgraph');
   document.getElementById('view-blueprint')?.classList.toggle('active', activeView === 'blueprint');
+  document.getElementById('view-crate-map')?.classList.toggle('active', activeView === 'crate-map');
 
-  if (activeView === 'blueprint') {
+  if (activeView === 'crate-map') {
+    visualization = new CrateMapVisualization(container, state, handleStateChange);
+  } else if (activeView === 'blueprint') {
     visualization = new BlueprintVisualization(container, state, handleStateChange);
   } else {
     visualization = new CallGraphVisualization(container, state, handleStateChange);
@@ -761,6 +774,19 @@ function setupUIHandlers(): void {
   // View switcher
   document.getElementById('view-callgraph')?.addEventListener('click', () => switchView('callgraph'));
   document.getElementById('view-blueprint')?.addEventListener('click', () => switchView('blueprint'));
+  document.getElementById('view-crate-map')?.addEventListener('click', () => switchView('crate-map'));
+
+  // Listen for crate-map double-click navigation
+  window.addEventListener('crate-map-switch-view', ((event: CustomEvent) => {
+    const { view, includeFiles } = event.detail;
+    if (includeFiles) {
+      state.filters.includeFiles = includeFiles;
+      const includeFilesInput = document.getElementById('include-files') as HTMLInputElement;
+      if (includeFilesInput) includeFilesInput.value = includeFiles;
+    }
+    switchView(view);
+    applyFiltersAndUpdate();
+  }) as EventListener);
 
   // File input
   const fileInput = document.getElementById('file-input') as HTMLInputElement;
@@ -1199,6 +1225,12 @@ async function loadDeferredGraphWithDisambiguation(): Promise<void> {
       links: graph.links.map(l => ({ ...l })),
       metadata: { ...graph.metadata },
     };
+
+    for (const node of state.fullGraph.nodes) {
+      if (!node.crate_name) {
+        node.crate_name = extractCrateName(node);
+      }
+    }
     
     // Populate the file list so disambiguation has data
     populateFileList();
@@ -1455,6 +1487,14 @@ function loadGraph(graph: D3Graph, message: string): void {
     links: graph.links.map(l => ({ ...l })),
     metadata: { ...graph.metadata },
   };
+
+  // Backfill crate_name on every node (extracted from ID or relative_path)
+  for (const node of state.fullGraph.nodes) {
+    if (!node.crate_name) {
+      node.crate_name = extractCrateName(node);
+    }
+  }
+
   // Deep copy filters - spread only does shallow copy, so Sets would be shared!
   // Preserve focusNodeIds across graph reloads (it's set from URL param, not graph data)
   const preservedFocusNodes = state.filters.focusNodeIds;

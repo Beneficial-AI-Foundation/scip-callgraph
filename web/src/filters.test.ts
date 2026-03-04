@@ -31,6 +31,7 @@ function createNode(props: {
     relative_path: props.relative_path || `src/${props.display_name}.rs`,
     file_name: props.file_name || 'test.rs',
     parent_folder: props.parent_folder || 'src',
+    crate_name: 'test',
     is_libsignal: props.is_libsignal ?? true,
     dependencies: [],
     dependents: [],
