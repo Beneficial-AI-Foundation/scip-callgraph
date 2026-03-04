@@ -20,6 +20,7 @@ function createNode(props: {
   file_name?: string;
   parent_folder?: string;
   relative_path?: string;
+  crate_name?: string;
   kind?: string;
   is_libsignal?: boolean;
 }): D3Node {
@@ -31,7 +32,7 @@ function createNode(props: {
     relative_path: props.relative_path || `src/${props.display_name}.rs`,
     file_name: props.file_name || 'test.rs',
     parent_folder: props.parent_folder || 'src',
-    crate_name: 'test',
+    crate_name: props.crate_name || 'test',
     is_libsignal: props.is_libsignal ?? true,
     dependencies: [],
     dependents: [],
@@ -861,6 +862,142 @@ describe('Filter Behavior', () => {
       expect(nodeNames).toContain('mul_by_pow_2');
       // Should NOT include scalar.rs
       expect(nodeNames).not.toContain('from_bytes');
+    });
+  });
+});
+
+// ============================================================================
+// Crate-Level Queries
+// ============================================================================
+
+describe('Crate-level source/sink queries', () => {
+  /** Create a two-crate graph:
+   *   crateA::fn_a1 → crateB::fn_b1
+   *   crateA::fn_a2 → crateB::fn_b2
+   *   crateA::fn_a3 → crateA::fn_a1  (intra-crate, should not appear in boundary)
+   *   crateB::fn_b1 → crateB::fn_b2  (intra-crate)
+   */
+  function createTwoCrateGraph(): D3Graph {
+    return {
+      nodes: [
+        createNode({ id: 'a1', display_name: 'fn_a1', crate_name: 'crateA' }),
+        createNode({ id: 'a2', display_name: 'fn_a2', crate_name: 'crateA' }),
+        createNode({ id: 'a3', display_name: 'fn_a3', crate_name: 'crateA' }),
+        createNode({ id: 'b1', display_name: 'fn_b1', crate_name: 'crateB' }),
+        createNode({ id: 'b2', display_name: 'fn_b2', crate_name: 'crateB' }),
+      ],
+      links: [
+        createLink('a1', 'b1'),
+        createLink('a2', 'b2'),
+        createLink('a3', 'a1'),
+        createLink('b1', 'b2'),
+      ],
+      metadata: { total_nodes: 5, total_edges: 4, project_root: '/test', generated_at: '2024-01-01' },
+    };
+  }
+
+  describe('matchesQuery with crate: prefix', () => {
+    it('matches nodes by crate name', () => {
+      const node = createNode({ id: 'x', display_name: 'foo', crate_name: 'curve25519-dalek' });
+      expect(matchesQuery(node, 'crate:curve25519-dalek')).toBe(true);
+      expect(matchesQuery(node, 'crate:vstd')).toBe(false);
+    });
+
+    it('supports glob wildcards in crate name', () => {
+      const node = createNode({ id: 'x', display_name: 'foo', crate_name: 'libsignal-protocol' });
+      expect(matchesQuery(node, 'crate:libsignal-*')).toBe(true);
+      expect(matchesQuery(node, 'crate:*protocol')).toBe(true);
+      expect(matchesQuery(node, 'crate:curve*')).toBe(false);
+    });
+
+    it('uses substring matching by default', () => {
+      const node = createNode({ id: 'x', display_name: 'foo', crate_name: 'libsignal-protocol' });
+      expect(matchesQuery(node, 'crate:signal')).toBe(true);
+    });
+  });
+
+  describe('direct crate boundary mode', () => {
+    it('shows only cross-crate edges from source to sink crate', () => {
+      const graph = createTwoCrateGraph();
+      const filters = createFilters({
+        sourceQuery: 'crate:crateA',
+        sinkQuery: 'crate:crateB',
+      });
+
+      const result = applyFilters(graph, filters);
+      const nodeNames = result.nodes.map(n => n.display_name).sort();
+
+      // Should include boundary functions: a1→b1, a2→b2
+      expect(nodeNames).toContain('fn_a1');
+      expect(nodeNames).toContain('fn_a2');
+      expect(nodeNames).toContain('fn_b1');
+      expect(nodeNames).toContain('fn_b2');
+      // Should NOT include a3 (only has intra-crate edges)
+      expect(nodeNames).not.toContain('fn_a3');
+    });
+
+    it('shows directional boundary (A→B not B→A)', () => {
+      const graph = createTwoCrateGraph();
+      // Reverse direction: source=crateB, sink=crateA
+      const filters = createFilters({
+        sourceQuery: 'crate:crateB',
+        sinkQuery: 'crate:crateA',
+      });
+
+      const result = applyFilters(graph, filters);
+      // No edges go from crateB to crateA in the test graph
+      expect(result.nodes.length).toBe(0);
+    });
+
+    it('returns only cross-crate links', () => {
+      const graph = createTwoCrateGraph();
+      const filters = createFilters({
+        sourceQuery: 'crate:crateA',
+        sinkQuery: 'crate:crateB',
+      });
+
+      const result = applyFilters(graph, filters);
+
+      // Should only have 2 links: a1→b1, a2→b2
+      expect(result.links.length).toBe(2);
+      const linkPairs = result.links.map(l => {
+        const s = typeof l.source === 'string' ? l.source : l.source.id;
+        const t = typeof l.target === 'string' ? l.target : l.target.id;
+        return `${s}->${t}`;
+      }).sort();
+      expect(linkPairs).toEqual(['a1->b1', 'a2->b2']);
+    });
+  });
+
+  describe('single crate as source or sink', () => {
+    it('crate as source shows callees from that crate', () => {
+      const graph = createTwoCrateGraph();
+      const filters = createFilters({
+        sourceQuery: 'crate:crateA',
+        maxDepth: 1,
+      });
+
+      const result = applyFilters(graph, filters);
+      const nodeNames = result.nodes.map(n => n.display_name).sort();
+
+      // All crateA nodes plus their direct callees
+      expect(nodeNames).toContain('fn_a1');
+      expect(nodeNames).toContain('fn_b1');
+    });
+
+    it('crate as sink shows callers of that crate', () => {
+      const graph = createTwoCrateGraph();
+      const filters = createFilters({
+        sinkQuery: 'crate:crateB',
+        maxDepth: 1,
+      });
+
+      const result = applyFilters(graph, filters);
+      const nodeNames = result.nodes.map(n => n.display_name).sort();
+
+      // crateB nodes plus their direct callers
+      expect(nodeNames).toContain('fn_b1');
+      expect(nodeNames).toContain('fn_a1');
     });
   });
 });

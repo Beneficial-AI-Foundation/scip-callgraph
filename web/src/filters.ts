@@ -205,9 +205,11 @@ function nodeIsFromBuildArtifact(node: D3Node): boolean {
          path.includes('/build/');
 }
 
-/**
- * Apply filters to the full graph and return a filtered graph
- */
+/** Check if a query string is a crate-level query (starts with "crate:") */
+function isCrateQuery(query: string): boolean {
+  return query.startsWith('crate:');
+}
+
 /**
  * Options for exact node selection (used by VS Code integration)
  */
@@ -335,6 +337,8 @@ export function applyFilters(
   const calleeDepths = new Map<string, number>();  // nodeId -> depth from source
   const callerDepths = new Map<string, number>();  // nodeId -> depth from sink
   let usePathBasedLinkFilter = false;  // Whether to filter links based on depth
+  // When set, only these specific link pairs are included (used by crate boundary mode)
+  let boundaryLinkPairs: Set<string> | null = null;
 
   if (hasSource && hasSink) {
     if (isSameQuery) {
@@ -368,6 +372,33 @@ export function applyFilters(
           }
         });
       });
+    } else if (isCrateQuery(sourceQuery) && isCrateQuery(sinkQuery)) {
+      // Both source and sink are crate queries → direct boundary mode
+      // Show only edges crossing from source crate to sink crate, plus their endpoints
+      const nodeMap = new Map<string, D3Node>();
+      for (const node of fullGraph.nodes) {
+        nodeMap.set(node.id, node);
+      }
+
+      const sourceCrateName = sourceQuery.slice(6);
+      const sinkCrateName = sinkQuery.slice(6);
+      const sourceCrateRegex = globToRegex(asSubstringGlob(sourceCrateName));
+      const sinkCrateRegex = globToRegex(asSubstringGlob(sinkCrateName));
+      boundaryLinkPairs = new Set<string>();
+
+      for (const link of traversableLinks) {
+        const sId = typeof link.source === 'string' ? link.source : link.source.id;
+        const tId = typeof link.target === 'string' ? link.target : link.target.id;
+        const sNode = nodeMap.get(sId);
+        const tNode = nodeMap.get(tId);
+        if (!sNode || !tNode) continue;
+
+        if (sourceCrateRegex.test(sNode.crate_name) && sinkCrateRegex.test(tNode.crate_name)) {
+          includedNodeIds.add(sId);
+          includedNodeIds.add(tId);
+          boundaryLinkPairs.add(`${sId}\0${tId}`);
+        }
+      }
     } else {
       // Different source and sink → find paths between them
       // NOTE: We ignore maxDepth here - we want ALL nodes on any path from source to sink
@@ -515,7 +546,10 @@ export function applyFilters(
   filteredLinks = fullGraph.links.filter(link => {
     const sourceId = typeof link.source === 'string' ? link.source : (link.source as any).id;
     const targetId = typeof link.target === 'string' ? link.target : (link.target as any).id;
-    return validNodeIds.has(sourceId) && validNodeIds.has(targetId);
+    if (!validNodeIds.has(sourceId) || !validNodeIds.has(targetId)) return false;
+    // In crate boundary mode, only include the specific cross-crate links
+    if (boundaryLinkPairs) return boundaryLinkPairs.has(`${sourceId}\0${targetId}`);
+    return true;
   });
 
   // Apply path-based link filtering when depth limit is active
@@ -637,6 +671,13 @@ export function applyFilters(
  * @public Exported for testing
  */
 export function matchesQuery(node: D3Node, query: string): boolean {
+  // Crate-level match: "crate:name" matches all nodes in that crate
+  if (query.startsWith('crate:')) {
+    const crateName = query.slice(6);
+    const crateRegex = globToRegex(asSubstringGlob(crateName));
+    return crateRegex.test(node.crate_name);
+  }
+
   // Check for Rust-style path-qualified syntax: "path::function"
   // Example: edwards::decompress, ristretto::*compress*
   const doubleColonIndex = query.indexOf('::');

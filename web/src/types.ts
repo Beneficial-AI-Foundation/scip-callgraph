@@ -262,16 +262,17 @@ export interface CrateGraph {
 
 /** Extract crate name from a D3Node based on its ID format. */
 export function extractCrateName(node: Pick<D3Node, 'id' | 'relative_path'>): string {
+  // scip:crate_name/version/... → crate_name
   if (node.id.startsWith('scip:')) {
     const afterPrefix = node.id.slice(5);
     const slashIdx = afterPrefix.indexOf('/');
     return slashIdx > 0 ? afterPrefix.slice(0, slashIdx) : afterPrefix;
   }
+  // probe:crate_name/... → crate_name (works for both internal and external atoms)
   if (node.id.startsWith('probe:')) {
-    if (node.relative_path) {
-      const firstSlash = node.relative_path.indexOf('/');
-      return firstSlash > 0 ? node.relative_path.slice(0, firstSlash) : node.relative_path;
-    }
+    const afterPrefix = node.id.slice(6);
+    const slashIdx = afterPrefix.indexOf('/');
+    return slashIdx > 0 ? afterPrefix.slice(0, slashIdx) : afterPrefix;
   }
   if (node.relative_path) {
     const firstSlash = node.relative_path.indexOf('/');
