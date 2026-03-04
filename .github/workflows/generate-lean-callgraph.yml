@@ -43,6 +43,11 @@ on:
         required: false
         default: false
         type: boolean
+      use_mathlib_cache:
+        description: 'Run lake exe cache get before building (required for Mathlib-dependent projects)'
+        required: false
+        default: true
+        type: boolean
       deploy_mode:
         description: 'Deployment mode: "subpath" (for existing sites) or "standalone" (full site)'
         required: false
@@ -73,6 +78,7 @@ jobs:
           echo "  github_path_prefix:  ${{ inputs.github_path_prefix || '(none)' }}"
           echo "  probe_lean_version:  ${{ inputs.probe_lean_version }}"
           echo "  skip_verification:   ${{ inputs.skip_verification }}"
+          echo "  use_mathlib_cache:   ${{ inputs.use_mathlib_cache }}"
           echo "  deploy_mode:         ${{ inputs.deploy_mode }}"
           echo "  subpath:             ${{ inputs.subpath }}"
           echo "═══════════════════════════════════════════════════════════"
@@ -111,16 +117,10 @@ jobs:
           if ! diff -q "$PROJECT_TC" "$PROBE_TC" > /dev/null 2>&1; then
             echo "Toolchains differ — aligning probe-lean to target project..."
             cp "$PROJECT_TC" "$PROBE_TC"
-
-            LEAN_VERSION=$(sed 's|.*:||' "$PROJECT_TC")
-            echo "Lean version tag: $LEAN_VERSION"
-            sed -i "s|rev = \".*\"|rev = \"$LEAN_VERSION\"|" probe-lean/lakefile.toml
-
-            echo "Updated probe-lean/lakefile.toml:"
-            grep 'rev =' probe-lean/lakefile.toml
+            echo "Copied target lean-toolchain to probe-lean"
 
             cd probe-lean && lake update
-            echo "✓ probe-lean realigned to $LEAN_VERSION"
+            echo "✓ probe-lean dependencies updated for $(cat lean-toolchain)"
           else
             echo "✓ Toolchains already match"
           fi
@@ -147,23 +147,49 @@ jobs:
           lake build probe-lean
           echo "✓ probe-lean built successfully"
 
-      # Step 2: Run probe-lean pipeline (atomize + specify + verify → enriched graph.json)
+      # Step 2: Download Mathlib cache (saves hours for Mathlib-dependent projects)
+      - name: Download Mathlib cache
+        if: inputs.use_mathlib_cache
+        working-directory: project/${{ inputs.project_path }}
+        run: |
+          echo "Downloading Mathlib cache artifacts..."
+          lake exe cache get 2>&1 || echo "⚠ cache get returned non-zero (may be partial)"
+          echo "✓ Mathlib cache step complete"
+
+      # Step 3: Build the target project (visible output for progress tracking)
+      - name: Build target project
+        working-directory: project/${{ inputs.project_path }}
+        run: |
+          echo "Building target project (output streams below)..."
+          echo "═══════════════════════════════════════════════════════════"
+          lake build 2>&1 | tee ${{ github.workspace }}/build_output.txt
+          BUILD_EXIT=${PIPESTATUS[0]}
+          echo "═══════════════════════════════════════════════════════════"
+          if [ "$BUILD_EXIT" -ne 0 ]; then
+            echo "✗ Build failed with exit code $BUILD_EXIT"
+            exit $BUILD_EXIT
+          fi
+          echo "✓ Target project built successfully"
+          SORRY_COUNT=$(grep -c "declaration uses 'sorry'" ${{ github.workspace }}/build_output.txt || true)
+          echo "  sorry warnings detected: $SORRY_COUNT"
+
+      # Step 4: Run probe-lean pipeline (atomize + specify + verify → enriched graph.json)
       - name: Generate enriched call graph
         working-directory: project/${{ inputs.project_path }}
         run: |
-          SKIP_FLAG=""
+          FLAGS="--skip-build --from-file ${{ github.workspace }}/build_output.txt"
           if [ "${{ inputs.skip_verification }}" = "true" ]; then
-            SKIP_FLAG="--skip-verify"
+            FLAGS="$FLAGS --skip-verify"
           fi
-          echo "Running probe-lean pipeline${SKIP_FLAG:+ (verification skipped)}..."
+          echo "Running probe-lean pipeline (build already done, analyzing...)..."
           ${{ github.workspace }}/probe-lean/.lake/build/bin/probe-lean pipeline \
             --output ${{ github.workspace }}/scip-callgraph/web/public/graph.json \
-            $SKIP_FLAG \
+            $FLAGS \
             .
           echo "✓ graph.json generated"
           echo "Atom count: $(python3 -c "import json; print(len(json.load(open('${{ github.workspace }}/scip-callgraph/web/public/graph.json'))))")"
 
-      # Step 3: Build web viewer
+      # Step 5: Build web viewer
       - name: Build web viewer
         working-directory: scip-callgraph/web
         env:
@@ -181,7 +207,7 @@ jobs:
             npx vite build --base=/${REPO_NAME}/
           fi
 
-      # Step 4: Prepare artifact
+      # Step 6: Prepare artifact
       - name: Prepare deployment artifact
         run: |
           mkdir -p artifact

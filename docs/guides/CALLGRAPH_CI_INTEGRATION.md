@@ -139,11 +139,85 @@ jobs:
 
 Your call graph will be available at `https://YOUR_ORG.github.io/YOUR_REPO/callgraph/`.
 
-## Configuration Options
+## Lean 4 Projects
+
+For Lean 4 projects, use the dedicated Lean workflow powered by [probe-lean](https://github.com/Beneficial-AI-Foundation/probe-lean):
+
+### Standalone Deployment
+
+```yaml
+# .github/workflows/callgraph.yml
+name: Call Graph
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  callgraph:
+    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+    with:
+      project_path: '.'
+      github_url: https://github.com/YOUR_ORG/YOUR_LEAN_REPO
+```
+
+### Skip Verification
+
+To generate only the call graph structure without sorry detection:
+
+```yaml
+jobs:
+  callgraph:
+    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+    with:
+      github_url: https://github.com/YOUR_ORG/YOUR_LEAN_REPO
+      skip_verification: true
+```
+
+### Lean Configuration Options
 
 | Input | Description | Default |
 |-------|-------------|---------|
-| `project_path` | Path to project relative to repo root | `.` |
+| `project_path` | Path to Lean project relative to repo root | `.` |
+| `github_url` | GitHub repo URL for source code links | (auto-detected) |
+| `github_path_prefix` | Prefix for source file paths | `''` |
+| `probe_lean_version` | probe-lean git ref (branch, tag, SHA) | `main` |
+| `skip_verification` | Skip sorry detection step | `false` |
+| `deploy_mode` | `standalone` or `subpath` | `standalone` |
+| `subpath` | URL subpath (when `deploy_mode: subpath`) | `callgraph` |
+
+### How It Works
+
+The workflow runs `probe-lean pipeline` which:
+
+1. **Builds** the Lean project with `lake build` (capturing output for sorry detection)
+2. **Atomizes** -- extracts declarations, dependencies, and source locations
+3. **Specifies** -- computes specification status per declaration
+4. **Verifies** -- parses build output for `sorry` warnings and maps them to declarations
+
+The output is an enriched atom dict where each declaration has a `verification-status` field (`"verified"`, `"unverified"`, or `"failed"`), which the web viewer renders with the same color-coding as Verus projects.
+
+### Lean Toolchain Compatibility
+
+The workflow automatically aligns probe-lean's Lean toolchain to your project's `lean-toolchain` file. Projects using Lean v4.28.x or later are well-supported. Older versions may require probe-lean source changes due to Lean API differences.
+
+---
+
+## Rust/Verus Configuration Options
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `project_path` | Path to Rust project relative to repo root | `.` |
 | `github_url` | GitHub repo URL for source code links | **Required** |
 | `github_path_prefix` | Prefix for source file paths (e.g., `curve25519-dalek`) | `''` |
 | `package` | Cargo package name for workspaces | `''` |
