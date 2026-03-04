@@ -38,6 +38,11 @@ on:
         required: false
         default: 'main'
         type: string
+      skip_verification:
+        description: 'Skip verification step (only generate call graph without verification status)'
+        required: false
+        default: false
+        type: boolean
       deploy_mode:
         description: 'Deployment mode: "subpath" (for existing sites) or "standalone" (full site)'
         required: false
@@ -67,6 +72,7 @@ jobs:
           echo "  github_url:          ${{ inputs.github_url || '(auto-detect)' }}"
           echo "  github_path_prefix:  ${{ inputs.github_path_prefix || '(none)' }}"
           echo "  probe_lean_version:  ${{ inputs.probe_lean_version }}"
+          echo "  skip_verification:   ${{ inputs.skip_verification }}"
           echo "  deploy_mode:         ${{ inputs.deploy_mode }}"
           echo "  subpath:             ${{ inputs.subpath }}"
           echo "═══════════════════════════════════════════════════════════"
@@ -141,30 +147,23 @@ jobs:
           lake build probe-lean
           echo "✓ probe-lean built successfully"
 
-      # Step 2: Build the target project
-      - name: Build target project
+      # Step 2: Run probe-lean pipeline (atomize + specify + verify → enriched graph.json)
+      - name: Generate enriched call graph
         working-directory: project/${{ inputs.project_path }}
         run: |
-          echo "Building target project with Lake..."
-          lake build
-          echo "✓ Target project built successfully"
+          SKIP_FLAG=""
+          if [ "${{ inputs.skip_verification }}" = "true" ]; then
+            SKIP_FLAG="--skip-verify"
+          fi
+          echo "Running probe-lean pipeline${SKIP_FLAG:+ (verification skipped)}..."
+          ${{ github.workspace }}/probe-lean/.lake/build/bin/probe-lean pipeline \
+            --output ${{ github.workspace }}/scip-callgraph/web/public/graph.json \
+            $SKIP_FLAG \
+            .
+          echo "✓ graph.json generated"
+          echo "Atom count: $(python3 -c "import json; print(len(json.load(open('${{ github.workspace }}/scip-callgraph/web/public/graph.json'))))")"
 
-      # Step 3: Run probe-lean atomize on the target project
-      - name: Generate atoms.json
-        working-directory: project/${{ inputs.project_path }}
-        run: |
-          echo "Running probe-lean atomize..."
-          ${{ github.workspace }}/probe-lean/.lake/build/bin/probe-lean atomize --output atoms.json .
-          echo "✓ atoms.json generated"
-          echo "Atom count: $(python3 -c "import json; print(len(json.load(open('atoms.json'))))")"
-
-      # Step 4: Copy atoms.json into the web viewer as graph.json
-      - name: Prepare graph data
-        run: |
-          cp project/${{ inputs.project_path }}/atoms.json scip-callgraph/web/public/graph.json
-          echo "✓ Copied atoms.json → web/public/graph.json"
-
-      # Step 5: Build web viewer
+      # Step 3: Build web viewer
       - name: Build web viewer
         working-directory: scip-callgraph/web
         env:
@@ -182,7 +181,7 @@ jobs:
             npx vite build --base=/${REPO_NAME}/
           fi
 
-      # Step 6: Prepare artifact
+      # Step 4: Prepare artifact
       - name: Prepare deployment artifact
         run: |
           mkdir -p artifact
