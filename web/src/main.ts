@@ -1364,13 +1364,8 @@ function isLargeGraph(graph: D3Graph): boolean {
  * Run heavy graph computations that are deferred for large graphs.
  * Called lazily when the user first applies a filter.
  */
-function runDeferredComputations(): void {
-  if (deferredComputationsDone || !state.fullGraph) return;
-  deferredComputationsDone = true;
-
-  computeDerivedStatuses(state.fullGraph);
-
-  crateDependencyMap = new Map();
+function ensureCrateGraphBuilt(): void {
+  if (crateDependencyMap.size > 0 || !state.fullGraph) return;
   const cg = buildCrateGraph(state.fullGraph);
   for (const edge of cg.edges) {
     let deps = crateDependencyMap.get(edge.source);
@@ -1380,7 +1375,14 @@ function runDeferredComputations(): void {
     }
     deps.add(edge.target);
   }
+}
 
+function runDeferredComputations(): void {
+  if (deferredComputationsDone || !state.fullGraph) return;
+  deferredComputationsDone = true;
+
+  computeDerivedStatuses(state.fullGraph);
+  ensureCrateGraphBuilt();
   populateFileList();
 }
 
@@ -1643,12 +1645,10 @@ function loadGraph(graph: D3Graph, message: string): void {
   }
   populateCrateDropdowns();
 
-  // Auto-switch to Crate Map for large graphs so the user sees an overview
-  // instead of a blank canvas. Only if no URL view param was specified.
-  const urlViewParam = new URLSearchParams(window.location.search).get('view');
-  if (isLarge && !urlViewParam && activeView !== 'crate-map') {
-    switchView('crate-map');
-  }
+  // For large graphs we stay on the default Call Graph tab but show an
+  // informative "Large Graph" message. Heavy computations (derived statuses,
+  // crate graph, file list) are deferred until the user applies a filter or
+  // switches to Crate Map. This keeps the initial page load fast.
   
   // Apply URL filter parameters (if any)
   const urlFilters = parseFiltersFromURL();
@@ -1775,8 +1775,13 @@ function applyFiltersAndUpdate(): void {
     return;
   }
   
-  // Run deferred computations on first real filter application
-  runDeferredComputations();
+  // Run deferred computations on first real filter application.
+  // Crate Map only needs the crate graph, not the full set of deferred work.
+  if (activeView === 'crate-map') {
+    ensureCrateGraphBuilt();
+  } else {
+    runDeferredComputations();
+  }
 
   // Pass selectedNodeId for exact matching (VS Code integration)
   const nodeOptions: SelectedNodeOptions = { selectedNodeId };
