@@ -251,6 +251,12 @@ body {
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
 }
 
+select.search-input {
+  appearance: auto;
+  cursor: pointer;
+  background: #fff;
+}
+
 /* Slider */
 .slider-label {
   display: block;

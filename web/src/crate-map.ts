@@ -138,6 +138,10 @@ export class CrateMapVisualization {
   private crateColorMap = new Map<string, number>();
   private selectedCrate: string | null = null;
 
+  private frontierSource: string | null = null;
+  private frontierTarget: string | null = null;
+  private frontierActive = false;
+
   constructor(
     container: HTMLElement,
     state: GraphState,
@@ -629,6 +633,259 @@ export class CrateMapVisualization {
     }
   }
 
+  // ----- Frontier rendering -----
+
+  private renderFrontier(): void {
+    const cg = this.crateGraph;
+    const src = this.frontierSource;
+    const tgt = this.frontierTarget;
+    if (!cg || !src || !tgt || !this.lastFilteredGraph) return;
+
+    this.g.selectAll('*').remove();
+
+    const nodeMap = new Map<string, D3Node>();
+    for (const node of this.lastFilteredGraph.nodes) {
+      nodeMap.set(node.id, node);
+    }
+
+    // Collect cross-crate calls in both directions
+    // "Frontier of A called by B" = edges where caller is in tgt and callee is in src
+    // In CrateEdge model: source=caller, target=callee → edge(tgt, src)
+    const callsInto: Array<{ sourceId: string; targetId: string; type: string }> = [];
+    const callsFrom: Array<{ sourceId: string; targetId: string; type: string }> = [];
+
+    for (const edge of cg.edges) {
+      if (edge.source === tgt && edge.target === src) {
+        callsInto.push(...edge.calls);
+      }
+      if (edge.source === src && edge.target === tgt) {
+        callsFrom.push(...edge.calls);
+      }
+    }
+
+    const allCalls = [...callsInto, ...callsFrom];
+    if (allCalls.length === 0) {
+      this.g.append('text')
+        .attr('x', this.width / 2)
+        .attr('y', this.height / 2)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '14px')
+        .attr('font-family', 'system-ui, sans-serif')
+        .attr('fill', '#999')
+        .text(`No calls between ${src} and ${tgt}`);
+      return;
+    }
+
+    // Gather unique function nodes involved
+    const expandedNodeIds = new Set<string>();
+    for (const call of allCalls) {
+      expandedNodeIds.add(call.sourceId);
+      expandedNodeIds.add(call.targetId);
+    }
+
+    const expandedNodes: D3Node[] = [];
+    for (const id of expandedNodeIds) {
+      const node = nodeMap.get(id);
+      if (node) expandedNodes.push(node);
+    }
+
+    // Build dagre with compound groups
+    const gGraph = new dagre.graphlib.Graph({ compound: true });
+    gGraph.setGraph({ rankdir: 'LR', nodesep: 20, ranksep: 160, marginx: 60, marginy: 60 });
+    gGraph.setDefaultEdgeLabel(() => ({}));
+
+    gGraph.setNode(`crate:${src}`, { label: src, clusterLabelPos: 'top' });
+    gGraph.setNode(`crate:${tgt}`, { label: tgt, clusterLabelPos: 'top' });
+
+    const fnWidths = new Map<string, number>();
+    for (const node of expandedNodes) {
+      const nw = nodeWidthFor(node.display_name);
+      fnWidths.set(node.id, nw);
+      gGraph.setNode(node.id, { width: nw + 10, height: NODE_H + 8 });
+      const crate = node.crate_name || 'unknown';
+      if (crate === src) gGraph.setParent(node.id, `crate:${src}`);
+      else if (crate === tgt) gGraph.setParent(node.id, `crate:${tgt}`);
+    }
+
+    for (const call of allCalls) {
+      if (expandedNodeIds.has(call.sourceId) && expandedNodeIds.has(call.targetId)) {
+        gGraph.setEdge(call.sourceId, call.targetId);
+      }
+    }
+
+    dagre.layout(gGraph);
+
+    // Render crate group backgrounds
+    for (const crateName of [src, tgt]) {
+      const groupId = `crate:${crateName}`;
+      const info = gGraph.node(groupId);
+      if (!info || !info.width || !info.height) continue;
+
+      const isSource = crateName === src;
+      this.g.append('rect')
+        .attr('class', 'cm-expanded-group')
+        .attr('x', info.x - info.width / 2)
+        .attr('y', info.y - info.height / 2)
+        .attr('width', info.width)
+        .attr('height', info.height)
+        .attr('rx', 10)
+        .attr('fill', isSource ? 'rgba(21,101,192,0.06)' : 'rgba(230,81,0,0.06)')
+        .attr('stroke', isSource ? '#1565c0' : '#e65100')
+        .attr('stroke-width', 2);
+
+      this.g.append('text')
+        .attr('x', info.x - info.width / 2 + 10)
+        .attr('y', info.y - info.height / 2 + 16)
+        .attr('font-size', '11px')
+        .attr('font-weight', '600')
+        .attr('font-family', 'system-ui, sans-serif')
+        .attr('fill', isSource ? '#1565c0' : '#e65100')
+        .attr('pointer-events', 'none')
+        .text(`${crateName} ${isSource ? '(source — called)' : '(target — caller)'}`);
+    }
+
+    // Render edges
+    const posMap = new Map<string, { x: number; y: number }>();
+    for (const node of expandedNodes) {
+      const info = gGraph.node(node.id);
+      if (info) posMap.set(node.id, { x: info.x, y: info.y });
+    }
+
+    for (const call of allCalls) {
+      const sp = posMap.get(call.sourceId);
+      const tp = posMap.get(call.targetId);
+      if (!sp || !tp) continue;
+
+      const sw = (fnWidths.get(call.sourceId) || 100) / 2;
+      const tw = (fnWidths.get(call.targetId) || 100) / 2;
+      const dx = tp.x - sp.x;
+
+      const edgeColor = call.type === 'precondition' ? '#e65100'
+        : call.type === 'postcondition' ? '#c2185b'
+        : '#666';
+      const dashArray = (call.type === 'precondition' || call.type === 'postcondition')
+        ? '6,3' : 'none';
+
+      this.g.append('path')
+        .attr('class', 'cm-fn-edge')
+        .attr('fill', 'none')
+        .attr('stroke', edgeColor)
+        .attr('stroke-opacity', 0.6)
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', dashArray)
+        .attr('marker-end', 'url(#cm-arrow)')
+        .attr('d', `M${sp.x + sw},${sp.y} C${sp.x + sw + dx * 0.35},${sp.y} ${tp.x - tw - dx * 0.35},${tp.y} ${tp.x - tw},${tp.y}`);
+    }
+
+    // Render function nodes
+    for (const node of expandedNodes) {
+      const pos = posMap.get(node.id);
+      if (!pos) continue;
+
+      const nw = fnWidths.get(node.id) || 100;
+      const fnGroup = this.g.append('g')
+        .attr('transform', `translate(${pos.x}, ${pos.y})`)
+        .style('cursor', 'pointer');
+
+      fnGroup.append('rect')
+        .attr('x', -nw / 2)
+        .attr('y', -NODE_H / 2)
+        .attr('width', nw)
+        .attr('height', NODE_H)
+        .attr('rx', 5)
+        .attr('fill', '#fff')
+        .attr('stroke', '#888')
+        .attr('stroke-width', 1.5);
+
+      fnGroup.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('font-size', '10px')
+        .attr('font-family', 'system-ui, sans-serif')
+        .attr('fill', '#333')
+        .attr('pointer-events', 'none')
+        .text(node.display_name);
+
+      fnGroup.on('click', (event: MouseEvent) => {
+        event.stopPropagation();
+        const newState = { ...this.state, selectedNode: node };
+        this.state = newState;
+        this.onStateChange(newState, true);
+      });
+    }
+
+    // Summary + navigation buttons
+    const btnY = 20;
+    const summaryText = `Frontier: ${callsInto.length} call${callsInto.length !== 1 ? 's' : ''} from ${tgt} → ${src}` +
+      (callsFrom.length > 0 ? `, ${callsFrom.length} call${callsFrom.length !== 1 ? 's' : ''} from ${src} → ${tgt}` : '');
+
+    this.g.append('text')
+      .attr('x', 20)
+      .attr('y', btnY)
+      .attr('font-size', '11px')
+      .attr('font-family', 'system-ui, sans-serif')
+      .attr('fill', '#555')
+      .text(summaryText);
+
+    // "View in Call Graph" button
+    const btnGroup = this.g.append('g')
+      .attr('transform', `translate(20, ${btnY + 10})`)
+      .style('cursor', 'pointer');
+
+    const btnText = `View in Call Graph →`;
+    const btnW = btnText.length * 7 + 20;
+    btnGroup.append('rect')
+      .attr('width', btnW)
+      .attr('height', 24)
+      .attr('rx', 4)
+      .attr('fill', '#1565c0')
+      .attr('opacity', 0.85);
+    btnGroup.append('text')
+      .attr('x', btnW / 2)
+      .attr('y', 13)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('font-size', '11px')
+      .attr('font-weight', '600')
+      .attr('font-family', 'system-ui, sans-serif')
+      .attr('fill', '#fff')
+      .attr('pointer-events', 'none')
+      .text(btnText);
+
+    btnGroup.on('click', (event: MouseEvent) => {
+      event.stopPropagation();
+      this.navigateToCallGraph();
+    });
+
+    // Esc hint
+    this.g.append('text')
+      .attr('x', 20)
+      .attr('y', btnY + 46)
+      .attr('font-size', '10px')
+      .attr('font-family', 'system-ui, sans-serif')
+      .attr('fill', '#aaa')
+      .text('Press Esc or click background to collapse');
+
+    const graphInfo = gGraph.graph();
+    if (graphInfo && graphInfo.width && graphInfo.height) {
+      this.svg.attr('viewBox', `0 0 ${graphInfo.width + 100} ${graphInfo.height + 100}`);
+    }
+  }
+
+  private navigateToCallGraph(): void {
+    const src = this.frontierSource;
+    const tgt = this.frontierTarget;
+    if (!src || !tgt) return;
+
+    window.dispatchEvent(new CustomEvent('crate-map-switch-view', {
+      detail: {
+        view: 'callgraph',
+        sourceQuery: `crate:${src}`,
+        sinkQuery: `crate:${tgt}`,
+      },
+    }));
+  }
+
   // ----- Edge expansion -----
 
   private expandEdge(source: string, target: string): void {
@@ -643,8 +900,14 @@ export class CrateMapVisualization {
   }
 
   private collapseEdge(): void {
-    if (!this.expandedEdge) return;
+    if (!this.expandedEdge && !this.frontierActive) return;
     this.expandedEdge = null;
+    if (this.frontierActive) {
+      this.frontierActive = false;
+      this.frontierSource = null;
+      this.frontierTarget = null;
+      this.syncDropdowns();
+    }
     this.renderCollapsed();
   }
 
@@ -657,17 +920,43 @@ export class CrateMapVisualization {
   // ----- Crate interactions -----
 
   private handleCrateClick(cn: CrateNode): void {
-    this.selectedCrate = this.selectedCrate === cn.name ? null : cn.name;
+    // Two-crate frontier selection logic:
+    // 1st click → source, 2nd click on different crate → target, click selected → deselect
+    if (this.frontierSource === cn.name) {
+      this.frontierSource = null;
+      this.frontierActive = false;
+    } else if (this.frontierTarget === cn.name) {
+      this.frontierTarget = null;
+      this.frontierActive = false;
+    } else if (!this.frontierSource) {
+      this.frontierSource = cn.name;
+    } else if (!this.frontierTarget) {
+      this.frontierTarget = cn.name;
+    } else {
+      this.frontierTarget = cn.name;
+    }
 
-    // Show crate info in the right sidebar
+    this.selectedCrate = cn.name;
+    this.syncDropdowns();
+    this.updateCrateSelectionStyle();
+    this.showCrateInfo(cn);
+
+    if (this.frontierSource && this.frontierTarget) {
+      this.frontierActive = true;
+      this.expandedEdge = null;
+      this.renderFrontier();
+    } else {
+      if (this.frontierActive) {
+        this.frontierActive = false;
+        this.renderCollapsed();
+        this.updateCrateSelectionStyle();
+      }
+    }
+  }
+
+  private showCrateInfo(cn: CrateNode): void {
     const nodeInfoDiv = document.getElementById('node-info');
     if (!nodeInfoDiv) return;
-
-    if (!this.selectedCrate) {
-      nodeInfoDiv.innerHTML = '<p class="placeholder">Click a crate to see details</p>';
-      this.renderCollapsed();
-      return;
-    }
 
     const cg = this.crateGraph;
     if (!cg) return;
@@ -679,7 +968,6 @@ export class CrateMapVisualization {
       .filter(e => e.target === cn.name)
       .sort((a, b) => b.callCount - a.callCount);
 
-    // Gather top files
     const fileCountMap = new Map<string, number>();
     if (this.lastFilteredGraph) {
       for (const node of this.lastFilteredGraph.nodes) {
@@ -695,9 +983,12 @@ export class CrateMapVisualization {
 
     const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+    const role = this.frontierSource === cn.name ? ' (Source)' :
+                 this.frontierTarget === cn.name ? ' (Target)' : '';
+
     nodeInfoDiv.innerHTML = `
       <div class="cm-info">
-        <h3>${escHtml(cn.name)}</h3>
+        <h3>${escHtml(cn.name)}${role}</h3>
         <p><strong>${cn.functionCount}</strong> functions, <strong>${cn.fileCount}</strong> files</p>
         ${cn.isExternal ? '<p><em>External dependency</em></p>' : ''}
         ${outgoing.length > 0 ? `
@@ -715,9 +1006,75 @@ export class CrateMapVisualization {
         <p class="cm-hint"><em>Double-click to view in Call Graph</em></p>
       </div>
     `;
-
-    this.renderCollapsed();
   }
+
+  private updateCrateSelectionStyle(): void {
+    const self = this;
+    this.g.selectAll<SVGGElement, unknown>('.cm-crate-group').each(function () {
+      const group = d3.select(this);
+      const label = group.select('.cm-crate-label').text();
+      const ci = self.crateColorMap.get(label) ?? 0;
+      const isSource = self.frontierSource === label;
+      const isTarget = self.frontierTarget === label;
+      const isRole = isSource || isTarget;
+
+      group.select('.cm-crate-box')
+        .attr('stroke', isSource ? '#1565c0'
+          : isTarget ? '#e65100'
+          : isRole ? CRATE_STROKE_SELECTED[ci % CRATE_STROKE_SELECTED.length]
+          : CRATE_STROKE_COLORS[ci % CRATE_STROKE_COLORS.length])
+        .attr('stroke-width', isRole ? 3.5 : 2);
+
+      // Show/remove role label
+      group.selectAll('.cm-role-label').remove();
+      if (isSource || isTarget) {
+        const box = group.select('.cm-crate-box');
+        const bw = parseFloat(box.attr('width'));
+        group.append('text')
+          .attr('class', 'cm-role-label')
+          .attr('x', -bw / 2 + 6)
+          .attr('y', parseFloat(box.attr('y')) + 12)
+          .attr('font-size', '9px')
+          .attr('font-weight', '700')
+          .attr('font-family', 'system-ui, sans-serif')
+          .attr('fill', isSource ? '#1565c0' : '#e65100')
+          .attr('pointer-events', 'none')
+          .text(isSource ? 'SOURCE' : 'TARGET');
+      }
+    });
+  }
+
+  private syncDropdowns(): void {
+    const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
+    const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
+    if (srcSel) srcSel.value = this.frontierSource ?? '';
+    if (tgtSel) tgtSel.value = this.frontierTarget ?? '';
+    window.dispatchEvent(new CustomEvent('crate-frontier-changed', {
+      detail: { source: this.frontierSource, target: this.frontierTarget },
+    }));
+  }
+
+  public setFrontierCrates(source: string | null, target: string | null): void {
+    this.frontierSource = source;
+    this.frontierTarget = target;
+    if (source && target) {
+      this.frontierActive = true;
+      this.expandedEdge = null;
+      this.renderFrontier();
+    } else {
+      if (this.frontierActive) {
+        this.frontierActive = false;
+        if (this.lastFilteredGraph) {
+          this.crateGraph = buildCrateGraph(this.lastFilteredGraph);
+          this.renderCollapsed();
+        }
+      }
+      this.updateCrateSelectionStyle();
+    }
+  }
+
+  public getFrontierSource(): string | null { return this.frontierSource; }
+  public getFrontierTarget(): string | null { return this.frontierTarget; }
 
   private handleCrateDblClick(cn: CrateNode): void {
     if (!this.lastFilteredGraph) return;

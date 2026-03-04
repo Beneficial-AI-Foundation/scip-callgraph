@@ -475,6 +475,14 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (params.has('focus')) {
     focusJsonUrl = params.get('focus')!;
   }
+
+  // Crate frontier selections (module-level, not FilterOptions)
+  if (params.has('source-crate')) {
+    selectedSourceCrate = params.get('source-crate')!;
+  }
+  if (params.has('target-crate')) {
+    selectedTargetCrate = params.get('target-crate')!;
+  }
   
   return filters;
 }
@@ -488,11 +496,16 @@ function generateShareableURL(): string {
   
   // Clear existing filter params (keep json, github, etc.)
   ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec', 
-   'inner', 'pre', 'post', 'libsignal', 'external', 'hidden', 'focus', 'view'].forEach(k => params.delete(k));
+   'inner', 'pre', 'post', 'libsignal', 'external', 'hidden', 'focus', 'view',
+   'source-crate', 'target-crate'].forEach(k => params.delete(k));
 
   // View param (only set for non-default)
   if (activeView === 'blueprint') params.set('view', 'blueprint');
   if (activeView === 'crate-map') params.set('view', 'crate-map');
+
+  // Crate frontier params
+  if (selectedSourceCrate) params.set('source-crate', selectedSourceCrate);
+  if (selectedTargetCrate) params.set('target-crate', selectedTargetCrate);
   
   // Add current filter state
   if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
@@ -630,6 +643,9 @@ let state: GraphState = {
 type ActiveView = 'callgraph' | 'blueprint' | 'crate-map';
 let activeView: ActiveView = 'callgraph';
 let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVisualization | null = null;
+
+let selectedSourceCrate: string = '';
+let selectedTargetCrate: string = '';
 
 /**
  * Sync input field values to state (handles browser auto-fill after refresh)
@@ -783,16 +799,59 @@ function setupUIHandlers(): void {
   document.getElementById('view-blueprint')?.addEventListener('click', () => switchView('blueprint'));
   document.getElementById('view-crate-map')?.addEventListener('click', () => switchView('crate-map'));
 
-  // Listen for crate-map double-click navigation
+  // Listen for crate-map navigation events (double-click crate or "View in Call Graph")
   window.addEventListener('crate-map-switch-view', ((event: CustomEvent) => {
-    const { view, includeFiles } = event.detail;
+    const { view, includeFiles, sourceQuery, sinkQuery } = event.detail;
     if (includeFiles) {
       state.filters.includeFiles = includeFiles;
       const includeFilesInput = document.getElementById('include-files') as HTMLInputElement;
       if (includeFilesInput) includeFilesInput.value = includeFiles;
     }
+    if (sourceQuery) {
+      state.filters.sourceQuery = sourceQuery;
+      const sourceInput = document.getElementById('source-input') as HTMLInputElement;
+      if (sourceInput) sourceInput.value = sourceQuery;
+    }
+    if (sinkQuery) {
+      state.filters.sinkQuery = sinkQuery;
+      const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
+      if (sinkInput) sinkInput.value = sinkQuery;
+    }
     switchView(view);
     applyFiltersAndUpdate();
+  }) as EventListener);
+
+  // Crate frontier dropdown handlers
+  const handleCrateDropdownChange = () => {
+    const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
+    const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
+    selectedSourceCrate = srcSel?.value || '';
+    selectedTargetCrate = tgtSel?.value || '';
+
+    if (activeView === 'crate-map' && visualization instanceof CrateMapVisualization) {
+      visualization.setFrontierCrates(
+        selectedSourceCrate || null,
+        selectedTargetCrate || null,
+      );
+    } else if (selectedSourceCrate && selectedTargetCrate) {
+      state.filters.sourceQuery = `crate:${selectedSourceCrate}`;
+      state.filters.sinkQuery = `crate:${selectedTargetCrate}`;
+      const sourceInput = document.getElementById('source-input') as HTMLInputElement;
+      const sinkInput = document.getElementById('sink-input') as HTMLInputElement;
+      if (sourceInput) sourceInput.value = state.filters.sourceQuery;
+      if (sinkInput) sinkInput.value = state.filters.sinkQuery;
+      applyFiltersAndUpdate();
+    }
+    updateURLWithFilters();
+  };
+  document.getElementById('source-crate-select')?.addEventListener('change', handleCrateDropdownChange);
+  document.getElementById('target-crate-select')?.addEventListener('change', handleCrateDropdownChange);
+
+  // Sync module state when CrateMap updates frontier from click interactions
+  window.addEventListener('crate-frontier-changed', ((event: CustomEvent) => {
+    selectedSourceCrate = event.detail.source || '';
+    selectedTargetCrate = event.detail.target || '';
+    updateURLWithFilters();
   }) as EventListener);
 
   // File input
@@ -1106,7 +1165,7 @@ async function autoLoadGraph(): Promise<void> {
     
     console.log(`graph.json size: ${(contentLength / 1024 / 1024).toFixed(1)} MB`);
     
-    if (contentLength > LARGE_FILE_SIZE_THRESHOLD) {
+    if (contentLength > LARGE_FILE_SIZE_THRESHOLD && activeView !== 'crate-map') {
       console.log(`Large file detected, deferring load until user searches`);
       deferredGraphUrl = './graph.json';
       showLargeGraphPrompt(contentLength);
@@ -1527,8 +1586,9 @@ function loadGraph(graph: D3Graph, message: string): void {
   
   const isLarge = isLargeGraph(state.fullGraph);
   
-  // Populate the file list panel
+  // Populate the file list panel and crate dropdowns
   populateFileList();
+  populateCrateDropdowns();
   
   // Apply URL filter parameters (if any)
   const urlFilters = parseFiltersFromURL();
@@ -1542,6 +1602,17 @@ function loadGraph(graph: D3Graph, message: string): void {
   }
   
   applyFiltersAndUpdate();
+
+  // Restore crate frontier selection from URL params
+  if (selectedSourceCrate || selectedTargetCrate) {
+    const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
+    const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
+    if (srcSel) srcSel.value = selectedSourceCrate;
+    if (tgtSel) tgtSel.value = selectedTargetCrate;
+    if (activeView === 'crate-map' && visualization instanceof CrateMapVisualization) {
+      visualization.setFrontierCrates(selectedSourceCrate || null, selectedTargetCrate || null);
+    }
+  }
   
   // Load focus set if URL parameter is present and not already loaded
   if (focusJsonUrl && state.filters.focusNodeIds.size === 0) {
@@ -1959,6 +2030,38 @@ function computeDisambiguatedPaths(paths: string[]): Map<string, string> {
   }
   
   return result;
+}
+
+/**
+ * Populate the Source Crate / Target Crate dropdowns with unique crate names.
+ */
+function populateCrateDropdowns(): void {
+  if (!state.fullGraph) return;
+
+  const crateNames = new Set<string>();
+  for (const node of state.fullGraph.nodes) {
+    if (node.crate_name && node.crate_name !== 'unknown') {
+      crateNames.add(node.crate_name);
+    }
+  }
+
+  const sorted = [...crateNames].sort((a, b) => a.localeCompare(b));
+
+  for (const id of ['source-crate-select', 'target-crate-select']) {
+    const select = document.getElementById(id) as HTMLSelectElement | null;
+    if (!select) continue;
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">--</option>';
+    for (const name of sorted) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    }
+    if (currentVal && sorted.includes(currentVal)) {
+      select.value = currentVal;
+    }
+  }
 }
 
 /**
