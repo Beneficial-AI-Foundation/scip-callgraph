@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SCIP Call Graph Viewer</title>
   <link rel="stylesheet" href="style.css">
+  <style id="embed-critical">
+    /* Critical: hide chrome before first paint when view=deps (avoids flash) */
+    html.embed-mode .header, html.embed-mode .sidebar, html.embed-mode .footer, html.embed-mode .graph-instructions { display: none !important; }
+  </style>
+  <script>
+    (function(){if(/[?&]view=deps/.test(location.search))document.documentElement.classList.add('embed-mode');})();
+  </script>
 </head>
 <body>
   <div class="app-container">

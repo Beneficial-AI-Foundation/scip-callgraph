@@ -211,11 +211,13 @@ function isCrateQuery(query: string): boolean {
 }
 
 /**
- * Options for exact node selection (used by VS Code integration)
+ * Options for exact node selection (used by VS Code integration and URL params)
  */
 export interface SelectedNodeOptions {
   /** Exact SCIP ID of the selected node (overrides sourceQuery matching) */
   selectedNodeId?: string | null;
+  /** When set, source/sink matching is restricted to nodes in this path (file) */
+  pathFilter?: string | null;
 }
 
 export function applyFilters(
@@ -270,28 +272,29 @@ export function applyFilters(
   const sourceMatchIds = new Set<string>();
   const sinkMatchIds = new Set<string>();
   
-  // Check if we have an exact node selection (from VS Code)
   const selectedNodeId = nodeOptions?.selectedNodeId;
+  const pathFilter = nodeOptions?.pathFilter;
   
+  const nodeMatchesPath = pathFilter ? (node: D3Node) => {
+    const pathRegex = pathPatternToRegex(pathFilter);
+    return pathRegex.test(node.relative_path || '') || pathRegex.test(node.full_path || '');
+  } : () => true;
+
   if (sourceQuery !== '') {
     if (selectedNodeId) {
-      // Use exact node ID for source matching
-      // This ensures we only match the specific function the user clicked on
       const exactNode = fullGraph.nodes.find(n => n.id === selectedNodeId);
-      if (exactNode) {
+      if (exactNode && (!pathFilter || nodeMatchesPath(exactNode))) {
         sourceMatchIds.add(exactNode.id);
-      } else {
-        // Fallback to query matching if ID not found
+      } else if (!exactNode) {
         fullGraph.nodes.forEach(node => {
-          if (matchesQuery(node, sourceQuery)) {
+          if (matchesQuery(node, sourceQuery) && nodeMatchesPath(node)) {
             sourceMatchIds.add(node.id);
           }
         });
       }
     } else {
-      // Normal query matching
       fullGraph.nodes.forEach(node => {
-        if (matchesQuery(node, sourceQuery)) {
+        if (matchesQuery(node, sourceQuery) && nodeMatchesPath(node)) {
           sourceMatchIds.add(node.id);
         }
       });
@@ -300,22 +303,19 @@ export function applyFilters(
   
   if (sinkQuery !== '') {
     if (selectedNodeId) {
-      // Use exact node ID for sink matching
       const exactNode = fullGraph.nodes.find(n => n.id === selectedNodeId);
-      if (exactNode) {
+      if (exactNode && (!pathFilter || nodeMatchesPath(exactNode))) {
         sinkMatchIds.add(exactNode.id);
-      } else {
-        // Fallback to query matching
+      } else if (!exactNode) {
         fullGraph.nodes.forEach(node => {
-          if (matchesQuery(node, sinkQuery)) {
+          if (matchesQuery(node, sinkQuery) && nodeMatchesPath(node)) {
             sinkMatchIds.add(node.id);
           }
         });
       }
     } else {
-      // Normal query matching
       fullGraph.nodes.forEach(node => {
-        if (matchesQuery(node, sinkQuery)) {
+        if (matchesQuery(node, sinkQuery) && nodeMatchesPath(node)) {
           sinkMatchIds.add(node.id);
         }
       });
@@ -676,6 +676,16 @@ export function matchesQuery(node: D3Node, query: string): boolean {
     const crateName = query.slice(6);
     const crateRegex = globToRegex(asSubstringGlob(crateName));
     return crateRegex.test(node.crate_name);
+  }
+
+  // Path match: "path:curve25519-dalek/src/lemmas/foo.rs" matches nodes in that file
+  if (query.startsWith('path:')) {
+    const pathPattern = query.slice(5).trim();
+    if (!pathPattern) return false;
+    const pathRegex = pathPatternToRegex(pathPattern);
+    const rel = node.relative_path || '';
+    const full = node.full_path || '';
+    return pathRegex.test(rel) || pathRegex.test(full);
   }
 
   // Check for Rust-style path-qualified syntax: "path::function"

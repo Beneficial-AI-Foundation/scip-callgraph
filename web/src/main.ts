@@ -333,6 +333,12 @@ const SEARCH_DEBOUNCE_MS = 300; // Wait 300ms after user stops typing
 // When set, filters will match only this exact node instead of all nodes with the same display name
 let selectedNodeId: string | null = null;
 
+/** When true (view=deps), hide sidebars/header for embed/iframe use */
+let embedMode = false;
+
+/** Path filter from URL (path=) - restricts source/sink matching to nodes in this file */
+let urlPathFilter: string | null = null;
+
 /**
  * Debounced version of applyFiltersAndUpdate for large graphs.
  * Prevents UI freeze from filtering on every keystroke.
@@ -423,6 +429,27 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (params.has('source')) filters.sourceQuery = params.get('source')!;
   if (params.has('sink')) filters.sinkQuery = params.get('sink')!;
   if (params.has('files')) filters.includeFiles = params.get('files')!;
+
+  urlPathFilter = null;  // reset unless path is present
+  // path: file path - restricts to nodes in this file (use with source/node for precise match)
+  if (params.has('path')) {
+    const pathVal = decodeURIComponent(params.get('path')!);
+    urlPathFilter = pathVal;
+    // When view=deps, ignore 'files' param
+    if (params.get('view') === 'deps') {
+      filters.includeFiles = '';
+    }
+    // path alone → match nodes in file; path + node → node does the matching, path restricts
+    if (!params.has('node') && !params.has('source')) {
+      filters.sourceQuery = `path:${pathVal}`;
+    }
+  }
+
+  // node: function/lemma name - when combined with path, matches that specific node in that file
+  if (params.has('node')) {
+    const nodeVal = decodeURIComponent(params.get('node')!);
+    filters.sourceQuery = nodeVal;
+  }
   
   // Number params
   if (params.has('depth')) {
@@ -496,11 +523,25 @@ function generateShareableURL(): string {
   // Clear existing filter params (keep json, github, etc.)
   ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec', 
    'inner', 'pre', 'post', 'libsignal', 'external', 'hidden', 'focus', 'view',
-   'source-crate', 'target-crate'].forEach(k => params.delete(k));
+   'path', 'node', 'source-crate', 'target-crate'].forEach(k => params.delete(k));
 
   // View param (only set for non-default)
   if (activeView === 'blueprint') params.set('view', 'blueprint');
   if (activeView === 'crate-map') params.set('view', 'crate-map');
+  if (embedMode) params.set('view', 'deps');
+
+  // path and node params (for view=deps embed mode - both needed for precise filtering)
+  if (embedMode) {
+    if (state.selectedNode) {
+      params.set('path', state.selectedNode.relative_path);
+      params.set('node', state.selectedNode.display_name);
+    } else if (state.filters.sourceQuery.startsWith('path:')) {
+      params.set('path', state.filters.sourceQuery.slice(5));
+    } else if (urlPathFilter) {
+      params.set('path', urlPathFilter);
+      if (state.filters.sourceQuery) params.set('node', state.filters.sourceQuery);
+    }
+  }
 
   // Crate frontier params
   if (selectedSourceCrate) params.set('source-crate', selectedSourceCrate);
@@ -509,7 +550,10 @@ function generateShareableURL(): string {
   // Add current filter state
   if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
   if (state.filters.sinkQuery) params.set('sink', state.filters.sinkQuery);
-  if (state.filters.includeFiles) params.set('files', state.filters.includeFiles);
+  // Don't add 'files' when source is path-based (embed mode) - avoids over-restriction on reload
+  if (state.filters.includeFiles && !state.filters.sourceQuery.startsWith('path:')) {
+    params.set('files', state.filters.includeFiles);
+  }
   if (state.filters.maxDepth !== null) params.set('depth', state.filters.maxDepth.toString());
   
   // Only include non-default boolean values to keep URL short
@@ -710,6 +754,9 @@ function init(): void {
     activeView = 'blueprint';
   } else if (viewParam === 'crate-map') {
     activeView = 'crate-map';
+  } else if (viewParam === 'deps') {
+    embedMode = true;
+    document.documentElement.classList.add('embed-mode');  // Also set on html (inline script does this earlier)
   }
 
   // Initialize visualization for the active view
@@ -1781,8 +1828,11 @@ function applyFiltersAndUpdate(): void {
     runDeferredComputations();
   }
 
-  // Pass selectedNodeId for exact matching (VS Code integration)
-  const nodeOptions: SelectedNodeOptions = { selectedNodeId };
+  // Pass selectedNodeId and pathFilter for exact/specific matching (VS Code + URL params)
+  const nodeOptions: SelectedNodeOptions = {
+    selectedNodeId,
+    pathFilter: urlPathFilter,
+  };
   let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions, state.projectLanguage);
   
   // Limit rendered nodes for large results to prevent D3 freeze
@@ -1833,6 +1883,21 @@ function updateURLWithFilters(): void {
 function handleStateChange(newState: GraphState, selectionChanged: boolean = false): void {
   state = newState;
   updateNodeInfo();
+
+  // In embed mode (view=deps), clicking a node focuses on that node's deps only
+  if (embedMode && selectionChanged) {
+    if (newState.selectedNode) {
+      state.filters.sourceQuery = newState.selectedNode.display_name;
+      selectedNodeId = newState.selectedNode.id;
+      urlPathFilter = newState.selectedNode.relative_path;
+    } else {
+      // Deselected: fall back to path-only view if we have urlPathFilter
+      selectedNodeId = null;
+      if (urlPathFilter) {
+        state.filters.sourceQuery = `path:${urlPathFilter}`;
+      }
+    }
+  }
   
   // Re-apply filters if selection/hidden nodes changed (not just hover)
   // This ensures hidden nodes are properly filtered out
