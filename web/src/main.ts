@@ -339,6 +339,10 @@ let embedMode = false;
 /** Path filter from URL (path=) - restricts source/sink matching to nodes in this file */
 let urlPathFilter: string | null = null;
 
+/** Selection history for embed mode undo (path or node focus) */
+type SelectionState = { sourceQuery: string; selectedNodeId: string | null; urlPathFilter: string | null };
+let selectionHistoryStack: SelectionState[] = [];
+
 /**
  * Debounced version of applyFiltersAndUpdate for large graphs.
  * Prevents UI freeze from filtering on every keystroke.
@@ -839,9 +843,72 @@ function switchView(view: ActiveView): void {
 }
 
 /**
+ * Embed mode: go back to file-level view (all nodes in path)
+ */
+function goBackToFile(): void {
+  if (!urlPathFilter) return;
+  selectedNodeId = null;
+  selectionHistoryStack = [];
+  state.filters.sourceQuery = `path:${urlPathFilter}`;
+  state.selectedNode = null;
+  state.filters.selectedNodes.clear();
+  updateEmbedNav();
+  applyFiltersAndUpdate();
+}
+
+/**
+ * Embed mode: undo last node selection
+ */
+function undoSelection(): void {
+  const prev = selectionHistoryStack.pop();
+  if (!prev) return;
+  state.filters.sourceQuery = prev.sourceQuery;
+  selectedNodeId = prev.selectedNodeId;
+  urlPathFilter = prev.urlPathFilter;
+  if (prev.selectedNodeId && state.fullGraph) {
+    const node = state.fullGraph.nodes.find(n => n.id === prev.selectedNodeId);
+    state.selectedNode = node || null;
+  } else {
+    state.selectedNode = null;
+  }
+  updateEmbedNav();
+  applyFiltersAndUpdate();
+}
+
+/**
+ * Embed mode: show/hide nav bar and update button states
+ */
+function updateEmbedNav(): void {
+  const nav = document.getElementById('embed-nav');
+  const backBtn = document.getElementById('embed-back-to-file');
+  const undoBtn = document.getElementById('embed-undo');
+  if (!nav || !backBtn || !undoBtn) return;
+
+  const hasNodeFocus = !!(
+    state.selectedNode ||
+    selectedNodeId ||
+    (urlPathFilter && state.filters.sourceQuery && !state.filters.sourceQuery.startsWith('path:'))
+  );
+  const canUndo = selectionHistoryStack.length > 0;
+
+  // Only show nav when there's something to do (node focus or undo available)
+  if (embedMode && urlPathFilter && (hasNodeFocus || canUndo)) {
+    nav.style.display = 'flex';
+    (backBtn as HTMLButtonElement).disabled = !hasNodeFocus;
+    (undoBtn as HTMLButtonElement).disabled = !canUndo;
+  } else {
+    nav.style.display = 'none';
+  }
+}
+
+/**
  * Set up UI event handlers
  */
 function setupUIHandlers(): void {
+  // Embed mode: back / undo
+  document.getElementById('embed-back-to-file')?.addEventListener('click', goBackToFile);
+  document.getElementById('embed-undo')?.addEventListener('click', undoSelection);
+
   // View switcher
   document.getElementById('view-callgraph')?.addEventListener('click', () => switchView('callgraph'));
   document.getElementById('view-blueprint')?.addEventListener('click', () => switchView('blueprint'));
@@ -1863,7 +1930,8 @@ function applyFiltersAndUpdate(): void {
   updateStats(wasTruncated ? filtered.nodes.length : undefined);
   updateNodeInfo();
   updateHiddenNodesUI();
-  
+  if (embedMode) updateEmbedNav();
+
   // Update URL with current filter state (without adding to history)
   updateURLWithFilters();
 }
@@ -1887,16 +1955,24 @@ function handleStateChange(newState: GraphState, selectionChanged: boolean = fal
   // In embed mode (view=deps), clicking a node focuses on that node's deps only
   if (embedMode && selectionChanged) {
     if (newState.selectedNode) {
+      // Push current state before navigating into node
+      selectionHistoryStack.push({
+        sourceQuery: state.filters.sourceQuery,
+        selectedNodeId,
+        urlPathFilter,
+      });
       state.filters.sourceQuery = newState.selectedNode.display_name;
       selectedNodeId = newState.selectedNode.id;
       urlPathFilter = newState.selectedNode.relative_path;
     } else {
       // Deselected: fall back to path-only view if we have urlPathFilter
       selectedNodeId = null;
+      selectionHistoryStack = [];
       if (urlPathFilter) {
         state.filters.sourceQuery = `path:${urlPathFilter}`;
       }
     }
+    updateEmbedNav();
   }
   
   // Re-apply filters if selection/hidden nodes changed (not just hover)
