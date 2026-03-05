@@ -150,6 +150,20 @@ For production static builds behind a reverse proxy:
 npm run build:remote   # Builds with base /graph/
 ```
 
+**Docker** (bypasses glibc/Node version issues on older hosts):
+
+```bash
+cd scip-callgraph
+docker build -t scip-callgraph .
+docker run -p 3001:3001 scip-callgraph
+```
+
+To override the public origin:
+
+```bash
+docker run -p 3001:3001 -e VITE_ORIGIN=https://your-domain.com scip-callgraph
+```
+
 The viewer offers three views:
 - **Call Graph** -- Force-directed layout for function-level exploration and source-to-sink path finding
 - **Blueprint** -- Hierarchical layout grouping functions by file for module-level structure
