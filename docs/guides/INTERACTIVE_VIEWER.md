@@ -257,7 +257,7 @@ The exported JSON has this structure:
       "is_libsignal": true,
       "dependencies": ["callee_id_1", "callee_id_2"],
       "dependents": ["caller_id_1"],
-      "mode": "exec"
+      "kind": "exec"
     }
   ],
   "links": [

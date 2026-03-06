@@ -206,6 +206,7 @@ export interface ProbeAtom {
   "code-path": string;
   "code-module": string;
   kind: string;
+  language?: string;
   "verification-status"?: string;
   "specified"?: boolean;
   "dependencies-with-locations"?: Array<{
@@ -213,6 +214,26 @@ export interface ProbeAtom {
     location: string;
     line: number;
   }>;
+}
+
+/**
+ * Unwrap a Schema 2.0 metadata envelope if present.
+ *
+ * probe-verus and probe-lean 2.0 wrap their JSON output in an envelope with
+ * `schema` (containing '/'), `tool`, `source`, `timestamp`, and `data` fields.
+ * This function extracts the `data` payload. If the input is not an envelope
+ * (bare dict, array, etc.) it is returned unchanged.
+ */
+export function unwrapEnvelope(data: unknown): unknown {
+  if (
+    typeof data === 'object' && data !== null && !Array.isArray(data) &&
+    'schema' in data && 'data' in data &&
+    typeof (data as any).schema === 'string' &&
+    (data as any).schema.includes('/')
+  ) {
+    return (data as any).data;
+  }
+  return data;
 }
 
 /**

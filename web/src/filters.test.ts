@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { globToRegex, asSubstringGlob, matchesQuery, applyFilters, pathPatternToRegex } from './filters';
-import { D3Graph, D3Node, D3Link, FilterOptions } from './types';
+import { D3Graph, D3Node, D3Link, FilterOptions, unwrapEnvelope, isAtomDictFormat } from './types';
 
 // ============================================================================
 // Test Helpers
@@ -1002,3 +1002,108 @@ describe('Crate-level source/sink queries', () => {
   });
 });
 
+// ============================================================================
+// Category 7: Schema 2.0 Envelope Handling
+// ============================================================================
+
+describe('Schema 2.0 Envelope Handling', () => {
+  const bareAtomDict = {
+    'probe:test/1.0.0/foo()': {
+      'display-name': 'foo',
+      dependencies: ['probe:test/1.0.0/bar()'],
+      'code-text': { 'lines-start': 1, 'lines-end': 10 },
+      'code-path': 'src/lib.rs',
+      'code-module': '',
+      kind: 'exec',
+      language: 'rust',
+    },
+    'probe:test/1.0.0/bar()': {
+      'display-name': 'bar',
+      dependencies: [],
+      'code-text': { 'lines-start': 12, 'lines-end': 20 },
+      'code-path': 'src/lib.rs',
+      'code-module': '',
+      kind: 'proof',
+    },
+  };
+
+  const envelopedAtomDict = {
+    schema: 'probe-verus/atoms',
+    'schema-version': '2.0',
+    tool: { name: 'probe-verus', version: '2.0.0', command: 'atomize' },
+    source: {
+      repo: 'https://github.com/org/project',
+      commit: 'abc123',
+      language: 'rust',
+      package: 'test',
+      'package-version': '1.0.0',
+    },
+    timestamp: '2026-03-06T12:00:00Z',
+    data: bareAtomDict,
+  };
+
+  describe('unwrapEnvelope', () => {
+    it('extracts data from a Schema 2.0 envelope', () => {
+      const result = unwrapEnvelope(envelopedAtomDict);
+      expect(result).toEqual(bareAtomDict);
+    });
+
+    it('returns bare dict unchanged', () => {
+      const result = unwrapEnvelope(bareAtomDict);
+      expect(result).toEqual(bareAtomDict);
+    });
+
+    it('returns array unchanged', () => {
+      const arr = [{ id: 'a' }];
+      expect(unwrapEnvelope(arr)).toBe(arr);
+    });
+
+    it('returns null/undefined/primitives unchanged', () => {
+      expect(unwrapEnvelope(null)).toBeNull();
+      expect(unwrapEnvelope(42)).toBe(42);
+      expect(unwrapEnvelope('hello')).toBe('hello');
+    });
+
+    it('does not unwrap objects whose schema lacks "/"', () => {
+      const notAnEnvelope = { schema: 'plain', data: { key: 'val' } };
+      expect(unwrapEnvelope(notAnEnvelope)).toEqual(notAnEnvelope);
+    });
+
+    it('handles probe-lean envelopes', () => {
+      const leanEnvelope = {
+        schema: 'probe-lean/atoms',
+        'schema-version': '2.0',
+        data: { 'lean:Foo.bar': { 'display-name': 'bar', dependencies: [] } },
+      };
+      const result = unwrapEnvelope(leanEnvelope);
+      expect(result).toEqual(leanEnvelope.data);
+    });
+
+    it('handles merged-atoms envelopes', () => {
+      const merged = {
+        schema: 'probe/merged-atoms',
+        'schema-version': '2.0',
+        tool: { name: 'probe', version: '2.0.0', command: 'merge-atoms' },
+        inputs: [],
+        timestamp: '2026-03-06T12:00:00Z',
+        data: bareAtomDict,
+      };
+      expect(unwrapEnvelope(merged)).toEqual(bareAtomDict);
+    });
+  });
+
+  describe('isAtomDictFormat after unwrapping', () => {
+    it('recognizes a bare atom dict', () => {
+      expect(isAtomDictFormat(bareAtomDict)).toBe(true);
+    });
+
+    it('does NOT recognize an envelope as atom dict (envelope must be unwrapped first)', () => {
+      expect(isAtomDictFormat(envelopedAtomDict)).toBe(false);
+    });
+
+    it('recognizes atom dict after unwrapping envelope', () => {
+      const unwrapped = unwrapEnvelope(envelopedAtomDict);
+      expect(isAtomDictFormat(unwrapped)).toBe(true);
+    });
+  });
+});
