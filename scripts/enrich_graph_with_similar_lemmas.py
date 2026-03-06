@@ -36,6 +36,18 @@ import sys
 from pathlib import Path
 
 
+def unwrap_envelope(data):
+    """Unwrap a Schema 2.0 metadata envelope, returning the data payload.
+
+    probe-verus/probe-lean 2.0 wrap JSON output in an envelope with a
+    ``schema`` field containing '/' and a ``data`` field.  If the input
+    is not an envelope (bare dict, array, etc.) it is returned unchanged.
+    """
+    if isinstance(data, dict) and 'schema' in data and '/' in data.get('schema', '') and 'data' in data:
+        return data['data']
+    return data
+
+
 def enrich_graph(
     graph_path: Path,
     index_path: Path,
@@ -78,7 +90,7 @@ def enrich_graph(
         print(f"📂 Loading graph from: {graph_path}")
     
     with open(graph_path) as f:
-        graph = json.load(f)
+        graph = unwrap_envelope(json.load(f))
     
     nodes = graph.get("nodes", [])
     if verbose:

@@ -1,0 +1,8 @@
+web/node_modules
+.git
+.github
+target
+*.log
+.env
+.env.*
+!.env.example

@@ -117,6 +117,18 @@ def rust_analyzer_to_verus_analyzer(ra_id: str) -> list:
     return results
 
 
+def unwrap_envelope(data):
+    """Unwrap a Schema 2.0 metadata envelope, returning the data payload.
+
+    probe-verus/probe-lean 2.0 wrap JSON output in an envelope with a
+    ``schema`` field containing '/' and a ``data`` field.  If the input
+    is not an envelope (bare dict, array, etc.) it is returned unchanged.
+    """
+    if isinstance(data, dict) and 'schema' in data and '/' in data.get('schema', '') and 'data' in data:
+        return data['data']
+    return data
+
+
 def load_atoms_and_specs(atoms_path=None, specs_path=None):
     """Load atoms.json and specs.json files."""
     if atoms_path is None:
@@ -129,11 +141,11 @@ def load_atoms_and_specs(atoms_path=None, specs_path=None):
     
     if Path(atoms_path).exists():
         with open(atoms_path, 'r') as f:
-            atoms = json.load(f)
+            atoms = unwrap_envelope(json.load(f))
     
     if Path(specs_path).exists():
         with open(specs_path, 'r') as f:
-            specs = json.load(f)
+            specs = unwrap_envelope(json.load(f))
     
     return atoms, specs
 
@@ -288,7 +300,7 @@ def get_dalek_functions_called_by_signal(graph_path=None):
         graph_path = DEFAULT_GRAPH_PATH
     
     with open(graph_path, 'r') as f:
-        data = json.load(f)
+        data = unwrap_envelope(json.load(f))
     
     nodes = data['nodes']
     node_by_id = {n['id']: n for n in nodes}
@@ -395,7 +407,7 @@ def output_markdown(result_map, output_file=None, include_specs=True):
             
             # Find specs for each function
             with open(DEFAULT_GRAPH_PATH, 'r') as f:
-                graph_data = json.load(f)
+                graph_data = unwrap_envelope(json.load(f))
             node_by_id = {n['id']: n for n in graph_data['nodes']}
             
             # Track seen (name, file) to avoid duplicates

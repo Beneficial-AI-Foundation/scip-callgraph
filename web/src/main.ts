@@ -1,4 +1,4 @@
-import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName, VerificationStatus } from './types';
+import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, unwrapEnvelope, extractEnvelopeLanguage, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName, VerificationStatus } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
@@ -118,7 +118,7 @@ function convertSimplifiedToD3Graph(nodes: SimplifiedNode[]): D3Graph {
  * - Has 'kind' for declaration classification (exec/proof/spec/theorem/def/axiom/...)
  * - Optionally has 'dependencies-with-locations' for typed links
  */
-function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
+function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>, envelopeLanguage?: string): D3Graph {
   const knownIds = new Set(Object.keys(atoms));
   
   // Build dependents map (inverse of dependencies)
@@ -192,11 +192,16 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
     }
   }
   
+  // Resolve source language: envelope first, then first atom's language field
+  const firstAtom = Object.values(atoms)[0];
+  const source_language = envelopeLanguage || firstAtom?.language;
+
   const metadata = {
     total_nodes: d3Nodes.length,
     total_edges: links.length,
     project_root: 'Probe atom dict',
     generated_at: new Date().toISOString(),
+    source_language,
   };
   
   return { nodes: d3Nodes, links, metadata };
@@ -210,16 +215,25 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
  * @returns D3Graph in the expected format
  */
 function parseAndNormalizeGraph(data: unknown): D3Graph {
+  // Extract source language from envelope before unwrapping (e.g. "rust", "lean")
+  const envelopeLanguage = extractEnvelopeLanguage(data);
+
+  // Unwrap Schema 2.0 envelope if present (probe-verus / probe-lean)
+  data = unwrapEnvelope(data);
+
   // Check if it's already in D3Graph format
   if (isD3GraphFormat(data)) {
     console.log('Detected D3Graph format');
+    if (envelopeLanguage && data.metadata && !data.metadata.source_language) {
+      data.metadata.source_language = envelopeLanguage;
+    }
     return data;
   }
   
   // Check if it's in probe atom dict format (probe-verus / probe-lean atoms.json)
   if (isAtomDictFormat(data)) {
     console.log('Detected probe atom dict format, converting to D3Graph');
-    return convertAtomDictToD3Graph(data);
+    return convertAtomDictToD3Graph(data, envelopeLanguage);
   }
   
   // Check if it's in simplified format
@@ -333,6 +347,16 @@ const SEARCH_DEBOUNCE_MS = 300; // Wait 300ms after user stops typing
 // When set, filters will match only this exact node instead of all nodes with the same display name
 let selectedNodeId: string | null = null;
 
+/** When true (view=deps), hide sidebars/header for embed/iframe use */
+let embedMode = false;
+
+/** Path filter from URL (path=) - restricts source/sink matching to nodes in this file */
+let urlPathFilter: string | null = null;
+
+/** Selection history for embed mode undo (path or node focus) */
+type SelectionState = { sourceQuery: string; selectedNodeId: string | null; urlPathFilter: string | null };
+let selectionHistoryStack: SelectionState[] = [];
+
 /**
  * Debounced version of applyFiltersAndUpdate for large graphs.
  * Prevents UI freeze from filtering on every keystroke.
@@ -423,6 +447,27 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (params.has('source')) filters.sourceQuery = params.get('source')!;
   if (params.has('sink')) filters.sinkQuery = params.get('sink')!;
   if (params.has('files')) filters.includeFiles = params.get('files')!;
+
+  urlPathFilter = null;  // reset unless path is present
+  // path: file path - restricts to nodes in this file (use with source/node for precise match)
+  if (params.has('path')) {
+    const pathVal = decodeURIComponent(params.get('path')!);
+    urlPathFilter = pathVal;
+    // When view=deps, ignore 'files' param
+    if (params.get('view') === 'deps') {
+      filters.includeFiles = '';
+    }
+    // path alone → match nodes in file; path + node → node does the matching, path restricts
+    if (!params.has('node') && !params.has('source')) {
+      filters.sourceQuery = `path:${pathVal}`;
+    }
+  }
+
+  // node: function/lemma name - when combined with path, matches that specific node in that file
+  if (params.has('node')) {
+    const nodeVal = decodeURIComponent(params.get('node')!);
+    filters.sourceQuery = nodeVal;
+  }
   
   // Number params
   if (params.has('depth')) {
@@ -496,11 +541,25 @@ function generateShareableURL(): string {
   // Clear existing filter params (keep json, github, etc.)
   ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec', 
    'inner', 'pre', 'post', 'libsignal', 'external', 'hidden', 'focus', 'view',
-   'source-crate', 'target-crate'].forEach(k => params.delete(k));
+   'path', 'node', 'source-crate', 'target-crate'].forEach(k => params.delete(k));
 
   // View param (only set for non-default)
   if (activeView === 'blueprint') params.set('view', 'blueprint');
   if (activeView === 'crate-map') params.set('view', 'crate-map');
+  if (embedMode) params.set('view', 'deps');
+
+  // path and node params (for view=deps embed mode - both needed for precise filtering)
+  if (embedMode) {
+    if (state.selectedNode) {
+      params.set('path', state.selectedNode.relative_path);
+      params.set('node', state.selectedNode.display_name);
+    } else if (state.filters.sourceQuery.startsWith('path:')) {
+      params.set('path', state.filters.sourceQuery.slice(5));
+    } else if (urlPathFilter) {
+      params.set('path', urlPathFilter);
+      if (state.filters.sourceQuery) params.set('node', state.filters.sourceQuery);
+    }
+  }
 
   // Crate frontier params
   if (selectedSourceCrate) params.set('source-crate', selectedSourceCrate);
@@ -509,7 +568,10 @@ function generateShareableURL(): string {
   // Add current filter state
   if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
   if (state.filters.sinkQuery) params.set('sink', state.filters.sinkQuery);
-  if (state.filters.includeFiles) params.set('files', state.filters.includeFiles);
+  // Don't add 'files' when source is path-based (embed mode) - avoids over-restriction on reload
+  if (state.filters.includeFiles && !state.filters.sourceQuery.startsWith('path:')) {
+    params.set('files', state.filters.includeFiles);
+  }
   if (state.filters.maxDepth !== null) params.set('depth', state.filters.maxDepth.toString());
   
   // Only include non-default boolean values to keep URL short
@@ -710,6 +772,9 @@ function init(): void {
     activeView = 'blueprint';
   } else if (viewParam === 'crate-map') {
     activeView = 'crate-map';
+  } else if (viewParam === 'deps') {
+    embedMode = true;
+    document.documentElement.classList.add('embed-mode');  // Also set on html (inline script does this earlier)
   }
 
   // Initialize visualization for the active view
@@ -792,9 +857,72 @@ function switchView(view: ActiveView): void {
 }
 
 /**
+ * Embed mode: go back to file-level view (all nodes in path)
+ */
+function goBackToFile(): void {
+  if (!urlPathFilter) return;
+  selectedNodeId = null;
+  selectionHistoryStack = [];
+  state.filters.sourceQuery = `path:${urlPathFilter}`;
+  state.selectedNode = null;
+  state.filters.selectedNodes.clear();
+  updateEmbedNav();
+  applyFiltersAndUpdate();
+}
+
+/**
+ * Embed mode: undo last node selection
+ */
+function undoSelection(): void {
+  const prev = selectionHistoryStack.pop();
+  if (!prev) return;
+  state.filters.sourceQuery = prev.sourceQuery;
+  selectedNodeId = prev.selectedNodeId;
+  urlPathFilter = prev.urlPathFilter;
+  if (prev.selectedNodeId && state.fullGraph) {
+    const node = state.fullGraph.nodes.find(n => n.id === prev.selectedNodeId);
+    state.selectedNode = node || null;
+  } else {
+    state.selectedNode = null;
+  }
+  updateEmbedNav();
+  applyFiltersAndUpdate();
+}
+
+/**
+ * Embed mode: show/hide nav bar and update button states
+ */
+function updateEmbedNav(): void {
+  const nav = document.getElementById('embed-nav');
+  const backBtn = document.getElementById('embed-back-to-file');
+  const undoBtn = document.getElementById('embed-undo');
+  if (!nav || !backBtn || !undoBtn) return;
+
+  const hasNodeFocus = !!(
+    state.selectedNode ||
+    selectedNodeId ||
+    (urlPathFilter && state.filters.sourceQuery && !state.filters.sourceQuery.startsWith('path:'))
+  );
+  const canUndo = selectionHistoryStack.length > 0;
+
+  // Only show nav when there's something to do (node focus or undo available)
+  if (embedMode && urlPathFilter && (hasNodeFocus || canUndo)) {
+    nav.style.display = 'flex';
+    (backBtn as HTMLButtonElement).disabled = !hasNodeFocus;
+    (undoBtn as HTMLButtonElement).disabled = !canUndo;
+  } else {
+    nav.style.display = 'none';
+  }
+}
+
+/**
  * Set up UI event handlers
  */
 function setupUIHandlers(): void {
+  // Embed mode: back / undo
+  document.getElementById('embed-back-to-file')?.addEventListener('click', goBackToFile);
+  document.getElementById('embed-undo')?.addEventListener('click', undoSelection);
+
   // View switcher
   document.getElementById('view-callgraph')?.addEventListener('click', () => switchView('callgraph'));
   document.getElementById('view-blueprint')?.addEventListener('click', () => switchView('blueprint'));
@@ -1781,8 +1909,11 @@ function applyFiltersAndUpdate(): void {
     runDeferredComputations();
   }
 
-  // Pass selectedNodeId for exact matching (VS Code integration)
-  const nodeOptions: SelectedNodeOptions = { selectedNodeId };
+  // Pass selectedNodeId and pathFilter for exact/specific matching (VS Code + URL params)
+  const nodeOptions: SelectedNodeOptions = {
+    selectedNodeId,
+    pathFilter: urlPathFilter,
+  };
   let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions, state.projectLanguage);
   
   // Limit rendered nodes for large results to prevent D3 freeze
@@ -1813,7 +1944,8 @@ function applyFiltersAndUpdate(): void {
   updateStats(wasTruncated ? filtered.nodes.length : undefined);
   updateNodeInfo();
   updateHiddenNodesUI();
-  
+  if (embedMode) updateEmbedNav();
+
   // Update URL with current filter state (without adding to history)
   updateURLWithFilters();
 }
@@ -1833,6 +1965,29 @@ function updateURLWithFilters(): void {
 function handleStateChange(newState: GraphState, selectionChanged: boolean = false): void {
   state = newState;
   updateNodeInfo();
+
+  // In embed mode (view=deps), clicking a node focuses on that node's deps only
+  if (embedMode && selectionChanged) {
+    if (newState.selectedNode) {
+      // Push current state before navigating into node
+      selectionHistoryStack.push({
+        sourceQuery: state.filters.sourceQuery,
+        selectedNodeId,
+        urlPathFilter,
+      });
+      state.filters.sourceQuery = newState.selectedNode.display_name;
+      selectedNodeId = newState.selectedNode.id;
+      urlPathFilter = newState.selectedNode.relative_path;
+    } else {
+      // Deselected: fall back to path-only view if we have urlPathFilter
+      selectedNodeId = null;
+      selectionHistoryStack = [];
+      if (urlPathFilter) {
+        state.filters.sourceQuery = `path:${urlPathFilter}`;
+      }
+    }
+    updateEmbedNav();
+  }
   
   // Re-apply filters if selection/hidden nodes changed (not just hover)
   // This ensures hidden nodes are properly filtered out

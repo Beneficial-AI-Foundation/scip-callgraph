@@ -21,6 +21,7 @@ scip-callgraph/
 ├── external/                # Git submodules
 │   └── verus_lemma_finder/  # Similar lemma search (github.com/Beneficial-AI-Foundation/verus_lemma_finder)
 ├── web/                     # Interactive web viewer
+├── ecosystem.config.cjs     # PM2 config for local/remote web viewer
 ├── examples/                # Example data and test projects
 ├── docs/                    # Detailed documentation
 └── METRICS_PIPELINE.md      # Verus metrics pipeline guide
@@ -117,7 +118,53 @@ cargo run --release --bin pipeline -- /path/to/verus-project
 cd web && npm install && npm run dev
 ```
 
-Open http://localhost:3000 to explore your call graph interactively. The viewer offers three views:
+Open http://localhost:3000 to explore your call graph interactively.
+
+#### Local vs Remote Deployment
+
+The web viewer supports two modes:
+
+| Mode | Command | URL / Base Path |
+|------|---------|-----------------|
+| **Local** | `npm run dev` | http://localhost:3000 (base `/`) |
+| **Remote** (reverse proxy at `/graph/`) | `npm run dev:remote` or PM2 (see below) | Served at `/graph/`, port 3001 |
+
+For **EC2 or reverse-proxy setups** where the app is served under a subpath (e.g. `/graph/`):
+
+```bash
+cd web
+npm run dev:remote          # Dev server in remote mode
+# Or with PM2 (from project root):
+pm2 start ecosystem.config.cjs --only scip-callgraph-remote
+```
+
+Set `VITE_ORIGIN` if your public URL differs from the default:
+
+```bash
+VITE_ORIGIN=https://your-domain.com npm run dev:remote
+```
+
+For production static builds behind a reverse proxy:
+
+```bash
+npm run build:remote   # Builds with base /graph/
+```
+
+**Docker** (bypasses glibc/Node version issues on older hosts):
+
+```bash
+cd scip-callgraph
+docker build -t scip-callgraph .
+docker run -p 3001:3001 scip-callgraph
+```
+
+To override the public origin:
+
+```bash
+docker run -p 3001:3001 -e VITE_ORIGIN=https://your-domain.com scip-callgraph
+```
+
+The viewer offers three views:
 - **Call Graph** -- Force-directed layout for function-level exploration and source-to-sink path finding
 - **Blueprint** -- Hierarchical layout grouping functions by file for module-level structure
 - **Crate Map** -- Crate-level overview showing inter-crate dependencies, with a frontier feature to see which functions in crate A are called by crate B

@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { globToRegex, asSubstringGlob, matchesQuery, applyFilters, pathPatternToRegex } from './filters';
-import { D3Graph, D3Node, D3Link, FilterOptions } from './types';
+import { D3Graph, D3Node, D3Link, FilterOptions, unwrapEnvelope, isAtomDictFormat, extractEnvelopeLanguage, detectProjectLanguage } from './types';
 
 // ============================================================================
 // Test Helpers
@@ -1002,3 +1002,194 @@ describe('Crate-level source/sink queries', () => {
   });
 });
 
+// ============================================================================
+// Category 7: Schema 2.0 Envelope Handling
+// ============================================================================
+
+describe('Schema 2.0 Envelope Handling', () => {
+  const bareAtomDict = {
+    'probe:test/1.0.0/foo()': {
+      'display-name': 'foo',
+      dependencies: ['probe:test/1.0.0/bar()'],
+      'code-text': { 'lines-start': 1, 'lines-end': 10 },
+      'code-path': 'src/lib.rs',
+      'code-module': '',
+      kind: 'exec',
+      language: 'rust',
+    },
+    'probe:test/1.0.0/bar()': {
+      'display-name': 'bar',
+      dependencies: [],
+      'code-text': { 'lines-start': 12, 'lines-end': 20 },
+      'code-path': 'src/lib.rs',
+      'code-module': '',
+      kind: 'proof',
+    },
+  };
+
+  const envelopedAtomDict = {
+    schema: 'probe-verus/atoms',
+    'schema-version': '2.0',
+    tool: { name: 'probe-verus', version: '2.0.0', command: 'atomize' },
+    source: {
+      repo: 'https://github.com/org/project',
+      commit: 'abc123',
+      language: 'rust',
+      package: 'test',
+      'package-version': '1.0.0',
+    },
+    timestamp: '2026-03-06T12:00:00Z',
+    data: bareAtomDict,
+  };
+
+  describe('unwrapEnvelope', () => {
+    it('extracts data from a Schema 2.0 envelope', () => {
+      const result = unwrapEnvelope(envelopedAtomDict);
+      expect(result).toEqual(bareAtomDict);
+    });
+
+    it('returns bare dict unchanged', () => {
+      const result = unwrapEnvelope(bareAtomDict);
+      expect(result).toEqual(bareAtomDict);
+    });
+
+    it('returns array unchanged', () => {
+      const arr = [{ id: 'a' }];
+      expect(unwrapEnvelope(arr)).toBe(arr);
+    });
+
+    it('returns null/undefined/primitives unchanged', () => {
+      expect(unwrapEnvelope(null)).toBeNull();
+      expect(unwrapEnvelope(42)).toBe(42);
+      expect(unwrapEnvelope('hello')).toBe('hello');
+    });
+
+    it('does not unwrap objects whose schema lacks "/"', () => {
+      const notAnEnvelope = { schema: 'plain', data: { key: 'val' } };
+      expect(unwrapEnvelope(notAnEnvelope)).toEqual(notAnEnvelope);
+    });
+
+    it('handles probe-lean envelopes', () => {
+      const leanEnvelope = {
+        schema: 'probe-lean/atoms',
+        'schema-version': '2.0',
+        data: { 'lean:Foo.bar': { 'display-name': 'bar', dependencies: [] } },
+      };
+      const result = unwrapEnvelope(leanEnvelope);
+      expect(result).toEqual(leanEnvelope.data);
+    });
+
+    it('handles merged-atoms envelopes', () => {
+      const merged = {
+        schema: 'probe/merged-atoms',
+        'schema-version': '2.0',
+        tool: { name: 'probe', version: '2.0.0', command: 'merge-atoms' },
+        inputs: [],
+        timestamp: '2026-03-06T12:00:00Z',
+        data: bareAtomDict,
+      };
+      expect(unwrapEnvelope(merged)).toEqual(bareAtomDict);
+    });
+  });
+
+  describe('isAtomDictFormat after unwrapping', () => {
+    it('recognizes a bare atom dict', () => {
+      expect(isAtomDictFormat(bareAtomDict)).toBe(true);
+    });
+
+    it('does NOT recognize an envelope as atom dict (envelope must be unwrapped first)', () => {
+      expect(isAtomDictFormat(envelopedAtomDict)).toBe(false);
+    });
+
+    it('recognizes atom dict after unwrapping envelope', () => {
+      const unwrapped = unwrapEnvelope(envelopedAtomDict);
+      expect(isAtomDictFormat(unwrapped)).toBe(true);
+    });
+  });
+
+  describe('extractEnvelopeLanguage', () => {
+    it('extracts "rust" from a probe-verus envelope', () => {
+      expect(extractEnvelopeLanguage(envelopedAtomDict)).toBe('rust');
+    });
+
+    it('extracts "lean" from a probe-lean envelope', () => {
+      const leanEnvelope = {
+        schema: 'probe-lean/atoms',
+        source: { repo: '', commit: '', language: 'lean', package: 'test', 'package-version': '1.0' },
+        data: {},
+      };
+      expect(extractEnvelopeLanguage(leanEnvelope)).toBe('lean');
+    });
+
+    it('returns undefined for bare dict (no envelope)', () => {
+      expect(extractEnvelopeLanguage(bareAtomDict)).toBeUndefined();
+    });
+
+    it('returns undefined for non-objects', () => {
+      expect(extractEnvelopeLanguage(null)).toBeUndefined();
+      expect(extractEnvelopeLanguage([1, 2])).toBeUndefined();
+    });
+
+    it('returns undefined when schema lacks "/" (not an envelope)', () => {
+      const notEnvelope = {
+        schema: 'plain',
+        source: { language: 'rust' },
+        data: {},
+      };
+      expect(extractEnvelopeLanguage(notEnvelope)).toBeUndefined();
+    });
+  });
+
+  describe('detectProjectLanguage with explicit source_language', () => {
+    it('returns "verus" when source_language is "rust"', () => {
+      const graph: D3Graph = {
+        nodes: [],
+        links: [],
+        metadata: { total_nodes: 0, total_edges: 0, project_root: '', generated_at: '', source_language: 'rust' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('verus');
+    });
+
+    it('returns "verus" when source_language is "verus" directly', () => {
+      const graph: D3Graph = {
+        nodes: [],
+        links: [],
+        metadata: { total_nodes: 0, total_edges: 0, project_root: '', generated_at: '', source_language: 'verus' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('verus');
+    });
+
+    it('returns "lean" when source_language is "lean"', () => {
+      const graph: D3Graph = {
+        nodes: [],
+        links: [],
+        metadata: { total_nodes: 0, total_edges: 0, project_root: '', generated_at: '', source_language: 'lean' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('lean');
+    });
+
+    it('falls back to heuristic when source_language is absent', () => {
+      const graph: D3Graph = {
+        nodes: [
+          createNode({ id: 'a', display_name: 'a', kind: 'theorem' }),
+          createNode({ id: 'b', display_name: 'b', kind: 'def' }),
+        ],
+        links: [],
+        metadata: { total_nodes: 2, total_edges: 0, project_root: '', generated_at: '' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('lean');
+    });
+
+    it('explicit language takes priority over conflicting kind values', () => {
+      const graph: D3Graph = {
+        nodes: [
+          createNode({ id: 'a', display_name: 'a', kind: 'theorem' }),
+          createNode({ id: 'b', display_name: 'b', kind: 'def' }),
+        ],
+        links: [],
+        metadata: { total_nodes: 2, total_edges: 0, project_root: '', generated_at: '', source_language: 'rust' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('verus');
+    });
+  });
+});

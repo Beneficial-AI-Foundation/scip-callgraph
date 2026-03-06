@@ -71,8 +71,28 @@ const LEAN_KINDS = new Set([
   'inductive', 'instance', 'axiom', 'opaque', 'quot',
 ]);
 
-/** Detect whether a graph comes from a Verus or Lean project by scanning kind values. */
+const SOURCE_LANGUAGE_MAP: Record<string, ProjectLanguage> = {
+  rust: 'verus',
+  verus: 'verus',
+  lean: 'lean',
+};
+
+/**
+ * Detect the project language for a graph.
+ *
+ * Uses the explicit `metadata.source_language` field when available (set from
+ * the Schema 2.0 envelope or individual atom `language` fields), mapping
+ * "rust" -> "verus" and "lean" -> "lean".
+ *
+ * Falls back to the heuristic of scanning node `kind` values when no explicit
+ * language is present (legacy / D3Graph format files).
+ */
 export function detectProjectLanguage(graph: D3Graph): ProjectLanguage {
+  const explicit = graph.metadata?.source_language;
+  if (explicit && explicit in SOURCE_LANGUAGE_MAP) {
+    return SOURCE_LANGUAGE_MAP[explicit];
+  }
+
   const kinds = new Set<string>();
   for (const node of graph.nodes) {
     if (node.kind) kinds.add(node.kind);
@@ -157,6 +177,7 @@ export interface D3GraphMetadata {
   project_root: string;
   generated_at: string;
   github_url?: string;
+  source_language?: string;
 }
 
 export interface D3Graph {
@@ -206,6 +227,7 @@ export interface ProbeAtom {
   "code-path": string;
   "code-module": string;
   kind: string;
+  language?: string;
   "verification-status"?: string;
   "specified"?: boolean;
   "dependencies-with-locations"?: Array<{
@@ -213,6 +235,47 @@ export interface ProbeAtom {
     location: string;
     line: number;
   }>;
+}
+
+/**
+ * Unwrap a Schema 2.0 metadata envelope if present.
+ *
+ * probe-verus and probe-lean 2.0 wrap their JSON output in an envelope with
+ * `schema` (containing '/'), `tool`, `source`, `timestamp`, and `data` fields.
+ * This function extracts the `data` payload. If the input is not an envelope
+ * (bare dict, array, etc.) it is returned unchanged.
+ */
+export function unwrapEnvelope(data: unknown): unknown {
+  if (
+    typeof data === 'object' && data !== null && !Array.isArray(data) &&
+    'schema' in data && 'data' in data &&
+    typeof (data as any).schema === 'string' &&
+    (data as any).schema.includes('/')
+  ) {
+    return (data as any).data;
+  }
+  return data;
+}
+
+/**
+ * Extract the source language from a Schema 2.0 envelope before unwrapping.
+ *
+ * Returns `source.language` (e.g. "rust", "lean") if the input is an envelope,
+ * or undefined if it is not.
+ */
+export function extractEnvelopeLanguage(data: unknown): string | undefined {
+  if (
+    typeof data === 'object' && data !== null && !Array.isArray(data) &&
+    'schema' in data && 'source' in data &&
+    typeof (data as any).schema === 'string' &&
+    (data as any).schema.includes('/')
+  ) {
+    const source = (data as any).source;
+    if (typeof source === 'object' && source !== null && typeof source.language === 'string') {
+      return source.language;
+    }
+  }
+  return undefined;
 }
 
 /**

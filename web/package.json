@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "build": "tsc && vite build",
+    "build:remote": "VITE_MODE=remote tsc && vite build",
     "build:vscode": "tsc && vite build --config vite.config.vscode.js",
     "dev": "vite",
+    "dev:remote": "VITE_MODE=remote vite",
     "preview": "vite preview",
+    "preview:remote": "VITE_MODE=remote vite preview",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run"

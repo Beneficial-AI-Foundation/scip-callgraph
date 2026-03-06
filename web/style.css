@@ -639,6 +639,75 @@ select.search-input {
   color: #666;
 }
 
+/* Embed mode (view=deps): plain chart only, for iframe */
+/* Use html.embed-mode so class can be set in head before body renders (avoids flash) */
+html.embed-mode .header,
+html.embed-mode .sidebar,
+html.embed-mode .footer,
+html.embed-mode .graph-instructions {
+  display: none !important;
+}
+
+html.embed-mode,
+html.embed-mode body {
+  height: 100%;
+  overflow: hidden;
+}
+
+html.embed-mode .app-container {
+  height: 100%;
+  min-height: 0;
+  max-height: 100vh;
+}
+
+html.embed-mode .main-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+html.embed-mode .graph-section {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+html.embed-mode .graph-container {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Embed nav bar: back / undo when viewing a specific node */
+.embed-nav {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.embed-nav-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.embed-nav-btn:hover:not(:disabled) {
+  background: #f0f4ff;
+  border-color: #667eea;
+}
+
+.embed-nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Node Info */
 .node-info {
   font-size: 0.9rem;

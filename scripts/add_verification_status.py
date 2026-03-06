@@ -15,6 +15,18 @@ from pathlib import Path
 from typing import Optional
 
 
+def unwrap_envelope(data):
+    """Unwrap a Schema 2.0 metadata envelope, returning the data payload.
+
+    probe-verus/probe-lean 2.0 wrap JSON output in an envelope with a
+    ``schema`` field containing '/' and a ``data`` field.  If the input
+    is not an envelope (bare dict, array, etc.) it is returned unchanged.
+    """
+    if isinstance(data, dict) and 'schema' in data and '/' in data.get('schema', '') and 'data' in data:
+        return data['data']
+    return data
+
+
 def normalize_path(path: str) -> str:
     """
     Normalize a file path for comparison.
@@ -167,11 +179,11 @@ def process_graph(graph_path: Path, verification_path: Path, output_path: Path):
     
     print(f"Reading graph from: {graph_path}")
     with open(graph_path, "r") as f:
-        graph_data = json.load(f)
+        graph_data = unwrap_envelope(json.load(f))
     
     print(f"Reading verification results from: {verification_path}")
     with open(verification_path, "r") as f:
-        verification_data = json.load(f)
+        verification_data = unwrap_envelope(json.load(f))
     
     # Build lookup tables
     lookup, by_name = build_verification_lookup(verification_data)
