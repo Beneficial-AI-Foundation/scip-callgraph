@@ -73,6 +73,7 @@ const LEAN_KINDS = new Set([
 
 const SOURCE_LANGUAGE_MAP: Record<string, ProjectLanguage> = {
   rust: 'verus',
+  verus: 'verus',
   lean: 'lean',
 };
 
@@ -265,7 +266,9 @@ export function unwrapEnvelope(data: unknown): unknown {
 export function extractEnvelopeLanguage(data: unknown): string | undefined {
   if (
     typeof data === 'object' && data !== null && !Array.isArray(data) &&
-    'schema' in data && 'source' in data
+    'schema' in data && 'source' in data &&
+    typeof (data as any).schema === 'string' &&
+    (data as any).schema.includes('/')
   ) {
     const source = (data as any).source;
     if (typeof source === 'object' && source !== null && typeof source.language === 'string') {

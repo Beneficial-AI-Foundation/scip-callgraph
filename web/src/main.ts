@@ -224,6 +224,9 @@ function parseAndNormalizeGraph(data: unknown): D3Graph {
   // Check if it's already in D3Graph format
   if (isD3GraphFormat(data)) {
     console.log('Detected D3Graph format');
+    if (envelopeLanguage && data.metadata && !data.metadata.source_language) {
+      data.metadata.source_language = envelopeLanguage;
+    }
     return data;
   }
   

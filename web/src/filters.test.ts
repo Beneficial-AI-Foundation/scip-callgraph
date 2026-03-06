@@ -1129,6 +1129,15 @@ describe('Schema 2.0 Envelope Handling', () => {
       expect(extractEnvelopeLanguage(null)).toBeUndefined();
       expect(extractEnvelopeLanguage([1, 2])).toBeUndefined();
     });
+
+    it('returns undefined when schema lacks "/" (not an envelope)', () => {
+      const notEnvelope = {
+        schema: 'plain',
+        source: { language: 'rust' },
+        data: {},
+      };
+      expect(extractEnvelopeLanguage(notEnvelope)).toBeUndefined();
+    });
   });
 
   describe('detectProjectLanguage with explicit source_language', () => {
@@ -1137,6 +1146,15 @@ describe('Schema 2.0 Envelope Handling', () => {
         nodes: [],
         links: [],
         metadata: { total_nodes: 0, total_edges: 0, project_root: '', generated_at: '', source_language: 'rust' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('verus');
+    });
+
+    it('returns "verus" when source_language is "verus" directly', () => {
+      const graph: D3Graph = {
+        nodes: [],
+        links: [],
+        metadata: { total_nodes: 0, total_edges: 0, project_root: '', generated_at: '', source_language: 'verus' },
       };
       expect(detectProjectLanguage(graph)).toBe('verus');
     });
