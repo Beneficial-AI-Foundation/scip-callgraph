@@ -1,4 +1,4 @@
-import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, unwrapEnvelope, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName, VerificationStatus } from './types';
+import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, unwrapEnvelope, extractEnvelopeLanguage, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName, VerificationStatus } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
@@ -118,7 +118,7 @@ function convertSimplifiedToD3Graph(nodes: SimplifiedNode[]): D3Graph {
  * - Has 'kind' for declaration classification (exec/proof/spec/theorem/def/axiom/...)
  * - Optionally has 'dependencies-with-locations' for typed links
  */
-function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
+function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>, envelopeLanguage?: string): D3Graph {
   const knownIds = new Set(Object.keys(atoms));
   
   // Build dependents map (inverse of dependencies)
@@ -192,11 +192,16 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
     }
   }
   
+  // Resolve source language: envelope first, then first atom's language field
+  const firstAtom = Object.values(atoms)[0];
+  const source_language = envelopeLanguage || firstAtom?.language;
+
   const metadata = {
     total_nodes: d3Nodes.length,
     total_edges: links.length,
     project_root: 'Probe atom dict',
     generated_at: new Date().toISOString(),
+    source_language,
   };
   
   return { nodes: d3Nodes, links, metadata };
@@ -210,6 +215,9 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
  * @returns D3Graph in the expected format
  */
 function parseAndNormalizeGraph(data: unknown): D3Graph {
+  // Extract source language from envelope before unwrapping (e.g. "rust", "lean")
+  const envelopeLanguage = extractEnvelopeLanguage(data);
+
   // Unwrap Schema 2.0 envelope if present (probe-verus / probe-lean)
   data = unwrapEnvelope(data);
 
@@ -222,7 +230,7 @@ function parseAndNormalizeGraph(data: unknown): D3Graph {
   // Check if it's in probe atom dict format (probe-verus / probe-lean atoms.json)
   if (isAtomDictFormat(data)) {
     console.log('Detected probe atom dict format, converting to D3Graph');
-    return convertAtomDictToD3Graph(data);
+    return convertAtomDictToD3Graph(data, envelopeLanguage);
   }
   
   // Check if it's in simplified format

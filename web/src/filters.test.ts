@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { globToRegex, asSubstringGlob, matchesQuery, applyFilters, pathPatternToRegex } from './filters';
-import { D3Graph, D3Node, D3Link, FilterOptions, unwrapEnvelope, isAtomDictFormat } from './types';
+import { D3Graph, D3Node, D3Link, FilterOptions, unwrapEnvelope, isAtomDictFormat, extractEnvelopeLanguage, detectProjectLanguage } from './types';
 
 // ============================================================================
 // Test Helpers
@@ -1104,6 +1104,74 @@ describe('Schema 2.0 Envelope Handling', () => {
     it('recognizes atom dict after unwrapping envelope', () => {
       const unwrapped = unwrapEnvelope(envelopedAtomDict);
       expect(isAtomDictFormat(unwrapped)).toBe(true);
+    });
+  });
+
+  describe('extractEnvelopeLanguage', () => {
+    it('extracts "rust" from a probe-verus envelope', () => {
+      expect(extractEnvelopeLanguage(envelopedAtomDict)).toBe('rust');
+    });
+
+    it('extracts "lean" from a probe-lean envelope', () => {
+      const leanEnvelope = {
+        schema: 'probe-lean/atoms',
+        source: { repo: '', commit: '', language: 'lean', package: 'test', 'package-version': '1.0' },
+        data: {},
+      };
+      expect(extractEnvelopeLanguage(leanEnvelope)).toBe('lean');
+    });
+
+    it('returns undefined for bare dict (no envelope)', () => {
+      expect(extractEnvelopeLanguage(bareAtomDict)).toBeUndefined();
+    });
+
+    it('returns undefined for non-objects', () => {
+      expect(extractEnvelopeLanguage(null)).toBeUndefined();
+      expect(extractEnvelopeLanguage([1, 2])).toBeUndefined();
+    });
+  });
+
+  describe('detectProjectLanguage with explicit source_language', () => {
+    it('returns "verus" when source_language is "rust"', () => {
+      const graph: D3Graph = {
+        nodes: [],
+        links: [],
+        metadata: { total_nodes: 0, total_edges: 0, project_root: '', generated_at: '', source_language: 'rust' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('verus');
+    });
+
+    it('returns "lean" when source_language is "lean"', () => {
+      const graph: D3Graph = {
+        nodes: [],
+        links: [],
+        metadata: { total_nodes: 0, total_edges: 0, project_root: '', generated_at: '', source_language: 'lean' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('lean');
+    });
+
+    it('falls back to heuristic when source_language is absent', () => {
+      const graph: D3Graph = {
+        nodes: [
+          createNode({ id: 'a', display_name: 'a', kind: 'theorem' }),
+          createNode({ id: 'b', display_name: 'b', kind: 'def' }),
+        ],
+        links: [],
+        metadata: { total_nodes: 2, total_edges: 0, project_root: '', generated_at: '' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('lean');
+    });
+
+    it('explicit language takes priority over conflicting kind values', () => {
+      const graph: D3Graph = {
+        nodes: [
+          createNode({ id: 'a', display_name: 'a', kind: 'theorem' }),
+          createNode({ id: 'b', display_name: 'b', kind: 'def' }),
+        ],
+        links: [],
+        metadata: { total_nodes: 2, total_edges: 0, project_root: '', generated_at: '', source_language: 'rust' },
+      };
+      expect(detectProjectLanguage(graph)).toBe('verus');
     });
   });
 });
