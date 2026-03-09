@@ -34,9 +34,9 @@ on:
         default: ''
         type: string
       probe_lean_version:
-        description: 'probe-lean git ref to use (branch, tag, or SHA). Defaults to main.'
+        description: 'probe-lean git ref to use (branch, tag, or SHA)'
         required: false
-        default: 'main'
+        default: 'schema-2.0-envelope'
         type: string
       skip_verification:
         description: 'Skip verification step (only generate call graph without verification status)'
@@ -191,7 +191,7 @@ jobs:
           SORRY_COUNT=$(grep -c "declaration uses 'sorry'" ${{ github.workspace }}/build_output.txt || true)
           echo "  sorry warnings detected: $SORRY_COUNT"
 
-      # Step 4: Run probe-lean pipeline (atomize + specify + verify → enriched graph.json)
+      # Step 4: Run probe-lean verify (atomize + specify + sorry detection → unified atoms)
       - name: Generate enriched call graph
         working-directory: project/${{ inputs.project_path }}
         run: |
@@ -199,13 +199,18 @@ jobs:
           if [ "${{ inputs.skip_verification }}" = "true" ]; then
             FLAGS="$FLAGS --skip-verify"
           fi
-          echo "Running probe-lean pipeline (build already done, analyzing...)..."
-          ${{ github.workspace }}/probe-lean/.lake/build/bin/probe-lean pipeline \
-            --output ${{ github.workspace }}/scip-callgraph/web/public/graph.json \
+          echo "Running probe-lean verify (build already done, analyzing...)..."
+          ${{ github.workspace }}/probe-lean/.lake/build/bin/probe-lean verify \
+            -o ${{ github.workspace }}/scip-callgraph/web/public/graph.json \
             $FLAGS \
             .
           echo "✓ graph.json generated"
-          echo "Atom count: $(python3 -c "import json; print(len(json.load(open('${{ github.workspace }}/scip-callgraph/web/public/graph.json'))))")"
+          echo "Atom count: $(python3 -c "
+import json
+d = json.load(open('${{ github.workspace }}/scip-callgraph/web/public/graph.json'))
+atoms = d.get('data', d) if isinstance(d, dict) and 'schema-version' in d else d
+print(len(atoms))
+")"
 
       # Step 5: Build web viewer
       - name: Build web viewer

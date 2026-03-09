@@ -229,6 +229,37 @@ export function isAtomDictFormat(data: unknown): data is Record<string, ProbeAto
     && 'dependencies' in first && 'display-name' in first;
 }
 
+// ============================================================================
+// Schema 2.0 Envelope (probe-lean / probe-verus)
+// ============================================================================
+
+/**
+ * Schema 2.0 metadata envelope wrapping tool output.
+ * probe-lean (schema-2.0-envelope branch) wraps all output in this structure.
+ */
+export interface Schema2Envelope {
+  schema: string;
+  "schema-version": string;
+  tool: { name: string; version: string; command: string };
+  source: {
+    repo: string;
+    commit: string;
+    language: string;
+    package: string;
+    "package-version": string;
+  };
+  timestamp: string;
+  data: unknown;
+}
+
+/**
+ * Type guard: data is a Schema 2.0 envelope when it has `schema-version` and a `data` payload.
+ */
+export function isSchema2Envelope(data: unknown): data is Schema2Envelope {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
+  return 'schema-version' in data && 'data' in data;
+}
+
 export interface GraphState {
   fullGraph: D3Graph | null;
   filteredGraph: D3Graph | null;

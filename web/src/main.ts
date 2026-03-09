@@ -1,4 +1,4 @@
-import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName, VerificationStatus } from './types';
+import { D3Graph, D3Node, D3Link, GraphState, FilterOptions, SimplifiedNode, isSimplifiedFormat, isD3GraphFormat, ProbeAtom, isAtomDictFormat, isSchema2Envelope, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName, VerificationStatus } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
@@ -210,6 +210,12 @@ function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
  * @returns D3Graph in the expected format
  */
 function parseAndNormalizeGraph(data: unknown): D3Graph {
+  // Unwrap Schema 2.0 envelope if present (probe-lean / probe-verus)
+  if (isSchema2Envelope(data)) {
+    console.log(`Detected Schema 2.0 envelope (${data.schema}), unwrapping data payload`);
+    return parseAndNormalizeGraph(data.data);
+  }
+
   // Check if it's already in D3Graph format
   if (isD3GraphFormat(data)) {
     console.log('Detected D3Graph format');
