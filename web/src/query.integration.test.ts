@@ -73,7 +73,7 @@ const KATYDID_PATH = '/home/lacra/git_repos/baif/katydid-proofs/.verilib/atoms.j
 // graph_tmp.json  (1 130 Verus nodes, D3Graph format, has mode/verification_status/link types)
 // ============================================================================
 
-describe('Golden: graph_tmp.json (Verus)', () => {
+describe.skipIf(!existsSync(GRAPH_TMP_PATH))('Golden: graph_tmp.json (Verus)', () => {
   let graph: D3Graph;
 
   beforeAll(() => {
@@ -205,11 +205,10 @@ describe('Golden: graph_tmp.json (Verus)', () => {
 // pmemlog atoms.json  (109 Verus atoms, atom dict format)
 // ============================================================================
 
-describe('Golden: pmemlog atoms.json (Verus atom dict)', () => {
+describe.skipIf(!existsSync(PMEMLOG_PATH))('Golden: pmemlog atoms.json (Verus atom dict)', () => {
   let graph: D3Graph;
 
   beforeAll(() => {
-    if (!existsSync(PMEMLOG_PATH)) return;
     const raw = loadJsonFile(PMEMLOG_PATH);
     graph = parseAndNormalizeGraph(raw);
     backfillCrateNames(graph);
@@ -247,11 +246,10 @@ describe('Golden: pmemlog atoms.json (Verus atom dict)', () => {
 // katydid-proofs atoms.json  (589 Lean atoms, language agnosticism)
 // ============================================================================
 
-describe('Golden: katydid-proofs atoms.json (Lean)', () => {
+describe.skipIf(!existsSync(KATYDID_PATH))('Golden: katydid-proofs atoms.json (Lean)', () => {
   let graph: D3Graph;
 
   beforeAll(() => {
-    if (!existsSync(KATYDID_PATH)) return;
     const raw = loadJsonFile(KATYDID_PATH);
     graph = parseAndNormalizeGraph(raw);
     backfillCrateNames(graph);
