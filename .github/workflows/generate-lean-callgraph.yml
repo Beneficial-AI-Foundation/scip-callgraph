@@ -205,12 +205,7 @@ jobs:
             $FLAGS \
             .
           echo "✓ graph.json generated"
-          echo "Atom count: $(python3 -c "
-import json
-d = json.load(open('${{ github.workspace }}/scip-callgraph/web/public/graph.json'))
-atoms = d.get('data', d) if isinstance(d, dict) and 'schema-version' in d else d
-print(len(atoms))
-")"
+          echo "Atom count: $(python3 -c "import json; d=json.load(open('${{ github.workspace }}/scip-callgraph/web/public/graph.json')); a=d.get('data',d) if isinstance(d,dict) and 'schema-version' in d else d; print(len(a))")"
 
       # Step 5: Build web viewer
       - name: Build web viewer
