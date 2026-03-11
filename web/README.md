@@ -194,20 +194,25 @@ Share specific views with URL parameters:
 ```
 web/
 ├── src/
-│   ├── main.ts         # Application entry, state management, VS Code integration
-│   ├── graph.ts        # Call Graph view - D3.js force-directed visualization
-│   ├── blueprint.ts    # Blueprint view - Dagre hierarchical layout grouped by file
-│   ├── crate-map.ts    # Crate Map view - crate-level overview with frontier rendering
-│   ├── filters.ts      # Filtering algorithms, path finding, crate boundary mode
-│   ├── status.ts       # Verification status computation
-│   └── types.ts        # TypeScript type definitions (D3Node, CrateGraph, etc.)
-├── index.html          # Main HTML file
-├── style.css           # Styles
-├── public/             # Static assets, auto-loaded graph.json
-├── package.json        # Dependencies
-├── tsconfig.json       # TypeScript configuration
-├── vite.config.js      # Vite bundler configuration (web)
-└── vite.config.vscode.js  # Vite config for VS Code webview build
+│   ├── main.ts              # Application entry, state management, VS Code integration
+│   ├── graph.ts             # Call Graph view - D3.js force-directed visualization
+│   ├── blueprint.ts         # Blueprint view - Dagre hierarchical layout grouped by file
+│   ├── crate-map.ts         # Crate Map view - crate-level overview with frontier rendering
+│   ├── query.ts             # Composable query pipeline: AST, operators, compiler, executor
+│   ├── filters.ts           # Filter entry point (thin wrapper), pattern utilities, query matching
+│   ├── graph-loader.ts      # JSON format normalization and conversion (SCIP, atoms, simplified)
+│   ├── status.ts            # Verification status computation
+│   ├── types.ts             # TypeScript type definitions (D3Node, CrateGraph, etc.)
+│   ├── filters.test.ts      # Unit tests for pattern utilities and applyFilters backward compat
+│   ├── query.test.ts        # Unit tests for pipeline operators, compiler, resolver (45 tests)
+│   └── query.integration.test.ts  # Golden/snapshot tests with real graph data (20 tests)
+├── index.html               # Main HTML file
+├── style.css                # Styles
+├── public/                  # Static assets, auto-loaded graph.json
+├── package.json             # Dependencies
+├── tsconfig.json            # TypeScript configuration
+├── vite.config.js           # Vite bundler configuration (web)
+└── vite.config.vscode.js    # Vite config for VS Code webview build
 ```
 
 ## Stack

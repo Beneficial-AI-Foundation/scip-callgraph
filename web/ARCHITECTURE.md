@@ -36,8 +36,8 @@
 │         │            - Large file detection               │
 │         ▼                                                   │
 │  ┌──────────────┐    ┌──────────────┐                     │
-│  │   Filter     │◄──│  UI Controls │                      │
-│  │   Engine     │   └──────────────┘                      │
+│  │    Query     │◄──│  UI Controls │                      │
+│  │   Pipeline   │   └──────────────┘                      │
 │  └──────┬───────┘    - Source/sink queries                │
 │         │            - Function mode toggles              │
 │         │            - Call type toggles                  │
@@ -236,38 +236,47 @@ interface CrateGraph {
 
 Each `D3Node` also carries a `crate_name` field, backfilled on load via `extractCrateName()` which parses the crate name from the node's SCIP/probe ID prefix.
 
-#### 3. **Filter Engine** (`src/filters.ts`)
+#### 3. **Query Pipeline** (`src/query.ts`)
 
-**Query Syntax:**
-- Substring: `decompress` matches any function containing "decompress"
-- Glob patterns: `*decomp*` for contains, `lemma_*` for prefix
-- Path-qualified: `edwards::decompress` matches decompress in edwards.rs
-- Crate-qualified: `crate:curve25519-dalek` matches all functions in that crate
+The filter/traversal system is a composable pipeline following a compile → execute pattern:
 
-**Crate Boundary Mode:** When both source and sink are `crate:` queries, `applyFilters()` skips path finding and instead returns only the direct cross-crate calls between the two crates.
-
-**Algorithm: Source→Sink Path Finding**
-```typescript
-function findPathNodes(
-  graph: D3Graph,
-  sourceIds: Set<string>,
-  sinkIds: Set<string>,
-  maxDepth: number | null
-): Set<string>
+```
+FilterOptions → compileQuery() → CompiledQuery → executeQuery() → D3Graph
 ```
 
-Uses DFS with backtracking to find all nodes on any path from sources to sinks.
+- **Compiler** (`compileQuery`): Pure function that translates `FilterOptions` into a `CompiledQuery` containing a `GraphQuery` AST (7 discriminated-union variants), traversal predicates, display predicates, focus config, and link-type filter. No graph access.
+- **Executor** (`executeQuery`): 7-step pipeline that evaluates the compiled query against a full graph:
+  1. Build traversable subgraph (traversal predicates)
+  2. Resolve node matchers (patterns → concrete IDs)
+  3. Dispatch traversal (BFS/DFS/boundary scan)
+  4. Assemble result nodes
+  5. Apply display predicates
+  6. Filter links (endpoint, depth-tree, link-type)
+  7. Remove isolated nodes, build depth metadata
+- **9 operators**: Pure functions (`selectNodes`, `traverseForward`, `traverseBackward`, `traverseBidirectional`, `findPaths`, `crateBoundary`, `filterLinksByType`, `depthFilterLinks`, `removeIsolated`).
 
-**Algorithm: Depth-Limited BFS**
-```typescript
-function getCalleesRecursive(
-  graph: D3Graph,
-  startNodeId: string,
-  maxDepth: number | null
-): DepthTraversalResult  // { nodeIds, nodeDepths }
-```
+The public entry point is `applyFilters()` in `filters.ts`, which calls `compileQuery` then `executeQuery`. See `QUERY_PIPELINE.md` for full details.
 
-#### 3. **D3 Visualization** (`src/graph.ts`)
+#### 3a. **Pattern Utilities** (`src/filters.ts`)
+
+Provides query-matching functions used by the pipeline's resolver:
+
+- `matchesQuery()`: Substring, glob, path-qualified (`edwards::decompress`), and crate-qualified (`crate:name`) matching
+- `globToRegex()`: Convert glob patterns to anchored regexes
+- `pathPatternToRegex()`: Convert path patterns with `**` / `*` / `?` to regexes
+
+Also exports `getCallers()` and `getCallees()` for immediate (non-recursive) neighbor lookup.
+
+#### 3b. **Graph Loader** (`src/graph-loader.ts`)
+
+Normalizes multiple JSON input formats into a unified `D3Graph`:
+
+- SCIP D3Graph format (direct pass-through)
+- Simplified format (array of nodes with `deps`)
+- Probe atom dict format (Verus/Lean `atoms.json`)
+- Schema 2.0 envelopes (unwrapped recursively)
+
+#### 4. **D3 Visualization** (`src/graph.ts`)
 
 **Topological Layout:**
 The graph uses a layered layout based on call depth:
@@ -349,22 +358,17 @@ When running as a VS Code webview:
 3. Return all nodes on any valid path
 ```
 
-### 2. Graph Filtering Pipeline
-**Complexity:** O(N + E)
+### 2. Query Pipeline (7 Steps)
+**Complexity:** O(N + E) per step
 
-```typescript
-1. Pre-filter: Build set of mode-allowed nodes
-   - Apply function mode filters (exec/proof/spec)
-   - Apply exclude name/path patterns
-   - Apply include file patterns
-   - Exclude hidden nodes
-2. Source/Sink traversal (if queries provided)
-   - Source only: BFS forward for callees
-   - Sink only: BFS backward for callers
-   - Both: DFS path finding
-3. Apply remaining filters (libsignal, call types)
-4. Remove isolated nodes (no edges)
-5. Filter links to valid node pairs
+```
+1. selectNodes        — traversal predicates → traversable subgraph
+2. resolveNodeMatcher — patterns → concrete IDs (full graph, then intersect traversable)
+3. dispatch traversal — BFS / DFS / boundary scan depending on GraphQuery type
+4. assemble nodes     — filter fullGraph.nodes to traversal result
+5. display predicates — libsignal toggle, re-apply kind & hidden filters
+6. filter links       — endpoint, depth-tree, link-type passes
+7. cleanup            — remove isolated nodes, build nodeDepths metadata
 ```
 
 ### 3. Topological Depth Computation
@@ -416,10 +420,11 @@ vscode.postMessage({
 
 ### Adding New Filters
 1. Add property to `FilterOptions` interface in `types.ts`
-2. Implement filter logic in `applyFilters()` in `filters.ts`
-3. Add UI control in `index.html`
-4. Add event handler in `main.ts`
-5. Update URL generation/parsing for shareable links
+2. Add the predicate to `TraversalPredicates` or `DisplayPredicates` in `query.ts`
+3. Wire it in `compileQuery()` (compiler) and apply it in `executeQuery()` (executor)
+4. Add UI control in `index.html`
+5. Add event handler in `main.ts`
+6. Update URL generation/parsing for shareable links
 
 ### Adding New Node Metadata
 1. Add field to Rust `D3Node` struct
