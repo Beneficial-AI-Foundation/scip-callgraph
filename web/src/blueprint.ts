@@ -393,8 +393,9 @@ export class BlueprintVisualization {
         <div class="bp-legend-section"><strong>Edges</strong></div>
         <div class="bp-legend-item">
           <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#888" stroke-width="1.5"/></svg>
-          <span>Body call</span>
+          <span>${lang === 'lean' ? 'Dependency' : 'Body call'}</span>
         </div>
+        ${lang !== 'lean' ? `
         <div class="bp-legend-item">
           <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#e65100" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
           <span>Requires</span>
@@ -402,7 +403,7 @@ export class BlueprintVisualization {
         <div class="bp-legend-item">
           <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#c2185b" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
           <span>Ensures</span>
-        </div>
+        </div>` : ''}
       </div>
     `;
     this.container.appendChild(legend);

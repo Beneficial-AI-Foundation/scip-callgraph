@@ -297,9 +297,11 @@ function generateShareableURL(): string {
   if (!state.filters.showExecFunctions) params.set('exec', '0');
   if (!state.filters.showProofFunctions) params.set('proof', '0');
   if (state.filters.showSpecFunctions) params.set('spec', '1');
-  if (!state.filters.showInnerCalls) params.set('inner', '0');
-  if (state.filters.showPreconditionCalls) params.set('pre', '1');
-  if (state.filters.showPostconditionCalls) params.set('post', '1');
+  if (state.projectLanguage !== 'lean') {
+    if (!state.filters.showInnerCalls) params.set('inner', '0');
+    if (state.filters.showPreconditionCalls) params.set('pre', '1');
+    if (state.filters.showPostconditionCalls) params.set('post', '1');
+  }
   if (!state.filters.showLibsignal) params.set('libsignal', '0');
   if (!state.filters.showNonLibsignal) params.set('external', '0');
   // Exclude patterns
@@ -466,9 +468,12 @@ function syncInputsToState(): void {
   // Sync checkboxes
   state.filters.showLibsignal = (document.getElementById('show-libsignal') as HTMLInputElement)?.checked ?? true;
   state.filters.showNonLibsignal = (document.getElementById('show-non-libsignal') as HTMLInputElement)?.checked ?? true;
-  state.filters.showInnerCalls = (document.getElementById('show-inner-calls') as HTMLInputElement)?.checked ?? true;
-  state.filters.showPreconditionCalls = (document.getElementById('show-precondition-calls') as HTMLInputElement)?.checked ?? false;
-  state.filters.showPostconditionCalls = (document.getElementById('show-postcondition-calls') as HTMLInputElement)?.checked ?? false;
+  const innerEl = document.getElementById('show-inner-calls') as HTMLInputElement | null;
+  const preEl = document.getElementById('show-precondition-calls') as HTMLInputElement | null;
+  const postEl = document.getElementById('show-postcondition-calls') as HTMLInputElement | null;
+  if (innerEl) state.filters.showInnerCalls = innerEl.checked;
+  if (preEl) state.filters.showPreconditionCalls = preEl.checked;
+  if (postEl) state.filters.showPostconditionCalls = postEl.checked;
   state.filters.showExecFunctions = (document.getElementById('show-exec-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showProofFunctions = (document.getElementById('show-proof-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showSpecFunctions = (document.getElementById('show-spec-functions') as HTMLInputElement)?.checked ?? false;
@@ -663,22 +668,7 @@ function setupUIHandlers(): void {
     applyFiltersAndUpdate();
   });
 
-  // Call type filters
-  document.getElementById('show-inner-calls')?.addEventListener('change', (e) => {
-    state.filters.showInnerCalls = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
-
-  document.getElementById('show-precondition-calls')?.addEventListener('change', (e) => {
-    state.filters.showPreconditionCalls = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
-
-  document.getElementById('show-postcondition-calls')?.addEventListener('change', (e) => {
-    state.filters.showPostconditionCalls = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
-
+  // Call type filters are set up dynamically in renderCallTypeFilters()
   // Declaration kind filters are set up dynamically in renderKindFilters()
   // after graph load detects the project language.
 
@@ -1372,6 +1362,68 @@ function renderKindFilters(lang: ProjectLanguage): void {
 }
 
 /**
+ * Dynamically render Call Type filter checkboxes based on detected language.
+ * Verus has precondition/postcondition edges (requires/ensures clauses);
+ * Lean and other languages only have body calls.
+ */
+function renderCallTypeFilters(lang: ProjectLanguage): void {
+  const container = document.getElementById('call-types-container');
+  if (!container) return;
+
+  if (lang === 'lean') {
+    container.style.display = 'none';
+    state.filters.showInnerCalls = true;
+    state.filters.showPreconditionCalls = true;
+    state.filters.showPostconditionCalls = true;
+    return;
+  }
+
+  container.style.display = '';
+
+  let html = '<h3>Call Types</h3>';
+
+  html += `
+    <label class="checkbox-label">
+      <input type="checkbox" id="show-inner-calls" checked />
+      <span class="inner-badge">Body Calls</span>
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" id="show-precondition-calls" />
+      <span class="precondition-badge">Requires</span>
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" id="show-postcondition-calls" />
+      <span class="postcondition-badge">Ensures</span>
+    </label>
+    <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+      💡 Requires/Ensures edges typically connect to Spec functions
+    </small>`;
+
+  container.innerHTML = html;
+
+  document.getElementById('show-inner-calls')?.addEventListener('change', (e) => {
+    state.filters.showInnerCalls = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+  document.getElementById('show-precondition-calls')?.addEventListener('change', (e) => {
+    state.filters.showPreconditionCalls = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+  document.getElementById('show-postcondition-calls')?.addEventListener('change', (e) => {
+    state.filters.showPostconditionCalls = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
+  const setCheckbox = (id: string, checked: boolean) => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el) el.checked = checked;
+  };
+  setCheckbox('show-inner-calls', state.filters.showInnerCalls);
+  setCheckbox('show-precondition-calls', state.filters.showPreconditionCalls);
+  setCheckbox('show-postcondition-calls', state.filters.showPostconditionCalls);
+}
+
+/**
  * Load a graph and update the UI
  */
 function loadGraph(graph: D3Graph, message: string): void {
@@ -1397,6 +1449,7 @@ function loadGraph(graph: D3Graph, message: string): void {
   // Detect project language and update UI accordingly
   state.projectLanguage = detectProjectLanguage(state.fullGraph);
   renderKindFilters(state.projectLanguage);
+  renderCallTypeFilters(state.projectLanguage);
 
   // Backfill crate_name on every node using language-aware extraction
   // (Lean: two-level module path, Rust/Verus: top-level crate)
@@ -2477,9 +2530,12 @@ function resetFilters(): void {
   // Reset UI controls
   (document.getElementById('show-libsignal') as HTMLInputElement).checked = true;
   (document.getElementById('show-non-libsignal') as HTMLInputElement).checked = true;
-  (document.getElementById('show-inner-calls') as HTMLInputElement).checked = true;
-  (document.getElementById('show-precondition-calls') as HTMLInputElement).checked = false;
-  (document.getElementById('show-postcondition-calls') as HTMLInputElement).checked = false;
+  const innerCallsEl = document.getElementById('show-inner-calls') as HTMLInputElement | null;
+  const preCallsEl = document.getElementById('show-precondition-calls') as HTMLInputElement | null;
+  const postCallsEl = document.getElementById('show-postcondition-calls') as HTMLInputElement | null;
+  if (innerCallsEl) innerCallsEl.checked = true;
+  if (preCallsEl) preCallsEl.checked = false;
+  if (postCallsEl) postCallsEl.checked = false;
   (document.getElementById('show-exec-functions') as HTMLInputElement).checked = true;
   (document.getElementById('show-proof-functions') as HTMLInputElement).checked = true;
   (document.getElementById('show-spec-functions') as HTMLInputElement).checked = false;
