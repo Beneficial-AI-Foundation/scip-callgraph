@@ -1,5 +1,6 @@
 import { D3Graph, D3Node, GraphState, FilterOptions, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
+import { compileQuery, GraphQuery, NodeMatcher } from './query';
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
 import { CrateMapVisualization, buildCrateGraph } from './crate-map';
@@ -1535,6 +1536,46 @@ async function handleFileLoad(event: Event): Promise<void> {
 // Maximum nodes to render to prevent D3 from freezing
 const MAX_RENDERED_NODES = 200;
 
+function formatMatcher(m: NodeMatcher): string {
+  switch (m.kind) {
+    case 'pattern': return m.query;
+    case 'crate': return `crate:${m.pattern}`;
+    case 'nodeIds': return `[${m.ids.size} node${m.ids.size !== 1 ? 's' : ''}]`;
+  }
+}
+
+function formatQueryLabel(q: GraphQuery): string {
+  switch (q.type) {
+    case 'callees': {
+      const depth = q.maxDepth !== null ? ` depth=${q.maxDepth}` : '';
+      return `<span class="query-type">callees</span> <span class="query-dim">from</span> <span class="query-param">${formatMatcher(q.from)}</span>${depth}`;
+    }
+    case 'callers': {
+      const depth = q.maxDepth !== null ? ` depth=${q.maxDepth}` : '';
+      return `<span class="query-type">callers</span> <span class="query-dim">of</span> <span class="query-param">${formatMatcher(q.to)}</span>${depth}`;
+    }
+    case 'neighborhood': {
+      const depth = q.maxDepth !== null ? ` depth=${q.maxDepth}` : '';
+      return `<span class="query-type">neighborhood</span> <span class="query-dim">of</span> <span class="query-param">${formatMatcher(q.center)}</span>${depth}`;
+    }
+    case 'paths':
+      return `<span class="query-type">paths</span> <span class="query-param">${formatMatcher(q.from)}</span> <span class="query-dim">→</span> <span class="query-param">${formatMatcher(q.to)}</span>`;
+    case 'crateBoundary':
+      return `<span class="query-type">boundary</span> <span class="query-param">crate:${q.sourceCrate}</span> <span class="query-dim">→</span> <span class="query-param">crate:${q.targetCrate}</span>`;
+    case 'depthFromSelected':
+      return `<span class="query-type">depth</span> <span class="query-dim">from</span> <span class="query-param">${q.selectedNodes.size} selected</span> depth=${q.maxDepth}`;
+    case 'noTraversal':
+      return `<span class="query-type">all</span> <span class="query-dim">(no traversal)</span>`;
+  }
+}
+
+function updateQueryLabel(q: GraphQuery): void {
+  const el = document.getElementById('query-label');
+  if (!el) return;
+  el.innerHTML = `<span class="query-dim">query:</span> ${formatQueryLabel(q)}`;
+  el.style.display = '';
+}
+
 /**
  * Apply filters and update visualization
  */
@@ -1563,6 +1604,8 @@ function applyFiltersAndUpdate(): void {
 
   // Pass selectedNodeId for exact matching (VS Code integration)
   const nodeOptions: SelectedNodeOptions = { selectedNodeId };
+  const compiled = compileQuery(state.filters, state.projectLanguage);
+  updateQueryLabel(compiled.query);
   let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions, state.projectLanguage);
   
   // Limit rendered nodes for large results to prevent D3 freeze

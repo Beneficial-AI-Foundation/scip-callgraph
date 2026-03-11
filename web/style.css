@@ -615,6 +615,31 @@ select.search-input {
   background: white;
 }
 
+.query-label {
+  background: #f0f4ff;
+  border-bottom: 1px solid #d0d8e8;
+  padding: 0.35rem 1rem;
+  font-size: 0.8rem;
+  color: #555;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.query-label .query-type {
+  color: #5b21b6;
+  font-weight: 600;
+}
+
+.query-label .query-param {
+  color: #1e40af;
+}
+
+.query-label .query-dim {
+  color: #999;
+}
+
 .graph-container {
   flex: 1;
   position: relative;
