@@ -13,8 +13,8 @@
       <h1>📊 SCIP Call Graph Viewer</h1>
       <div class="view-switcher">
         <button id="view-callgraph" class="view-btn active">Call Graph</button>
-        <button id="view-blueprint" class="view-btn">Blueprint</button>
-        <button id="view-crate-map" class="view-btn">Module Map</button>
+        <button id="view-blueprint" class="view-btn">File Map</button>
+        <button id="view-crate-map" class="view-btn">Crate Map</button>
       </div>
       <div class="file-input-container">
         <label for="file-input" class="file-input-label">
@@ -161,22 +161,22 @@
           </div>
 
           <div class="filter-group" id="crate-frontier-group">
-            <h3>🔗 Module Frontier</h3>
+            <h3 id="crate-frontier-title">🔗 Crate Frontier</h3>
             <label class="input-label">
-              <span>Source Module (called):</span>
+              <span id="source-crate-label">Source Crate (called):</span>
               <select id="source-crate-select" class="search-input">
                 <option value="">--</option>
               </select>
             </label>
             <label class="input-label">
-              <span>Target Module (caller):</span>
+              <span id="target-crate-label">Target Crate (caller):</span>
               <select id="target-crate-select" class="search-input">
                 <option value="">--</option>
               </select>
             </label>
-            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.5rem;">
-              💡 Select two modules to see the <strong>frontier</strong>: functions in the source module called by the target module.<br>
-              💡 In Module Map: click a module to set source, click another to set target.
+            <small id="crate-frontier-hint" style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.5rem;">
+              💡 Select two crates to see the <strong>frontier</strong>: functions in the source crate called by the target crate.<br>
+              💡 In Crate Map: click a crate to set source, click another to set target.
             </small>
           </div>
 

@@ -111,7 +111,7 @@ Switch between views using the header buttons:
 - **Color coding** by verification status: green = verified, red = failed, grey = unverified
 - Best for exploring function-level call paths and source-to-sink analysis
 
-#### Blueprint
+#### File Map
 - **Dagre hierarchical layout** that groups functions by file
 - Each file is a compound box containing its function nodes
 - Cross-file edges are drawn between file groups
@@ -133,7 +133,7 @@ Select two crates to see their interface -- which functions in crate A are calle
 - Or **click** crates on the Crate Map (first click = source, second click = target)
 - The target dropdown is automatically filtered to only show crates the source depends on
 - In Crate Map view, the frontier is rendered inline with a "View in Call Graph" button
-- In Call Graph / Blueprint views, it sets `crate:A` / `crate:B` source/sink queries
+- In Call Graph / File Map views, it sets `crate:A` / `crate:B` source/sink queries
 
 ### 🔍 Powerful Filtering
 
@@ -310,7 +310,7 @@ Potential improvements:
 - [ ] Time-based visualization (if SCIP data includes timestamps)
 - [ ] Compare two versions side-by-side
 - [x] Integration with code editor (jump to definition) -- See [VSCODE_EXTENSION.md](./VSCODE_EXTENSION.md)
-- [x] Clustering/grouping by module -- Blueprint view (grouped by file) and Crate Map view (grouped by crate)
+- [x] Clustering/grouping by module -- File Map view (grouped by file) and Crate Map view (grouped by crate)
 - [x] Call path finder (shortest path between two functions) -- Source + Sink combined mode
 - [x] Crate-level dependency visualization -- Crate Map view with frontier selection
 

@@ -8,7 +8,7 @@ This workspace provides three main capabilities:
 
 1. **Call Graph Generation** - Generate caller/callee graphs from SCIP indices
 2. **Verus Metrics** - Compute Halstead complexity metrics for Verus specifications and proofs
-3. **Interactive Visualization** - Explore call graphs in three views: Call Graph (force-directed), Blueprint (file-grouped), and Crate Map (crate-level dependencies with frontier selection)
+3. **Interactive Visualization** - Explore call graphs in three views: Call Graph (force-directed), File Map (file-grouped), and Crate Map (crate-level dependencies with frontier selection)
 
 ## Workspace Structure
 
@@ -119,7 +119,7 @@ cd web && npm install && npm run dev
 
 Open http://localhost:3000 to explore your call graph interactively. The viewer offers three views:
 - **Call Graph** -- Force-directed layout for function-level exploration and source-to-sink path finding
-- **Blueprint** -- Hierarchical layout grouping functions by file for module-level structure
+- **File Map** -- Hierarchical layout grouping functions by file for file-level structure
 - **Crate Map** -- Crate-level overview showing inter-crate dependencies, with a frontier feature to see which functions in crate A are called by crate B
 
 The pipeline automatically:

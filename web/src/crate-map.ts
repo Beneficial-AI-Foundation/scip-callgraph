@@ -1145,26 +1145,30 @@ export class CrateMapVisualization {
 
     const legend = document.createElement('div');
     legend.className = 'cm-legend';
+    const isLean = this.state.projectLanguage === 'lean';
+    const mapTitle = isLean ? 'Namespace Map' : 'Crate Map';
+    const noun = isLean ? 'namespace' : 'crate';
+    const Noun = isLean ? 'Namespace' : 'Crate';
     legend.innerHTML = `
       <div class="cm-legend-header" id="cm-legend-toggle">
-        <strong>Module Map</strong> <span class="cm-legend-arrow">${this.legendVisible ? '\u25BC' : '\u25B6'}</span>
+        <strong>${mapTitle}</strong> <span class="cm-legend-arrow">${this.legendVisible ? '\u25BC' : '\u25B6'}</span>
       </div>
       <div class="cm-legend-body" style="display:${this.legendVisible ? 'block' : 'none'}">
         <div class="cm-legend-item">
           <svg width="24" height="16"><rect x="1" y="1" width="22" height="14" rx="4" fill="rgba(66,133,244,0.12)" stroke="rgba(66,133,244,0.5)" stroke-width="1.5"/></svg>
-          <span>Crate</span>
+          <span>${Noun}</span>
         </div>
         <div class="cm-legend-item">
           <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#888" stroke-width="2"/></svg>
-          <span>Cross-crate calls</span>
+          <span>Cross-${noun} calls</span>
         </div>
         <div class="cm-legend-item">
           <span style="font-size:0.75rem; color:#666;">Line width = call count</span>
         </div>
         <div class="cm-legend-section"><strong>Interactions</strong></div>
         <div class="cm-legend-item"><span style="font-size:0.75rem; color:#666;">Click edge: expand functions</span></div>
-        <div class="cm-legend-item"><span style="font-size:0.75rem; color:#666;">Click crate: show info</span></div>
-        <div class="cm-legend-item"><span style="font-size:0.75rem; color:#666;">Dbl-click crate: open in Call Graph</span></div>
+        <div class="cm-legend-item"><span style="font-size:0.75rem; color:#666;">Click ${noun}: show info</span></div>
+        <div class="cm-legend-item"><span style="font-size:0.75rem; color:#666;">Dbl-click ${noun}: open in Call Graph</span></div>
       </div>
     `;
     this.container.appendChild(legend);

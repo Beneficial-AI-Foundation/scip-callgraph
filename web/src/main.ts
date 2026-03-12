@@ -431,6 +431,42 @@ let selectedTargetCrate: string = '';
 let crateDependencyMap: Map<string, Set<string>> = new Map();
 let deferredComputationsDone = false;
 
+/** Language-aware label for the crate/namespace map view. */
+function crateMapLabel(lang: ProjectLanguage): string {
+  return lang === 'lean' ? 'Namespace Map' : 'Crate Map';
+}
+
+/** Language-aware noun for crate/namespace used in UI text. */
+function crateNoun(lang: ProjectLanguage): string {
+  return lang === 'lean' ? 'namespace' : 'crate';
+}
+
+/** Update all language-sensitive UI labels (button, legend, hints). */
+function updateLanguageLabels(lang: ProjectLanguage): void {
+  const noun = crateNoun(lang);
+  const Noun = lang === 'lean' ? 'Namespace' : 'Crate';
+  const mapLabel = crateMapLabel(lang);
+
+  const crateMapBtn = document.getElementById('view-crate-map');
+  if (crateMapBtn) crateMapBtn.textContent = mapLabel;
+
+  const title = document.getElementById('crate-frontier-title');
+  if (title) title.textContent = `🔗 ${Noun} Frontier`;
+
+  const srcLabel = document.getElementById('source-crate-label');
+  if (srcLabel) srcLabel.textContent = `Source ${Noun} (called):`;
+
+  const tgtLabel = document.getElementById('target-crate-label');
+  if (tgtLabel) tgtLabel.textContent = `Target ${Noun} (caller):`;
+
+  const hint = document.getElementById('crate-frontier-hint');
+  if (hint) {
+    hint.innerHTML =
+      `💡 Select two ${noun}s to see the <strong>frontier</strong>: functions in the source ${noun} called by the target ${noun}.<br>` +
+      `💡 In ${mapLabel}: click a ${noun} to set source, click another to set target.`;
+  }
+}
+
 /**
  * Sync input field values to state (handles browser auto-fill after refresh)
  */
@@ -1450,6 +1486,7 @@ function loadGraph(graph: D3Graph, message: string): void {
   state.projectLanguage = detectProjectLanguage(state.fullGraph);
   renderKindFilters(state.projectLanguage);
   renderCallTypeFilters(state.projectLanguage);
+  updateLanguageLabels(state.projectLanguage);
 
   // Backfill crate_name on every node using language-aware extraction
   // (Lean: two-level module path, Rust/Verus: top-level crate)
@@ -1746,7 +1783,7 @@ function updateStats(truncatedTo?: number): void {
     <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
       <span style="color: #e65100; font-weight: bold;">📊 Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
-        Too large to render all at once. Use the <strong>Module Map</strong> for an overview, or enter a <strong>Source</strong>/<strong>Sink</strong> filter to explore specific call paths.
+        Too large to render all at once. Use the <strong>${crateMapLabel(state.projectLanguage)}</strong> for an overview, or enter a <strong>Source</strong>/<strong>Sink</strong> filter to explore specific call paths.
       </p>
     </div>
     ` : ''}

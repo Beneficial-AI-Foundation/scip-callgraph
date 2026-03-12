@@ -130,7 +130,7 @@ export interface D3Node {
   similar_lemmas?: SimilarLemma[];
   kind: DeclKind;  // Declaration kind: exec, proof, spec (Verus) or theorem, def, axiom, ... (Lean)
   verification_status?: VerificationStatus;  // Verification status: verified, failed, unverified
-  // Derived statuses computed by DAG walk (used by Blueprint view)
+  // Derived statuses computed by DAG walk (used by File Map view)
   border_status?: BorderStatus;
   fill_status?: FillStatus;
   // D3-specific properties added during simulation

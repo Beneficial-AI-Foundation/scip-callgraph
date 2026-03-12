@@ -4,7 +4,7 @@ An interactive web-based visualization tool for exploring call graphs generated 
 
 ## Features
 
-- **Three Visualization Views** - Call Graph, Blueprint, and Crate Map
+- **Three Visualization Views** - Call Graph, File Map, and Crate Map
 - **Source→Sink Path Finding** - Find all paths between two functions
 - **Crate Frontier** - See which functions in crate A are called by crate B
 - **Verus Support** - Filter by function mode (exec/proof/spec) and call location (body/requires/ensures)
@@ -92,8 +92,8 @@ The viewer offers three visualization modes, switched via the header buttons:
 #### Call Graph (default)
 Force-directed D3.js layout with topological layering. Best for exploring function-level call paths, source-to-sink analysis, and depth-limited exploration.
 
-#### Blueprint
-Dagre hierarchical layout that groups functions by file. Each file is a compound box containing its functions as nodes, with cross-file edges drawn between them. Best for understanding module-level structure.
+#### File Map
+Dagre hierarchical layout that groups functions by file. Each file is a compound box containing its functions as nodes, with cross-file edges drawn between them. Best for understanding file-level structure.
 
 #### Crate Map
 High-level view where each crate is a single box showing function and file counts. Edges between crates are weighted by the number of cross-crate function calls. Best for understanding inter-crate dependencies at a glance.
@@ -196,7 +196,7 @@ web/
 ├── src/
 │   ├── main.ts              # Application entry, state management, VS Code integration
 │   ├── graph.ts             # Call Graph view - D3.js force-directed visualization
-│   ├── blueprint.ts         # Blueprint view - Dagre hierarchical layout grouped by file
+│   ├── blueprint.ts         # File Map view - Dagre hierarchical layout grouped by file
 │   ├── crate-map.ts         # Crate Map view - crate-level overview with frontier rendering
 │   ├── query.ts             # Composable query pipeline: AST, operators, compiler, executor
 │   ├── filters.ts           # Filter entry point (thin wrapper), pattern utilities, query matching

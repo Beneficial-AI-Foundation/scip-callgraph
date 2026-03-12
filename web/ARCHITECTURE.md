@@ -2,94 +2,179 @@
 
 ## System Overview
 
+The viewer consumes JSON produced by **language-specific probes** — standalone
+tools that extract call graphs and verification metadata from formally verified
+codebases.  Two probes are currently supported:
+
+| Probe | Language | Repository |
+|-------|----------|------------|
+| **probe-verus** | Verus / Rust | [Beneficial-AI-Foundation/probe-verus](https://github.com/Beneficial-AI-Foundation/probe-verus) |
+| **probe-lean** | Lean 4 | [Beneficial-AI-Foundation/probe-lean](https://github.com/Beneficial-AI-Foundation/probe-lean) |
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      RUST BACKEND                           │
+│                   LANGUAGE-SPECIFIC PROBES                   │
+│                                                             │
+│  ┌───────────────┐          ┌──────────────┐               │
+│  │  probe-verus  │          │  probe-lean  │               │
+│  │ (Rust / Verus)│          │  (Lean 4)    │               │
+│  └──────┬────────┘          └──────┬───────┘               │
+│         │                          │                        │
+│         │  SCIP index → atoms      │  Lean env → atoms     │
+│         ▼                          ▼                        │
+│  ┌────────────────────────────────────────┐                │
+│  │          Probe Atom Dict JSON          │                │
+│  │  (or Schema 2.0 envelope with atoms)   │                │
+│  │                                        │                │
+│  │  { "probe:fn_name": {                  │                │
+│  │      "display-name": "fn_name",        │                │
+│  │      "dependencies": [...],            │                │
+│  │      "code-path": "src/lib.rs",        │                │
+│  │      "code-text": { lines-start, … },  │                │
+│  │      "kind": "exec" | "theorem" | …,   │                │
+│  │      "verification-status": "verified"  │                │
+│  │    }, …                                │                │
+│  │  }                                     │                │
+│  └──────────────────┬─────────────────────┘                │
+│                     │ graph.json                            │
+└─────────────────────┼───────────────────────────────────────┘
+                      │
+          OR  ────────┼──── probe-verus Rust pipeline
+                      │     also emits D3 format directly
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              TYPESCRIPT + D3.JS FRONTEND                    │
 │                                                             │
 │  ┌──────────────┐                                          │
-│  │ SCIP Parser  │──→ Parse index_scip.json                │
-│  └──────┬───────┘                                          │
-│         │                                                   │
+│  │ Graph Loader │──→ Normalize probe output to D3Graph     │
+│  │              │    - Atom dict → convertAtomDictToD3Graph │
+│  │              │    - Schema 2.0 envelope → unwrap + recurse│
+│  │              │    - D3Graph → pass-through               │
+│  └──────┬───────┘    - URL parameter / file upload         │
+│         │            - Large file detection                │
+│         ▼                                                   │
+│  ┌──────────────┐    ┌──────────────┐                      │
+│  │    Query     │◄──│  UI Controls │                       │
+│  │   Pipeline   │   └──────────────┘                       │
+│  └──────┬───────┘    - Source/sink queries                 │
+│         │            - Function mode toggles               │
+│         │            - Call type toggles                   │
+│         │            - Exclude/include patterns            │
+│         │            - Depth slider                        │
 │         ▼                                                   │
 │  ┌──────────────┐                                          │
-│  │  Call Graph  │──→ Build graph with nodes & edges       │
-│  │   Builder    │    - Extract function symbols            │
-│  └──────┬───────┘    - Identify callers/callees           │
-│         │            - Detect Verus function modes         │
-│         ▼            - Classify call locations             │
-│  ┌──────────────┐                                          │
-│  │  D3 Exporter │──→ Export to JSON                       │
-│  └──────┬───────┘    - Nodes array (with metadata)        │
-│         │            - Links array (source → target)       │
-│         │            - Link types (inner/pre/post)         │
-│         │            - Metadata (counts, timestamps)       │
-└─────────┼─────────────────────────────────────────────────┘
-          │
-          ▼ call_graph_d3.json
-          │
-┌─────────┼─────────────────────────────────────────────────┐
-│         │           TYPESCRIPT + D3.JS FRONTEND           │
+│  │  View Layer  │──→ Three visualization modes             │
+│  │              │    - Call Graph (D3 force-directed)       │
+│  │              │    - File Map (Dagre, grouped by file)     │
+│  │              │    - Crate Map (Dagre, crate-level)       │
+│  └──────┬───────┘    - Zoom/pan controls                   │
+│         │            - Interactive highlighting             │
 │         ▼                                                   │
 │  ┌──────────────┐                                          │
-│  │  JSON Loader │──→ Load graph data (auto or manual)     │
-│  └──────┬───────┘    - URL parameter support              │
-│         │            - Large file detection               │
-│         ▼                                                   │
-│  ┌──────────────┐    ┌──────────────┐                     │
-│  │    Query     │◄──│  UI Controls │                      │
-│  │   Pipeline   │   └──────────────┘                      │
-│  └──────┬───────┘    - Source/sink queries                │
-│         │            - Function mode toggles              │
-│         │            - Call type toggles                  │
-│         │            - Exclude/include patterns           │
-│         │            - Depth slider                       │
-│         ▼                                                   │
-│  ┌──────────────┐                                          │
-│  │  View Layer  │──→ Three visualization modes            │
-│  │              │    - Call Graph (D3 force-directed)      │
-│  │              │    - Blueprint (Dagre, grouped by file)  │
-│  │              │    - Crate Map (Dagre, crate-level)      │
-│  └──────┬───────┘    - Zoom/pan controls                  │
-│         │            - Interactive highlighting            │
-│         ▼                                                   │
-│  ┌──────────────┐                                          │
-│  │  SVG Canvas  │──→ Rendered graph                       │
+│  │  SVG Canvas  │──→ Rendered graph                        │
 │  └──────────────┘                                          │
 │                                                             │
 │  ┌──────────────┐                                          │
-│  │  VS Code     │──→ Optional webview integration         │
-│  │  Integration │    - Bidirectional messaging            │
-│  └──────────────┘    - Navigate to source files           │
+│  │  VS Code     │──→ Optional webview integration          │
+│  │  Integration │    - Bidirectional messaging             │
+│  └──────────────┘    - Navigate to source files            │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Data Flow
 
-### 1. Export Phase (Rust)
+### 1. Probe Phase (Language-Specific)
 
+Each probe extracts a call graph from its target language and writes a JSON file.
+
+**Verus / Rust path** (probe-verus):
 ```
-SCIP JSON → Parse → Build Graph → Enhance with Metadata → Export D3 JSON
-              ↓          ↓                  ↓                    ↓
-         Documents   Functions         is_libsignal          nodes[]
-         Symbols     Callers/Callees   function mode          links[]
-                     Call locations    verification_status    metadata
+Source .rs → verus-analyzer scip → index.scip → scip print --json → index.scip.json
+                                                                          ↓
+                                              probe-verus (Rust library)
+                                              parse_scip_json → build_call_graph
+                                              → convert_to_atoms → atoms_to_d3_graph
+                                                                          ↓
+                                                                    graph.json (D3 format)
 ```
+
+**Lean path** (probe-lean):
+```
+Source .lean → probe-lean extract → graph.json (atom dict or Schema 2.0 envelope)
+```
+
+Both paths produce a JSON file consumed by the web viewer.
 
 ### 2. Visualization Phase (TypeScript)
 
 ```
-Load JSON → Initial State → User Interaction → Filter Graph → View Dispatch → Render
-    ↓           ↓                ↓                 ↓               ↓            ↓
-Full Graph   Display        Source/Sink       Path Finding    Call Graph     New SVG
-+ crate_name Statistics     Depth Slider      BFS/DFS        Blueprint      Layout
- backfill                   Crate Frontier    Crate Boundary  Crate Map
-                            Hide Node
+Load JSON → Normalize → Initial State → User Interaction → Filter → View Dispatch → Render
+    ↓           ↓            ↓                ↓               ↓           ↓            ↓
+graph.json  Detect       Full Graph      Source/Sink     Path Finding  Call Graph   New SVG
+            format:      + crate_name    Depth Slider    BFS/DFS      File Map     Layout
+            atom dict    backfill        Crate Frontier  Boundary      Crate Map
+            / D3 / 2.0                   Hide Node
+```
+
+## Input Formats
+
+The web viewer accepts three JSON formats, all auto-detected by the graph loader:
+
+### 1. Probe Atom Dict (primary input from probes)
+
+The native output of probe-verus and probe-lean. A flat object keyed by atom ID:
+
+```json
+{
+  "probe:fn_name": {
+    "display-name": "fn_name",
+    "dependencies": ["probe:other_fn"],
+    "code-path": "src/lib.rs",
+    "code-text": { "lines-start": 10, "lines-end": 25 },
+    "code-module": "my_crate::module",
+    "kind": "exec",
+    "verification-status": "verified",
+    "dependencies-with-locations": [
+      { "code-name": "probe:other_fn", "location": "inner", "line": 15 }
+    ]
+  }
+}
+```
+
+### 2. Schema 2.0 Envelope (probe output with metadata)
+
+Wraps an atom dict with provenance metadata. The loader unwraps and recurses:
+
+```json
+{
+  "schema": "probe-output",
+  "schema-version": "2.0",
+  "tool": { "name": "probe-lean", "version": "0.3.0", "command": "extract" },
+  "source": { "repo": "...", "commit": "...", "language": "lean", ... },
+  "timestamp": "2026-03-10T...",
+  "data": { /* atom dict */ }
+}
+```
+
+### 3. D3Graph (legacy / direct Rust pipeline output)
+
+The Verus Rust pipeline (`atoms_to_d3_graph`) can emit this format directly:
+
+```json
+{
+  "nodes": [{ "id": "...", "display_name": "...", ... }],
+  "links": [{ "source": "...", "target": "...", "type": "inner" }],
+  "metadata": { "total_nodes": 42, "total_edges": 60, ... }
+}
 ```
 
 ## Component Breakdown
 
-### Rust Components
+### Rust Components (probe-verus pipeline)
+
+The Rust backend is used only on the **Verus path**. probe-lean writes its JSON
+directly; no Rust processing is needed.
 
 #### 1. **Data Structures** (`crates/scip-core/src/scip_to_call_graph_json.rs`)
 ```rust
@@ -142,7 +227,7 @@ pub fn atoms_to_d3_graph(
 ```
 
 **Responsibilities:**
-- Convert internal call graph to D3 format
+- Convert probe-verus atoms to D3 format
 - Detect Verus function modes (exec/proof/spec)
 - Pre-compute dependencies and dependents for O(1) browser lookups
 - Classify call locations (body, requires, ensures)
@@ -269,12 +354,13 @@ Also exports `getCallers()` and `getCallees()` for immediate (non-recursive) nei
 
 #### 3b. **Graph Loader** (`src/graph-loader.ts`)
 
-Normalizes multiple JSON input formats into a unified `D3Graph`:
+The central adapter that normalizes probe output into a unified `D3Graph`.
+`parseAndNormalizeGraph()` auto-detects the input format and dispatches:
 
-- SCIP D3Graph format (direct pass-through)
-- Simplified format (array of nodes with `deps`)
-- Probe atom dict format (Verus/Lean `atoms.json`)
-- Schema 2.0 envelopes (unwrapped recursively)
+- **Probe atom dict** → `convertAtomDictToD3Graph()` (primary path for probe-verus / probe-lean)
+- **Schema 2.0 envelope** → unwrap `data` payload, recurse
+- **D3Graph format** → direct pass-through (legacy Rust pipeline output)
+- **Simplified format** → `convertSimplifiedToD3Graph()` (array of nodes with `deps`)
 
 #### 4. **D3 Visualization** (`src/graph.ts`)
 
@@ -296,9 +382,9 @@ The graph uses a layered layout based on call depth:
 - Precondition (requires): Dashed orange line
 - Postcondition (ensures): Dashed pink line
 
-#### 4b. **Blueprint View** (`src/blueprint.ts`)
+#### 4b. **File Map View** (`src/blueprint.ts`)
 
-Dagre-based hierarchical layout that groups functions by file using compound graph nodes. Each file becomes a box containing its function nodes, with cross-file edges drawn between them. Uses the same node coloring as Call Graph but provides a cleaner module-level view.
+Dagre-based hierarchical layout that groups functions by file using compound graph nodes. Each file becomes a box containing its function nodes, with cross-file edges drawn between them. Uses the same node coloring as Call Graph but provides a cleaner file-level view.
 
 #### 4c. **Crate Map View** (`src/crate-map.ts`)
 
@@ -427,13 +513,19 @@ vscode.postMessage({
 6. Update URL generation/parsing for shareable links
 
 ### Adding New Node Metadata
-1. Add field to Rust `D3Node` struct
-2. Export data in converter function
+1. Add field to Rust `D3Node` struct (Verus path) or `ProbeAtom` interface (all probes)
+2. Export data in converter function (`atoms_to_d3_graph` / `convertAtomDictToD3Graph`)
 3. Add field to TypeScript `D3Node` interface
 4. Use in visualization (node info panel, coloring, etc.)
 
+### Supporting a New Probe
+1. Have the probe emit **atom dict JSON** (or a Schema 2.0 envelope wrapping one)
+2. Add any new fields to `ProbeAtom` in `types.ts`
+3. Map the new fields to `D3Node` in `convertAtomDictToD3Graph()` (`graph-loader.ts`)
+4. Add a CI workflow (see `generate-lean-callgraph.yml` as a template)
+
 ### Custom Visualizations
-Three views exist (`graph.ts`, `blueprint.ts`, `crate-map.ts`), each implementing `update()`, `destroy()`, `resize()`, `clear()`, and `highlightNodes()`. To add a new view:
+Three views exist — Call Graph (`graph.ts`), File Map (`blueprint.ts`), and Crate Map (`crate-map.ts`) — each implementing `update()`, `destroy()`, `resize()`, `clear()`, and `highlightNodes()`. To add a new view:
 1. Create a new class following the same interface pattern
 2. Add a button in `index.html` and a case in `createVisualization()` in `main.ts`
 3. Register the view name in the `ActiveView` type and URL parameter handling
