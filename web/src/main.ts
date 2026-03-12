@@ -84,6 +84,9 @@ function navigateToSource(node: D3Node): void {
 // Priority: URL param > graph metadata > env var
 let githubBaseUrl: string | null = import.meta.env.VITE_GITHUB_URL || null;
 
+// Branch name for GitHub blob links (defaults to 'main')
+const githubBranch: string = import.meta.env.VITE_GITHUB_BRANCH || 'main';
+
 // Path prefix to prepend to relative_path when building GitHub links
 // (e.g., "curve25519-dalek" if repo structure is repo/curve25519-dalek/src/...)
 let githubPathPrefix: string = import.meta.env.VITE_GITHUB_PATH_PREFIX || '';
@@ -180,7 +183,7 @@ function buildGitHubLink(node: D3Node): string | null {
   }
   
   // Build the link with line numbers if available
-  let link = `${baseUrl}/blob/main/${fullPath}`;
+  let link = `${baseUrl}/blob/${githubBranch}/${fullPath}`;
   
   if (node.start_line) {
     link += `#L${node.start_line}`;
