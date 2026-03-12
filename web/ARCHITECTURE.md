@@ -113,7 +113,7 @@ Load JSON → Normalize → Initial State → User Interaction → Filter → Vi
     ↓           ↓            ↓                ↓               ↓           ↓            ↓
 graph.json  Detect       Full Graph      Source/Sink     Path Finding  Call Graph   New SVG
             format:      + crate_name    Depth Slider    BFS/DFS      File Map     Layout
-            atom dict    backfill        Crate Frontier  Boundary      Crate Map
+            atom dict    backfill        Crate Boundary  Boundary      Crate Map
             / D3 / 2.0                   Hide Node
 ```
 
@@ -393,7 +393,7 @@ Aggregates the function-level graph into a crate-level overview:
 - `buildCrateGraph()`: Transforms `D3Graph` into `CrateGraph` by grouping nodes by `crate_name` and counting cross-crate edges.
 - **Collapsed mode**: Renders crates as boxes with function/file counts, edges weighted by call count.
 - **Edge expansion**: Clicking a cross-crate edge expands both crates inline to show the individual function calls, using Dagre compound layout.
-- **Crate frontier**: Selecting two crates (by click or dropdown) renders an inline view of all functions at their interface, with a "View in Call Graph" navigation button.
+- **Crate boundary**: Selecting two crates (by click or dropdown) renders an inline view of all functions at their interface, with a "View in Call Graph" navigation button.
 - **Dependency-aware dropdowns**: Bidirectional filtering — when a source crate is selected, the target dropdown is filtered to only crates the source actually calls into; conversely, when a target crate is selected, the source dropdown is filtered to only crates that call into the target (both derived from `CrateGraph` edges).
 
 #### 5. **Main Application** (`src/main.ts`)
@@ -421,7 +421,7 @@ let crateReverseDependencyMap: Map<string, Set<string>>;  // target crate → se
 - `?github=URL` to set GitHub base for source links
 - `?view=crate-map` or `?view=blueprint` to set the active view
 - `?source=query&sink=query&depth=N` for filter presets
-- `?source-crate=A&target-crate=B` for crate frontier selection
+- `?source-crate=A&target-crate=B` for crate boundary selection
 
 #### 5. **VS Code Integration** (`src/main.ts`)
 

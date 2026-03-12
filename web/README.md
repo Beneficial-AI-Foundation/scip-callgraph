@@ -6,7 +6,7 @@ An interactive web-based visualization tool for exploring call graphs generated 
 
 - **Three Visualization Views** - Call Graph, File Map, and Crate Map
 - **Source→Sink Path Finding** - Find all paths between two functions
-- **Crate Frontier** - See which functions in crate A are called by crate B
+- **Crate Boundary** - See which functions in crate A are called by crate B
 - **Verus Support** - Filter by function mode (exec/proof/spec) and call location (body/requires/ensures)
 - **Verification Status** - Color-coded nodes showing verified/failed/unverified status
 - **Similar Lemmas** - See semantically similar lemmas for each function
@@ -98,7 +98,7 @@ Dagre hierarchical layout that groups functions by file. Each file is a compound
 #### Crate Map
 High-level view where each crate is a single box showing function and file counts. Edges between crates are weighted by the number of cross-crate function calls. Best for understanding inter-crate dependencies at a glance.
 
-- **Click** a crate to select it as source (blue) or target (orange) for the crate frontier
+- **Click** a crate to select it as source (blue) or target (orange) for the crate boundary
 - **Double-click** a crate to switch to Call Graph view filtered to that crate's files
 - **Click** a cross-crate edge to expand it inline, showing the individual function calls
 - Press **Escape** to collapse back to the crate overview
@@ -127,12 +127,12 @@ High-level view where each crate is a single box showing function and file count
 
 When both source and sink use `crate:` queries, a **direct boundary mode** activates that shows only the cross-crate function calls between the two crates.
 
-#### Crate Frontier
-Select a **Source Crate** and **Target Crate** from the sidebar dropdowns (or by clicking crates in the Crate Map) to see the frontier: which functions in the source crate are called by the target crate.
+#### Crate Boundary
+Select a **Source Crate** and **Target Crate** from the sidebar dropdowns (or by clicking crates in the Crate Map) to see the boundary: which functions in the source crate are called by the target crate.
 
-When a source crate is selected, the target dropdown is automatically filtered to only show crates that the source actually calls into.
+The dropdowns filter bidirectionally: when a source crate is selected, the target dropdown is filtered to only crates the source calls into; when a target crate is selected, the source dropdown is filtered to only crates that call into the target.
 
-In Crate Map view the frontier is rendered inline. A "View in Call Graph" button lets you open the same frontier in the full Call Graph for deeper exploration.
+In Crate Map view the boundary is rendered inline. A "View in Call Graph" button lets you open the same boundary in the full Call Graph for deeper exploration.
 
 #### Function Mode (Verus)
 - **Exec** (blue): Executable code (default Rust functions)
@@ -182,8 +182,8 @@ Share specific views with URL parameters:
 | `view` | Active view | `?view=crate-map` or `?view=blueprint` |
 | `source` | Source query | `?source=main` |
 | `sink` | Sink query | `?sink=validate` |
-| `source-crate` | Source crate for frontier | `?source-crate=libsignal-core` |
-| `target-crate` | Target crate for frontier | `?target-crate=curve25519-dalek` |
+| `source-crate` | Source crate for boundary | `?source-crate=libsignal-core` |
+| `target-crate` | Target crate for boundary | `?target-crate=curve25519-dalek` |
 | `depth` | Max depth | `?depth=3` |
 | `exec`, `proof`, `spec` | Toggle modes | `?spec=1&exec=0` |
 | `inner`, `pre`, `post` | Toggle call types | `?pre=1&post=1` |
@@ -197,7 +197,7 @@ web/
 │   ├── main.ts              # Application entry, state management, VS Code integration
 │   ├── graph.ts             # Call Graph view - D3.js force-directed visualization
 │   ├── blueprint.ts         # File Map view - Dagre hierarchical layout grouped by file
-│   ├── crate-map.ts         # Crate Map view - crate-level overview with frontier rendering
+│   ├── crate-map.ts         # Crate Map view - crate-level overview with boundary rendering
 │   ├── query.ts             # Composable query pipeline: AST, operators, compiler, executor
 │   ├── filters.ts           # Filter entry point (thin wrapper), pattern utilities, query matching
 │   ├── graph-loader.ts      # JSON format normalization and conversion (SCIP, atoms, simplified)

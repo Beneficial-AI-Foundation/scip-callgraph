@@ -53,14 +53,15 @@ Source and Sink queries accept the `crate:` prefix to match all functions in a c
 
 **Implementation:** `isCrateQuery()` and the boundary branch in `applyFilters()` in `filters.ts`.
 
-### 3b. Crate Frontier (UI)
+### 3b. Crate Boundary (UI)
 
-The **Crate Frontier** dropdowns in the sidebar provide a convenient way to select two crates and see their interface:
+The **Crate Boundary** dropdowns in the sidebar provide a convenient way to select two crates and see their interface:
 
 - **Source Crate:** The crate being called into
-- **Target Crate:** The crate doing the calling (automatically filtered to dependencies of the source)
+- **Target Crate:** The crate doing the calling
+- The dropdowns filter bidirectionally: selecting a source filters the target dropdown to its dependencies, and selecting a target filters the source dropdown to its callers
 
-In **Crate Map** view, selecting two crates renders the frontier inline. In **Call Graph** or **Blueprint** views, it sets `crate:A` / `crate:B` source/sink queries and applies boundary mode.
+In **Crate Map** view, selecting two crates renders the boundary inline. In **Call Graph** or **Blueprint** views, it sets `crate:A` / `crate:B` source/sink queries and applies boundary mode.
 
 Crates can also be selected by clicking on the Crate Map: first click sets source (blue highlight), second click sets target (orange highlight).
 
@@ -273,6 +274,6 @@ Filters can be set via URL parameters:
 | `excludePath` | Exclude path patterns |
 | `hidden` | Hidden node names (comma-separated) |
 | `view` | Active view (`callgraph`, `blueprint`, `crate-map`) |
-| `source-crate` | Source crate for frontier |
-| `target-crate` | Target crate for frontier |
+| `source-crate` | Source crate for boundary |
+| `target-crate` | Target crate for boundary |
 

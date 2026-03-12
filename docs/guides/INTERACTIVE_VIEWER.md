@@ -121,18 +121,18 @@ Switch between views using the header buttons:
 - **Crate-level overview** where each crate is a single box showing function and file counts
 - Edges between crates are weighted by the number of cross-crate function calls
 - **Click** a cross-crate edge to expand it inline, showing the individual function calls
-- **Click** crates to select them for the crate frontier (source = blue, target = orange)
+- **Click** crates to select them for the crate boundary (source = blue, target = orange)
 - **Double-click** a crate to switch to Call Graph view filtered to that crate's files
 - Best for understanding inter-crate dependencies at a glance
 
-### 🔗 Crate Frontier
+### 🔗 Crate Boundary
 
 Select two crates to see their interface -- which functions in crate A are called by crate B:
 
 - Use the **Source Crate** / **Target Crate** dropdowns in the sidebar
 - Or **click** crates on the Crate Map (first click = source, second click = target)
-- The target dropdown is automatically filtered to only show crates the source depends on
-- In Crate Map view, the frontier is rendered inline with a "View in Call Graph" button
+- The dropdowns filter bidirectionally: selecting a source filters the target dropdown to its dependencies, and selecting a target filters the source dropdown to its callers
+- In Crate Map view, the boundary is rendered inline with a "View in Call Graph" button
 - In Call Graph / File Map views, it sets `crate:A` / `crate:B` source/sink queries
 
 ### 🔍 Powerful Filtering
@@ -312,7 +312,7 @@ Potential improvements:
 - [x] Integration with code editor (jump to definition) -- See [VSCODE_EXTENSION.md](./VSCODE_EXTENSION.md)
 - [x] Clustering/grouping by module -- File Map view (grouped by file) and Crate Map view (grouped by crate)
 - [x] Call path finder (shortest path between two functions) -- Source + Sink combined mode
-- [x] Crate-level dependency visualization -- Crate Map view with frontier selection
+- [x] Crate-level dependency visualization -- Crate Map view with boundary selection
 
 ## Complementary Tools
 

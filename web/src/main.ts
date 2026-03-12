@@ -259,7 +259,7 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
     focusJsonUrl = params.get('focus')!;
   }
 
-  // Crate frontier selections (module-level, not FilterOptions)
+  // Crate boundary selections (module-level, not FilterOptions)
   if (params.has('source-crate')) {
     selectedSourceCrate = params.get('source-crate')!;
   }
@@ -286,7 +286,7 @@ function generateShareableURL(): string {
   if (activeView === 'blueprint') params.set('view', 'blueprint');
   if (activeView === 'crate-map') params.set('view', 'crate-map');
 
-  // Crate frontier params
+  // Crate boundary params
   if (selectedSourceCrate) params.set('source-crate', selectedSourceCrate);
   if (selectedTargetCrate) params.set('target-crate', selectedTargetCrate);
   
@@ -454,8 +454,8 @@ function updateLanguageLabels(lang: ProjectLanguage): void {
   const crateMapBtn = document.getElementById('view-crate-map');
   if (crateMapBtn) crateMapBtn.textContent = mapLabel;
 
-  const title = document.getElementById('crate-frontier-title');
-  if (title) title.textContent = `🔗 ${Noun} Frontier`;
+  const title = document.getElementById('crate-boundary-title');
+  if (title) title.textContent = `🔗 ${Noun} Boundary`;
 
   const srcLabel = document.getElementById('source-crate-label');
   if (srcLabel) srcLabel.textContent = `Source ${Noun} (called):`;
@@ -463,10 +463,10 @@ function updateLanguageLabels(lang: ProjectLanguage): void {
   const tgtLabel = document.getElementById('target-crate-label');
   if (tgtLabel) tgtLabel.textContent = `Target ${Noun} (caller):`;
 
-  const hint = document.getElementById('crate-frontier-hint');
+  const hint = document.getElementById('crate-boundary-hint');
   if (hint) {
     hint.innerHTML =
-      `💡 Select two ${noun}s to see the <strong>frontier</strong>: functions in the source ${noun} called by the target ${noun}.<br>` +
+      `💡 Select two ${noun}s to see the <strong>boundary</strong>: functions in the source ${noun} called by the target ${noun}.<br>` +
       `💡 In ${mapLabel}: click a ${noun} to set source, click another to set target.`;
   }
 }
@@ -648,14 +648,14 @@ function setupUIHandlers(): void {
     applyFiltersAndUpdate();
   }) as EventListener);
 
-  // Crate frontier dropdown handlers
+  // Crate boundary dropdown handlers
   const handleSourceCrateChange = () => {
     const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
     selectedSourceCrate = srcSel?.value || '';
     // Re-filter the target dropdown to show only dependencies of the new source
     populateCrateDropdowns();
     selectedTargetCrate = (document.getElementById('target-crate-select') as HTMLSelectElement | null)?.value || '';
-    triggerFrontierUpdate();
+    triggerBoundaryUpdate();
   };
 
   const handleTargetCrateChange = () => {
@@ -663,12 +663,12 @@ function setupUIHandlers(): void {
     selectedTargetCrate = tgtSel?.value || '';
     populateCrateDropdowns();
     selectedSourceCrate = (document.getElementById('source-crate-select') as HTMLSelectElement | null)?.value || '';
-    triggerFrontierUpdate();
+    triggerBoundaryUpdate();
   };
 
-  function triggerFrontierUpdate(): void {
+  function triggerBoundaryUpdate(): void {
     if (activeView === 'crate-map' && visualization instanceof CrateMapVisualization) {
-      visualization.setFrontierCrates(
+      visualization.setBoundaryCrates(
         selectedSourceCrate || null,
         selectedTargetCrate || null,
       );
@@ -687,8 +687,8 @@ function setupUIHandlers(): void {
   document.getElementById('source-crate-select')?.addEventListener('change', handleSourceCrateChange);
   document.getElementById('target-crate-select')?.addEventListener('change', handleTargetCrateChange);
 
-  // Sync module state when CrateMap updates frontier from click interactions
-  window.addEventListener('crate-frontier-changed', ((event: CustomEvent) => {
+  // Sync module state when CrateMap updates boundary from click interactions
+  window.addEventListener('crate-boundary-changed', ((event: CustomEvent) => {
     selectedSourceCrate = event.detail.source || '';
     selectedTargetCrate = event.detail.target || '';
     populateCrateDropdowns();
@@ -1545,7 +1545,7 @@ function loadGraph(graph: D3Graph, message: string): void {
   
   applyFiltersAndUpdate();
 
-  // Restore crate frontier selection from URL params
+  // Restore crate boundary selection from URL params
   if (selectedSourceCrate || selectedTargetCrate) {
     populateCrateDropdowns();
     const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
@@ -1553,7 +1553,7 @@ function loadGraph(graph: D3Graph, message: string): void {
     if (srcSel) srcSel.value = selectedSourceCrate;
     if (tgtSel) tgtSel.value = selectedTargetCrate;
     if (activeView === 'crate-map' && visualization instanceof CrateMapVisualization) {
-      visualization.setFrontierCrates(selectedSourceCrate || null, selectedTargetCrate || null);
+      visualization.setBoundaryCrates(selectedSourceCrate || null, selectedTargetCrate || null);
     } else if (selectedSourceCrate && selectedTargetCrate) {
       state.filters.sourceQuery = `crate:${selectedSourceCrate}`;
       state.filters.sinkQuery = `crate:${selectedTargetCrate}`;

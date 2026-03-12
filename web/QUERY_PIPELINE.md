@@ -318,8 +318,8 @@ Filter state is encoded in shareable URLs:
 | `excludePath` | Exclude path patterns | `?excludePath=*/specs/*` |
 | `hidden` | Hidden node names (comma-separated) | `?hidden=foo,bar` |
 | `view` | Active view | `?view=crate-map` |
-| `source-crate` | Source crate for frontier | `?source-crate=libsignal-core` |
-| `target-crate` | Target crate for frontier | `?target-crate=curve25519-dalek` |
+| `source-crate` | Source crate for boundary | `?source-crate=libsignal-core` |
+| `target-crate` | Target crate for boundary | `?target-crate=curve25519-dalek` |
 
 ---
 
@@ -344,7 +344,7 @@ Load real graph data (Verus SCIP graph, Verus atoms, Lean atoms) through `applyF
 - Full graph (no filters) produces exactly N nodes and M links
 - Forward traversal from a known function at depth 1 returns expected callees
 - Path finding between two functions returns expected intermediate nodes
-- Crate boundary between two crates returns expected frontier
+- Crate boundary between two crates returns expected boundary
 
 ### 8.3 Backward-compatibility tests (`filters.test.ts`) — 53 tests
 

@@ -138,9 +138,9 @@ export class CrateMapVisualization {
   private crateColorMap = new Map<string, number>();
   private selectedCrate: string | null = null;
 
-  private frontierSource: string | null = null;
-  private frontierTarget: string | null = null;
-  private frontierActive = false;
+  private boundarySource: string | null = null;
+  private boundaryTarget: string | null = null;
+  private boundaryActive = false;
 
   constructor(
     container: HTMLElement,
@@ -640,12 +640,12 @@ export class CrateMapVisualization {
     }
   }
 
-  // ----- Frontier rendering -----
+  // ----- Boundary rendering -----
 
-  private renderFrontier(): void {
+  private renderBoundary(): void {
     const cg = this.crateGraph;
-    const src = this.frontierSource;
-    const tgt = this.frontierTarget;
+    const src = this.boundarySource;
+    const tgt = this.boundaryTarget;
     if (!cg || !src || !tgt || !this.lastFilteredGraph) return;
 
     this.g.selectAll('*').remove();
@@ -656,7 +656,7 @@ export class CrateMapVisualization {
     }
 
     // Collect cross-crate calls in both directions
-    // "Frontier of A called by B" = edges where caller is in tgt and callee is in src
+    // "Boundary of A called by B" = edges where caller is in tgt and callee is in src
     // In CrateEdge model: source=caller, target=callee → edge(tgt, src)
     const callsInto: Array<{ sourceId: string; targetId: string; type: string }> = [];
     const callsFrom: Array<{ sourceId: string; targetId: string; type: string }> = [];
@@ -823,7 +823,7 @@ export class CrateMapVisualization {
 
     // Summary + navigation buttons
     const btnY = 20;
-    const summaryText = `Frontier: ${callsInto.length} call${callsInto.length !== 1 ? 's' : ''} from ${tgt} → ${src}` +
+    const summaryText = `Boundary: ${callsInto.length} call${callsInto.length !== 1 ? 's' : ''} from ${tgt} → ${src}` +
       (callsFrom.length > 0 ? `, ${callsFrom.length} call${callsFrom.length !== 1 ? 's' : ''} from ${src} → ${tgt}` : '');
 
     this.g.append('text')
@@ -880,8 +880,8 @@ export class CrateMapVisualization {
   }
 
   private navigateToCallGraph(): void {
-    const src = this.frontierSource;
-    const tgt = this.frontierTarget;
+    const src = this.boundarySource;
+    const tgt = this.boundaryTarget;
     if (!src || !tgt) return;
 
     window.dispatchEvent(new CustomEvent('crate-map-switch-view', {
@@ -907,12 +907,12 @@ export class CrateMapVisualization {
   }
 
   private collapseEdge(): void {
-    if (!this.expandedEdge && !this.frontierActive) return;
+    if (!this.expandedEdge && !this.boundaryActive) return;
     this.expandedEdge = null;
-    if (this.frontierActive) {
-      this.frontierActive = false;
-      this.frontierSource = null;
-      this.frontierTarget = null;
+    if (this.boundaryActive) {
+      this.boundaryActive = false;
+      this.boundarySource = null;
+      this.boundaryTarget = null;
       this.syncDropdowns();
     }
     this.renderCollapsed();
@@ -927,20 +927,20 @@ export class CrateMapVisualization {
   // ----- Crate interactions -----
 
   private handleCrateClick(cn: CrateNode): void {
-    // Two-crate frontier selection logic:
+    // Two-crate boundary selection logic:
     // 1st click → source, 2nd click on different crate → target, click selected → deselect
-    if (this.frontierSource === cn.name) {
-      this.frontierSource = null;
-      this.frontierActive = false;
-    } else if (this.frontierTarget === cn.name) {
-      this.frontierTarget = null;
-      this.frontierActive = false;
-    } else if (!this.frontierSource) {
-      this.frontierSource = cn.name;
-    } else if (!this.frontierTarget) {
-      this.frontierTarget = cn.name;
+    if (this.boundarySource === cn.name) {
+      this.boundarySource = null;
+      this.boundaryActive = false;
+    } else if (this.boundaryTarget === cn.name) {
+      this.boundaryTarget = null;
+      this.boundaryActive = false;
+    } else if (!this.boundarySource) {
+      this.boundarySource = cn.name;
+    } else if (!this.boundaryTarget) {
+      this.boundaryTarget = cn.name;
     } else {
-      this.frontierTarget = cn.name;
+      this.boundaryTarget = cn.name;
     }
 
     this.selectedCrate = cn.name;
@@ -948,13 +948,13 @@ export class CrateMapVisualization {
     this.updateCrateSelectionStyle();
     this.showCrateInfo(cn);
 
-    if (this.frontierSource && this.frontierTarget) {
-      this.frontierActive = true;
+    if (this.boundarySource && this.boundaryTarget) {
+      this.boundaryActive = true;
       this.expandedEdge = null;
-      this.renderFrontier();
+      this.renderBoundary();
     } else {
-      if (this.frontierActive) {
-        this.frontierActive = false;
+      if (this.boundaryActive) {
+        this.boundaryActive = false;
         this.renderCollapsed();
         this.updateCrateSelectionStyle();
       }
@@ -990,8 +990,8 @@ export class CrateMapVisualization {
 
     const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    const role = this.frontierSource === cn.name ? ' (Source)' :
-                 this.frontierTarget === cn.name ? ' (Target)' : '';
+    const role = this.boundarySource === cn.name ? ' (Source)' :
+                 this.boundaryTarget === cn.name ? ' (Target)' : '';
 
     nodeInfoDiv.innerHTML = `
       <div class="cm-info">
@@ -1021,8 +1021,8 @@ export class CrateMapVisualization {
       const group = d3.select(this);
       const label = group.select('.cm-crate-label').text();
       const ci = self.crateColorMap.get(label) ?? 0;
-      const isSource = self.frontierSource === label;
-      const isTarget = self.frontierTarget === label;
+      const isSource = self.boundarySource === label;
+      const isTarget = self.boundaryTarget === label;
       const isRole = isSource || isTarget;
 
       group.select('.cm-crate-box')
@@ -1054,23 +1054,23 @@ export class CrateMapVisualization {
   private syncDropdowns(): void {
     const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
     const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
-    if (srcSel) srcSel.value = this.frontierSource ?? '';
-    if (tgtSel) tgtSel.value = this.frontierTarget ?? '';
-    window.dispatchEvent(new CustomEvent('crate-frontier-changed', {
-      detail: { source: this.frontierSource, target: this.frontierTarget },
+    if (srcSel) srcSel.value = this.boundarySource ?? '';
+    if (tgtSel) tgtSel.value = this.boundaryTarget ?? '';
+    window.dispatchEvent(new CustomEvent('crate-boundary-changed', {
+      detail: { source: this.boundarySource, target: this.boundaryTarget },
     }));
   }
 
-  public setFrontierCrates(source: string | null, target: string | null): void {
-    this.frontierSource = source;
-    this.frontierTarget = target;
+  public setBoundaryCrates(source: string | null, target: string | null): void {
+    this.boundarySource = source;
+    this.boundaryTarget = target;
     if (source && target) {
-      this.frontierActive = true;
+      this.boundaryActive = true;
       this.expandedEdge = null;
-      this.renderFrontier();
+      this.renderBoundary();
     } else {
-      if (this.frontierActive) {
-        this.frontierActive = false;
+      if (this.boundaryActive) {
+        this.boundaryActive = false;
         if (this.lastFilteredGraph) {
           this.crateGraph = buildCrateGraph(this.lastFilteredGraph);
           this.renderCollapsed();
@@ -1080,8 +1080,8 @@ export class CrateMapVisualization {
     }
   }
 
-  public getFrontierSource(): string | null { return this.frontierSource; }
-  public getFrontierTarget(): string | null { return this.frontierTarget; }
+  public getBoundarySource(): string | null { return this.boundarySource; }
+  public getBoundaryTarget(): string | null { return this.boundaryTarget; }
 
   private handleCrateDblClick(cn: CrateNode): void {
     if (!this.lastFilteredGraph) return;
