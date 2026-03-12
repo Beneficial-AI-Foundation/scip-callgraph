@@ -394,7 +394,7 @@ Aggregates the function-level graph into a crate-level overview:
 - **Collapsed mode**: Renders crates as boxes with function/file counts, edges weighted by call count.
 - **Edge expansion**: Clicking a cross-crate edge expands both crates inline to show the individual function calls, using Dagre compound layout.
 - **Crate frontier**: Selecting two crates (by click or dropdown) renders an inline view of all functions at their interface, with a "View in Call Graph" navigation button.
-- **Dependency-aware dropdowns**: When a source crate is selected, the target dropdown is filtered to only crates the source actually calls into (derived from `CrateGraph` edges).
+- **Dependency-aware dropdowns**: Bidirectional filtering — when a source crate is selected, the target dropdown is filtered to only crates the source actually calls into; conversely, when a target crate is selected, the source dropdown is filtered to only crates that call into the target (both derived from `CrateGraph` edges).
 
 #### 5. **Main Application** (`src/main.ts`)
 
@@ -411,7 +411,8 @@ let state: GraphState = {
 // View management
 let activeView: 'callgraph' | 'blueprint' | 'crate-map';
 let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVisualization;
-let crateDependencyMap: Map<string, Set<string>>;  // source crate → set of target crates
+let crateDependencyMap: Map<string, Set<string>>;         // source crate → set of target crates
+let crateReverseDependencyMap: Map<string, Set<string>>;  // target crate → set of source crates
 ```
 
 **URL Integration:**

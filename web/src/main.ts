@@ -429,6 +429,7 @@ let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVis
 let selectedSourceCrate: string = '';
 let selectedTargetCrate: string = '';
 let crateDependencyMap: Map<string, Set<string>> = new Map();
+let crateReverseDependencyMap: Map<string, Set<string>> = new Map();
 let deferredComputationsDone = false;
 
 /** Language-aware label for the crate/namespace map view. */
@@ -657,6 +658,8 @@ function setupUIHandlers(): void {
   const handleTargetCrateChange = () => {
     const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
     selectedTargetCrate = tgtSel?.value || '';
+    populateCrateDropdowns();
+    selectedSourceCrate = (document.getElementById('source-crate-select') as HTMLSelectElement | null)?.value || '';
     triggerFrontierUpdate();
   };
 
@@ -1180,6 +1183,13 @@ function ensureCrateGraphBuilt(): void {
       crateDependencyMap.set(edge.source, deps);
     }
     deps.add(edge.target);
+
+    let rdeps = crateReverseDependencyMap.get(edge.target);
+    if (!rdeps) {
+      rdeps = new Set();
+      crateReverseDependencyMap.set(edge.target, rdeps);
+    }
+    rdeps.add(edge.source);
   }
 }
 
@@ -2035,21 +2045,28 @@ function populateCrateDropdowns(): void {
 
   const allSorted = [...allCrateNames].sort((a, b) => a.localeCompare(b));
 
-  // Source dropdown: always shows all crates
+  // Source dropdown: filtered to callers of the selected target crate (or all if none)
   const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
   if (srcSel) {
     const prev = srcSel.value;
+    const rdeps = selectedTargetCrate ? crateReverseDependencyMap.get(selectedTargetCrate) : null;
+    const sourceList = rdeps ? allSorted.filter(n => rdeps.has(n)) : allSorted;
+
     srcSel.innerHTML = '<option value="">--</option>';
-    for (const name of allSorted) {
+    for (const name of sourceList) {
       const opt = document.createElement('option');
       opt.value = name;
       opt.textContent = name;
       srcSel.appendChild(opt);
     }
-    if (prev && allSorted.includes(prev)) srcSel.value = prev;
+    if (prev && sourceList.includes(prev)) {
+      srcSel.value = prev;
+    } else if (prev && !sourceList.includes(prev)) {
+      selectedSourceCrate = '';
+    }
   }
 
-  // Target dropdown: filtered to dependencies of the selected source crate
+  // Target dropdown: filtered to dependencies of the selected source crate (or all if none)
   const tgtSel = document.getElementById('target-crate-select') as HTMLSelectElement | null;
   if (tgtSel) {
     const prev = tgtSel.value;
