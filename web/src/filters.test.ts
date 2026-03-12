@@ -320,6 +320,72 @@ describe('Substring matching (verus-analyzer style display names)', () => {
 });
 
 // ============================================================================
+// Category 2d: Lean dotted-path queries and .lean extension handling
+// ============================================================================
+
+describe('Lean dotted-path queries', () => {
+  const scalarAddSpec = createNode({
+    id: 'probe:curve25519_dalek.backend.serial.u64.scalar.Scalar52.add_spec',
+    display_name: 'add_spec',
+    file_name: 'Funs.lean',
+    parent_folder: 'Curve25519Dalek',
+  });
+
+  const edwardsAddSpec = createNode({
+    id: 'probe:curve25519_dalek.edwards.EdwardsPoint.Insts.CoreOpsArithAddEdwardsPointEdwardsPoint.add_spec',
+    display_name: 'add_spec',
+    file_name: 'Funs.lean',
+    parent_folder: 'Curve25519Dalek',
+  });
+
+  const fieldAddSpec = createNode({
+    id: 'probe:curve25519_dalek.Shared0FieldElement51.Insts.CoreOpsArithAddSharedAFieldElement51FieldElement51.add_spec',
+    display_name: 'add_spec',
+    file_name: 'Add.lean',
+    parent_folder: 'FieldElement51',
+  });
+
+  it('dotted module path disambiguates same-name functions', () => {
+    expect(matchesQuery(scalarAddSpec, 'Scalar52.add_spec')).toBe(true);
+    expect(matchesQuery(edwardsAddSpec, 'Scalar52.add_spec')).toBe(false);
+    expect(matchesQuery(fieldAddSpec, 'Scalar52.add_spec')).toBe(false);
+  });
+
+  it('longer dotted path narrows further', () => {
+    expect(matchesQuery(scalarAddSpec, 'u64.scalar.Scalar52.add_spec')).toBe(true);
+    expect(matchesQuery(edwardsAddSpec, 'u64.scalar.Scalar52.add_spec')).toBe(false);
+  });
+
+  it('dotted query with wildcards works', () => {
+    // Explicit wildcards produce anchored matches, so prefix with * for substring
+    expect(matchesQuery(scalarAddSpec, '*Scalar52.*')).toBe(true);
+    expect(matchesQuery(edwardsAddSpec, '*EdwardsPoint.*add_spec')).toBe(true);
+    expect(matchesQuery(fieldAddSpec, '*FieldElement51*.add_spec')).toBe(true);
+  });
+
+  it('plain query without dots matches all same-name nodes via display_name', () => {
+    expect(matchesQuery(scalarAddSpec, 'add_spec')).toBe(true);
+    expect(matchesQuery(edwardsAddSpec, 'add_spec')).toBe(true);
+    expect(matchesQuery(fieldAddSpec, 'add_spec')).toBe(true);
+  });
+
+  it('plain query without dots does NOT match against id', () => {
+    expect(matchesQuery(scalarAddSpec, 'Scalar52')).toBe(false);
+    expect(matchesQuery(edwardsAddSpec, 'EdwardsPoint')).toBe(false);
+  });
+
+  it('path::func syntax with .lean extension stripping works', () => {
+    expect(matchesQuery(scalarAddSpec, 'Funs::add_spec')).toBe(true);
+    expect(matchesQuery(fieldAddSpec, 'Add::add_spec')).toBe(true);
+  });
+
+  it('path::func syntax matches parent_folder for Lean files', () => {
+    expect(matchesQuery(fieldAddSpec, 'FieldElement51::add_spec')).toBe(true);
+    expect(matchesQuery(scalarAddSpec, 'Curve25519Dalek::add_spec')).toBe(true);
+  });
+});
+
+// ============================================================================
 // Category 3: Graph Traversal (Source/Sink/Paths)
 // ============================================================================
 

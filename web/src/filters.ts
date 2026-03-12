@@ -96,7 +96,7 @@ export function matchesQuery(node: D3Node, query: string): boolean {
     const pathPart = query.slice(0, doubleColonIndex);
     const funcPart = query.slice(doubleColonIndex + 2);
 
-    const fileNameWithoutExt = node.file_name.replace(/\.rs$/, '');
+    const fileNameWithoutExt = node.file_name.replace(/\.(rs|lean)$/, '');
     const pathRegex = globToRegex(pathPart);
     const pathMatches =
       pathRegex.test(fileNameWithoutExt) ||
@@ -111,8 +111,21 @@ export function matchesQuery(node: D3Node, query: string): boolean {
     // Fall through: the query may contain "::" as part of the display_name
   }
 
+  // Substring match against display_name
   const regex = globToRegex(asSubstringGlob(query));
-  return regex.test(node.display_name);
+  if (regex.test(node.display_name)) {
+    return true;
+  }
+
+  // When the query contains a "." (Lean module separator), also try matching
+  // against the full node ID.  This lets "Scalar52.add_spec" resolve to
+  // "probe:...Scalar52.add_spec" without broadening plain queries like
+  // "decompress" (which would over-match SCIP symbol paths).
+  if (query.includes('.')) {
+    return regex.test(node.id);
+  }
+
+  return false;
 }
 
 /**

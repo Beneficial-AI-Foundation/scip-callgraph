@@ -100,8 +100,11 @@ Shows what functions are **called by** the matched nodes (callee direction). Tra
 |--------|---------|---------|
 | Substring | `decompress` | Matches any `display_name` containing "decompress" |
 | Glob wildcards | `lemma_*` | Anchored match (only names starting with `lemma_`) |
-| Path-qualified | `edwards::decompress` | Matches `decompress` in files named `edwards.rs` |
+| Path-qualified | `edwards::decompress` | Matches `decompress` in files named `edwards.rs` or `edwards.lean` |
+| Lean dotted path | `Scalar52.add_spec` | Matches nodes whose full ID contains `Scalar52.add_spec` |
 | Crate-qualified | `crate:curve25519-dalek` | All functions in the named crate |
+
+**Lean disambiguation:** When multiple Lean functions share the same `display_name` (e.g., several `add_spec` theorems), use a dotted module-path prefix from the node ID to narrow the match. For example, `Scalar52.add_spec` matches only `probe:...Scalar52.add_spec`, not the Edwards or Ristretto variants. The dotted-path match is a substring match against the full node ID and is only activated when the query contains a `.` character.
 
 ### 3.2 Sink Query (`sinkQuery`)
 
