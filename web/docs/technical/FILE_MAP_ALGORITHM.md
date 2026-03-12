@@ -8,8 +8,8 @@ A directed graph $G = (V, E)$ where:
   - $\text{name}(v) \in \Sigma^*$ — display name (string)
   - $\text{file}(v) \in \Sigma^*$ — file path
   - $\text{kind}(v) \in \{\text{exec}, \text{proof}, \text{spec}\}$ — declaration kind
-  - $\text{border}(v) \in \{\text{verified}, \text{ready}, \text{blocked}, \text{not\_ready}, \text{unknown}\}$
-  - $\text{fill}(v) \in \{\text{fully\_verified}, \text{verified}, \text{ready}, \text{none}\}$
+  - $\text{border}(v) \in \{\text{verified}, \text{ready}, \text{blocked}, \text{not-ready}, \text{unknown}\}$
+  - $\text{fill}(v) \in \{\text{fully-verified}, \text{verified}, \text{ready}, \text{none}\}$
 
 - $E \subseteq V \times V \times T$ where $T = \{\text{inner}, \text{pre}, \text{post}\}$ — typed directed edges
 
@@ -113,7 +113,7 @@ $$
 \text{green} & \text{if } s = \text{verified} \\
 \text{blue} & \text{if } s = \text{ready} \\
 \text{red} & \text{if } s = \text{blocked} \\
-\text{amber} & \text{if } s = \text{not\_ready} \\
+\text{amber} & \text{if } s = \text{not-ready} \\
 \text{gray} & \text{if } s = \text{unknown}
 \end{cases}
 $$
@@ -122,7 +122,7 @@ $$
 
 $$
 \phi(s) = \begin{cases}
-\text{dark green} & \text{if } s = \text{fully\_verified} \\
+\text{dark green} & \text{if } s = \text{fully-verified} \\
 \text{light green} & \text{if } s = \text{verified} \\
 \text{light blue} & \text{if } s = \text{ready} \\
 \text{white} & \text{if } s = \text{none}
