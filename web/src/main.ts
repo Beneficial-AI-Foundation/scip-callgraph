@@ -652,7 +652,6 @@ function setupUIHandlers(): void {
   const handleSourceCrateChange = () => {
     const srcSel = document.getElementById('source-crate-select') as HTMLSelectElement | null;
     selectedSourceCrate = srcSel?.value || '';
-    // Re-filter the target dropdown to show only dependencies of the new source
     populateCrateDropdowns();
     selectedTargetCrate = (document.getElementById('target-crate-select') as HTMLSelectElement | null)?.value || '';
     triggerBoundaryUpdate();
@@ -2038,6 +2037,8 @@ function computeDisambiguatedPaths(paths: string[]): Map<string, string> {
  */
 function populateCrateDropdowns(): void {
   if (!state.fullGraph) return;
+
+  ensureCrateGraphBuilt();
 
   const allCrateNames = new Set<string>();
   for (const node of state.fullGraph.nodes) {
