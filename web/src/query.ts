@@ -81,6 +81,7 @@ export interface CompiledQuery {
   displayPredicates: DisplayPredicates;
   focusConfig: FocusConfig;
   linkTypeFilter: LinkTypeFilter;
+  resultFilePatterns: IncludeFilePattern[];
 }
 
 // ============================================================================
@@ -520,36 +521,7 @@ export function compileQuery(
 ): CompiledQuery {
   const { proofKinds, specKinds } = getKindSetsForLanguage(projectLanguage);
 
-  // -- Traversal predicates --
-  const traversalPredicates: TraversalPredicates = {
-    kindFilter: (node: D3Node) => {
-      const kind = node.kind || 'exec';
-      if (proofKinds.has(kind) && !filters.showProofFunctions) return false;
-      if (specKinds.has(kind) && !filters.showSpecFunctions) return false;
-      if (!proofKinds.has(kind) && !specKinds.has(kind) && !filters.showExecFunctions) return false;
-      return true;
-    },
-    excludeNamePatterns: parseExcludePatterns(filters.excludeNamePatterns),
-    excludePathPatterns: parseExcludePatterns(filters.excludePathPatterns),
-    includeFilePatterns: parseIncludeFilePatterns(filters.includeFiles),
-    hiddenNodes: filters.hiddenNodes,
-    excludeBuildArtifacts: true,
-  };
-
-  const displayPredicates: DisplayPredicates = {
-    showLibsignal: filters.showLibsignal,
-    showNonLibsignal: filters.showNonLibsignal,
-  };
-
-  const focusConfig: FocusConfig = {
-    focusNodeIds: filters.focusNodeIds,
-  };
-
-  const linkTypeFilter: LinkTypeFilter = {
-    showInnerCalls: filters.showInnerCalls,
-    showPreconditionCalls: filters.showPreconditionCalls,
-    showPostconditionCalls: filters.showPostconditionCalls,
-  };
+  const parsedFilePatterns = parseIncludeFilePatterns(filters.includeFiles);
 
   // -- Query compilation (dispatch table) --
   const sourceQuery = filters.sourceQuery.trim().toLowerCase();
@@ -559,6 +531,7 @@ export function compileQuery(
   const isSame = hasSource && hasSink && sourceQuery === sinkQuery;
   const bothCrate = hasSource && hasSink && isCrateQuery(sourceQuery) && isCrateQuery(sinkQuery);
   const hasIncludeFiles = filters.includeFiles.trim() !== '';
+  const hasDirectionalQuery = hasSource || hasSink;
 
   let query: GraphQuery;
 
@@ -588,7 +561,47 @@ export function compileQuery(
     query = { type: 'noTraversal' };
   }
 
-  return { query, traversalPredicates, displayPredicates, focusConfig, linkTypeFilter };
+  // When there's a directional query (source/sink), the file filter should be
+  // a post-traversal result filter so the BFS can traverse through the full
+  // graph and results are narrowed afterwards. For noTraversal / depthFromSelected
+  // the file filter stays as a traversal predicate (restricts which nodes appear).
+  const useFileAsResultFilter = hasDirectionalQuery && hasIncludeFiles;
+
+  // -- Traversal predicates --
+  const traversalPredicates: TraversalPredicates = {
+    kindFilter: (node: D3Node) => {
+      const kind = node.kind || 'exec';
+      if (proofKinds.has(kind) && !filters.showProofFunctions) return false;
+      if (specKinds.has(kind) && !filters.showSpecFunctions) return false;
+      if (!proofKinds.has(kind) && !specKinds.has(kind) && !filters.showExecFunctions) return false;
+      return true;
+    },
+    excludeNamePatterns: parseExcludePatterns(filters.excludeNamePatterns),
+    excludePathPatterns: parseExcludePatterns(filters.excludePathPatterns),
+    includeFilePatterns: useFileAsResultFilter ? [] : parsedFilePatterns,
+    hiddenNodes: filters.hiddenNodes,
+    excludeBuildArtifacts: true,
+  };
+
+  const displayPredicates: DisplayPredicates = {
+    showLibsignal: filters.showLibsignal,
+    showNonLibsignal: filters.showNonLibsignal,
+  };
+
+  const focusConfig: FocusConfig = {
+    focusNodeIds: filters.focusNodeIds,
+  };
+
+  const linkTypeFilter: LinkTypeFilter = {
+    showInnerCalls: filters.showInnerCalls,
+    showPreconditionCalls: filters.showPreconditionCalls,
+    showPostconditionCalls: filters.showPostconditionCalls,
+  };
+
+  return {
+    query, traversalPredicates, displayPredicates, focusConfig, linkTypeFilter,
+    resultFilePatterns: useFileAsResultFilter ? parsedFilePatterns : [],
+  };
 }
 
 // ============================================================================
@@ -612,7 +625,7 @@ export function executeQuery(
   fullGraph: D3Graph,
   nodeOptions?: SelectedNodeOptions,
 ): D3Graph {
-  const { query, traversalPredicates, displayPredicates, focusConfig, linkTypeFilter } = compiled;
+  const { query, traversalPredicates, displayPredicates, focusConfig, linkTypeFilter, resultFilePatterns } = compiled;
   const exactOverride = nodeOptions?.selectedNodeId;
 
   // -- Step 1: build traversable subgraph --
@@ -745,6 +758,21 @@ export function executeQuery(
   // assembling from fullGraph we need to recheck)
   if (traversalPredicates.hiddenNodes.size > 0) {
     resultNodes = resultNodes.filter(n => !traversalPredicates.hiddenNodes.has(n.id));
+  }
+
+  // -- Step 5b: apply result file filter --
+  // When source/sink queries are combined with includeFiles, the file filter
+  // is applied here (post-traversal) instead of in selectNodes. This allows
+  // the BFS to traverse through the full graph while narrowing the displayed
+  // results to the requested files. Seed nodes (source/sink matches) are kept
+  // regardless so the user sees the connection context.
+  if (resultFilePatterns.length > 0) {
+    const seedIds = new Set<string>();
+    if (sourceMatchIds) for (const id of sourceMatchIds) seedIds.add(id);
+    if (sinkMatchIds) for (const id of sinkMatchIds) seedIds.add(id);
+    resultNodes = resultNodes.filter(n =>
+      seedIds.has(n.id) || nodeMatchesIncludeFilePattern(n, resultFilePatterns),
+    );
   }
 
   // -- Step 6: filter links --

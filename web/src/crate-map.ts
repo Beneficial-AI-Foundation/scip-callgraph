@@ -427,28 +427,37 @@ export class CrateMapVisualization {
       if (node) expandedNodes.push(node);
     }
 
-    // Build dagre with compound groups for the two expanded crates
+    const fnWidths = new Map<string, number>();
+    for (const node of expandedNodes) {
+      fnWidths.set(node.id, nodeWidthFor(node.display_name));
+    }
+
+    // Build compound dagre graph.
+    // Dagre crashes when edges connect directly to compound parent nodes
+    // (see https://github.com/dagrejs/dagre/issues/236), so we use invisible
+    // proxy leaf nodes inside each cluster as edge anchors for external edges.
     const gGraph = new dagre.graphlib.Graph({ compound: true });
     gGraph.setGraph({ rankdir: 'LR', nodesep: 20, ranksep: 140, marginx: 50, marginy: 50 });
     gGraph.setDefaultEdgeLabel(() => ({}));
 
-    // Compound group nodes for expanded crates
     gGraph.setNode(`crate:${expanded.source}`, { label: expanded.source, clusterLabelPos: 'top' });
     gGraph.setNode(`crate:${expanded.target}`, { label: expanded.target, clusterLabelPos: 'top' });
 
-    // Collapsed crate nodes
+    // Proxy nodes: invisible leaf nodes inside each cluster that external edges
+    // can safely connect to (avoiding the parent-node edge crash).
+    gGraph.setNode(`proxy:${expanded.source}`, { width: 0, height: 0 });
+    gGraph.setParent(`proxy:${expanded.source}`, `crate:${expanded.source}`);
+    gGraph.setNode(`proxy:${expanded.target}`, { width: 0, height: 0 });
+    gGraph.setParent(`proxy:${expanded.target}`, `crate:${expanded.target}`);
+
     for (const cn of cg.nodes) {
       if (cn.name === expanded.source || cn.name === expanded.target) continue;
-      const label = cn.name;
-      const w = nodeWidthFor(label) + 30;
-      gGraph.setNode(`collapsed:${cn.name}`, { width: w, height: 44, label });
+      const w = nodeWidthFor(cn.name) + 30;
+      gGraph.setNode(`collapsed:${cn.name}`, { width: w, height: 44, label: cn.name });
     }
 
-    // Function nodes inside expanded crates
-    const fnWidths = new Map<string, number>();
     for (const node of expandedNodes) {
-      const nw = nodeWidthFor(node.display_name);
-      fnWidths.set(node.id, nw);
+      const nw = fnWidths.get(node.id) || 100;
       gGraph.setNode(node.id, { width: nw + 10, height: NODE_H + 8 });
       const crate = node.crate_name || 'unknown';
       if (crate === expanded.source || crate === expanded.target) {
@@ -456,14 +465,12 @@ export class CrateMapVisualization {
       }
     }
 
-    // Edges between expanded function nodes
     for (const call of crateEdge.calls) {
       if (expandedNodeIds.has(call.sourceId) && expandedNodeIds.has(call.targetId)) {
         gGraph.setEdge(call.sourceId, call.targetId);
       }
     }
 
-    // Edges between collapsed crates and expanded crates
     for (const edge of cg.edges) {
       if (edge.source === expanded.source && edge.target === expanded.target) continue;
 
@@ -473,9 +480,9 @@ export class CrateMapVisualization {
       if (!sIsExpanded && !tIsExpanded) {
         gGraph.setEdge(`collapsed:${edge.source}`, `collapsed:${edge.target}`);
       } else if (sIsExpanded && !tIsExpanded) {
-        gGraph.setEdge(`crate:${edge.source}`, `collapsed:${edge.target}`);
+        gGraph.setEdge(`proxy:${edge.source}`, `collapsed:${edge.target}`);
       } else if (!sIsExpanded && tIsExpanded) {
-        gGraph.setEdge(`collapsed:${edge.source}`, `crate:${edge.target}`);
+        gGraph.setEdge(`collapsed:${edge.source}`, `proxy:${edge.target}`);
       }
     }
 

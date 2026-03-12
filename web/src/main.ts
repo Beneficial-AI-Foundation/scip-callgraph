@@ -1660,7 +1660,7 @@ function applyFiltersAndUpdate(): void {
   const compiled = compileQuery(state.filters, state.projectLanguage);
   updateQueryLabel(compiled.query);
   let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions, state.projectLanguage);
-  
+
   // Limit rendered nodes for large results to prevent D3 freeze
   // Crate Map aggregates to crate-level boxes, so truncation would distort results
   let wasTruncated = false;

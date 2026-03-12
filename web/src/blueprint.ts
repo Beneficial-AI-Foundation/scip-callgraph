@@ -184,7 +184,7 @@ export class BlueprintVisualization {
     const fileKeys = [...fileGroups.keys()];
 
     // Run dagre layout with compound graph mode
-    const gGraph = new dagre.graphlib.Graph({ compound: true });
+    let gGraph: any = new dagre.graphlib.Graph({ compound: true });
     gGraph.setGraph({
       rankdir: 'LR',
       nodesep: 30,
@@ -213,7 +213,37 @@ export class BlueprintVisualization {
       gGraph.setEdge(s, t);
     }
 
-    dagre.layout(gGraph);
+    let compoundLayoutFailed = false;
+    try {
+      dagre.layout(gGraph);
+    } catch {
+      compoundLayoutFailed = true;
+    }
+
+    // Dagre's compound graph layout can crash on certain topologies
+    // (e.g. cycles spanning clusters). Fall back to a flat layout.
+    if (compoundLayoutFailed) {
+      const flatGraph = new dagre.graphlib.Graph();
+      flatGraph.setGraph({
+        rankdir: 'LR',
+        nodesep: 30,
+        ranksep: 160,
+        marginx: 40,
+        marginy: 40,
+      });
+      flatGraph.setDefaultEdgeLabel(() => ({}));
+      for (const node of nodes) {
+        const nw = nodeWidths.get(node.id) || NODE_MIN_W;
+        flatGraph.setNode(node.id, { width: nw + 10, height: NODE_H + 10 });
+      }
+      for (const link of links) {
+        const s = typeof link.source === 'string' ? link.source : link.source.id;
+        const t = typeof link.target === 'string' ? link.target : link.target.id;
+        flatGraph.setEdge(s, t);
+      }
+      dagre.layout(flatGraph);
+      gGraph = flatGraph as any;
+    }
 
     // Apply dagre positions back to nodes
     const posMap = new Map<string, { x: number; y: number }>();
