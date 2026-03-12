@@ -13,29 +13,29 @@ codebases.  Two probes are currently supported:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   LANGUAGE-SPECIFIC PROBES                   │
+│                   LANGUAGE-SPECIFIC PROBES                  │
 │                                                             │
-│  ┌───────────────┐          ┌──────────────┐               │
-│  │  probe-verus  │          │  probe-lean  │               │
-│  │ (Rust / Verus)│          │  (Lean 4)    │               │
-│  └──────┬────────┘          └──────┬───────┘               │
+│  ┌───────────────┐          ┌──────────────┐                │
+│  │  probe-verus  │          │  probe-lean  │                │
+│  │ (Rust / Verus)│          │  (Lean 4)    │                │
+│  └──────┬────────┘          └──────┬───────┘                │
 │         │                          │                        │
-│         │  SCIP index → atoms      │  Lean env → atoms     │
+│         │  SCIP index → atoms      │  Lean env → atoms      │
 │         ▼                          ▼                        │
-│  ┌────────────────────────────────────────┐                │
-│  │          Probe Atom Dict JSON          │                │
-│  │  (or Schema 2.0 envelope with atoms)   │                │
-│  │                                        │                │
-│  │  { "probe:fn_name": {                  │                │
-│  │      "display-name": "fn_name",        │                │
-│  │      "dependencies": [...],            │                │
-│  │      "code-path": "src/lib.rs",        │                │
-│  │      "code-text": { lines-start, … },  │                │
-│  │      "kind": "exec" | "theorem" | …,   │                │
-│  │      "verification-status": "verified"  │                │
-│  │    }, …                                │                │
-│  │  }                                     │                │
-│  └──────────────────┬─────────────────────┘                │
+│  ┌────────────────────────────────────────┐                 │
+│  │          Probe Atom Dict JSON          │                 │
+│  │  (or Schema 2.0 envelope with atoms)   │                 │
+│  │                                        │                 │
+│  │  { "probe:fn_name": {                  │                 │
+│  │      "display-name": "fn_name",        │                 │
+│  │      "dependencies": [...],            │                 │
+│  │      "code-path": "src/lib.rs",        │                 │
+│  │      "code-text": { lines-start, … },  │                 │
+│  │      "kind": "exec" | "theorem" | …,   │                 │
+│  │      "verification-status": "verified" │                 │
+│  │    }, …                                │                 │
+│  │  }                                     │                 │
+│  └──────────────────┬─────────────────────┘                 │
 │                     │ graph.json                            │
 └─────────────────────┼───────────────────────────────────────┘
                       │
@@ -45,39 +45,39 @@ codebases.  Two probes are currently supported:
 ┌─────────────────────────────────────────────────────────────┐
 │              TYPESCRIPT + D3.JS FRONTEND                    │
 │                                                             │
-│  ┌──────────────┐                                          │
-│  │ Graph Loader │──→ Normalize probe output to D3Graph     │
+│  ┌──────────────┐                                           │
+│  │ Graph Loader │──→ Normalize probe output to D3Graph      │
 │  │              │    - Atom dict → convertAtomDictToD3Graph │
 │  │              │    - Schema 2.0 envelope → unwrap + recurse│
 │  │              │    - D3Graph → pass-through               │
-│  └──────┬───────┘    - URL parameter / file upload         │
-│         │            - Large file detection                │
+│  └──────┬───────┘    - URL parameter / file upload          │
+│         │            - Large file detection                 │
 │         ▼                                                   │
-│  ┌──────────────┐    ┌──────────────┐                      │
-│  │    Query     │◄──│  UI Controls │                       │
-│  │   Pipeline   │   └──────────────┘                       │
-│  └──────┬───────┘    - Source/sink queries                 │
-│         │            - Function mode toggles               │
-│         │            - Call type toggles                   │
-│         │            - Exclude/include patterns            │
-│         │            - Depth slider                        │
+│  ┌──────────────┐   ┌───────────────┐                       │
+│  │    Query     │◄──│  UI Controls  │                       │
+│  │   Pipeline   │   └───────────────┘                       │
+│  └──────┬───────┘    - Source/sink queries                  │
+│         │            - Function mode toggles                │
+│         │            - Call type toggles                    │
+│         │            - Exclude/include patterns             │
+│         │            - Depth slider                         │
 │         ▼                                                   │
-│  ┌──────────────┐                                          │
-│  │  View Layer  │──→ Three visualization modes             │
+│  ┌──────────────┐                                           │
+│  │  View Layer  │──→ Three visualization modes              │
 │  │              │    - Call Graph (D3 force-directed)       │
-│  │              │    - File Map (Dagre, grouped by file)     │
+│  │              │    - File Map (Dagre, grouped by file)    │
 │  │              │    - Crate Map (Dagre, crate-level)       │
-│  └──────┬───────┘    - Zoom/pan controls                   │
+│  └──────┬───────┘    - Zoom/pan controls                    │
 │         │            - Interactive highlighting             │
 │         ▼                                                   │
-│  ┌──────────────┐                                          │
-│  │  SVG Canvas  │──→ Rendered graph                        │
-│  └──────────────┘                                          │
+│  ┌──────────────┐                                           │
+│  │  SVG Canvas  │──→ Rendered graph                         │
+│  └──────────────┘                                           │
 │                                                             │
-│  ┌──────────────┐                                          │
-│  │  VS Code     │──→ Optional webview integration          │
-│  │  Integration │    - Bidirectional messaging             │
-│  └──────────────┘    - Navigate to source files            │
+│  ┌──────────────┐                                           │
+│  │  VS Code     │──→ Optional webview integration           │
+│  │  Integration │    - Bidirectional messaging              │
+│  └──────────────┘    - Navigate to source files             │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
