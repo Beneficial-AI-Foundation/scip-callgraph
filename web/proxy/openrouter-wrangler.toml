@@ -1,0 +1,14 @@
+name = "openrouter-proxy"
+main = "openrouter-worker.js"
+compatibility_date = "2024-12-01"
+
+[vars]
+# CORS origin -- set to your GitHub Pages URL in production
+ALLOWED_ORIGIN = "https://beneficial-ai-foundation.github.io"
+# Max requests per minute per IP
+RATE_LIMIT_RPM = "12"
+
+# The OPENROUTER_API_KEY secret must be set via:
+#   wrangler secret put OPENROUTER_API_KEY -c proxy/openrouter-wrangler.toml
+#
+# Create the key at https://openrouter.ai/keys with a credit limit (e.g. $10).

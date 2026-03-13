@@ -24,6 +24,11 @@ export default defineConfig({
           'anthropic-version': '2023-06-01',
         },
       },
+      '/api/openrouter': {
+        target: 'https://openrouter-proxy.baif.workers.dev',
+        changeOrigin: true,
+        rewrite: () => '/',
+      },
     },
   }
 });

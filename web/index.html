@@ -318,21 +318,24 @@
             <!-- Chat messages -->
             <div id="ai-chat-messages" class="ai-chat-messages"></div>
 
-            <!-- Provider setup (shown when no key configured) -->
-            <div id="ai-provider-setup" class="ai-provider-setup">
-              <p>Enter an API key to enable AI chat:</p>
-              <div class="ai-key-input-row">
-                <input type="password" id="ai-api-key-input" placeholder="Anthropic (sk-ant-...) or OpenAI (sk-...)" class="ai-key-input" />
-                <button id="ai-key-save-btn" class="btn btn-primary ai-key-save-btn">Save</button>
-              </div>
-              <label class="checkbox-label ai-persist-label">
-                <input type="checkbox" id="ai-key-persist" />
-                <span>Remember key</span>
-              </label>
+            <!-- Optional BYOK setup (collapsed by default; OpenRouter proxy is the default provider) -->
+            <div id="ai-provider-setup" class="ai-provider-setup" style="display: none;">
+              <details class="ai-byok-details">
+                <summary>Use your own API key (optional)</summary>
+                <p class="ai-byok-hint">By default, the AI Guide works without a key. Provide your own Anthropic or OpenAI key for higher limits.</p>
+                <div class="ai-key-input-row">
+                  <input type="password" id="ai-api-key-input" placeholder="Anthropic (sk-ant-...) or OpenAI (sk-...)" class="ai-key-input" />
+                  <button id="ai-key-save-btn" class="btn btn-primary ai-key-save-btn">Save</button>
+                </div>
+                <label class="checkbox-label ai-persist-label">
+                  <input type="checkbox" id="ai-key-persist" />
+                  <span>Remember key</span>
+                </label>
+              </details>
             </div>
 
             <!-- Chat input -->
-            <div id="ai-chat-input-area" class="ai-chat-input-area" style="display: none;">
+            <div id="ai-chat-input-area" class="ai-chat-input-area">
               <div class="ai-chat-input-row">
                 <input type="text" id="ai-chat-input" placeholder="Ask about the graph..." class="ai-chat-input" />
                 <button id="ai-chat-send" class="btn btn-primary ai-chat-send">Send</button>
@@ -367,11 +370,12 @@
         <div class="ai-settings-section">
           <label class="ai-settings-label">Provider</label>
           <select id="ai-provider-select" class="ai-settings-select">
-            <option value="anthropic">Anthropic (Claude)</option>
-            <option value="openai">OpenAI</option>
+            <option value="openrouter">OpenRouter (default, no key needed)</option>
+            <option value="anthropic">Anthropic (Claude) - BYOK</option>
+            <option value="openai">OpenAI - BYOK</option>
           </select>
         </div>
-        <div class="ai-settings-section">
+        <div class="ai-settings-section" id="ai-settings-key-section">
           <label class="ai-settings-label">API Key</label>
           <input type="password" id="ai-settings-key" placeholder="API key..." class="ai-settings-input" />
         </div>

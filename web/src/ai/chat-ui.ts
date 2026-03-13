@@ -13,6 +13,7 @@ import type { ChatMessage, GraphSummary, SuggestedQuery, SuggestedAction, Viewer
 import type { ChatEngine, ChatEvent } from './chat-engine';
 import { OpenAIProvider } from './providers/openai';
 import { AnthropicProvider } from './providers/anthropic';
+import { OpenRouterProvider } from './providers/openrouter';
 import { formatSummaryText } from './static-analysis';
 
 export class ChatUI {
@@ -20,7 +21,8 @@ export class ChatUI {
   private accessor: ViewerStateAccessor;
   private openaiProvider: OpenAIProvider;
   private anthropicProvider: AnthropicProvider;
-  private activeProviderId: string = 'anthropic';
+  private openrouterProvider: OpenRouterProvider;
+  private activeProviderId: string = 'openrouter';
   private unsubscribe: (() => void) | null = null;
 
   constructor(engine: ChatEngine, accessor: ViewerStateAccessor) {
@@ -28,6 +30,7 @@ export class ChatUI {
     this.accessor = accessor;
     this.openaiProvider = new OpenAIProvider();
     this.anthropicProvider = new AnthropicProvider();
+    this.openrouterProvider = new OpenRouterProvider();
     this.initEventListeners();
     this.syncProviderState();
   }
@@ -68,7 +71,9 @@ export class ChatUI {
     document.getElementById('ai-provider-select')?.addEventListener('change', (e) => {
       const val = (e.target as HTMLSelectElement).value;
       const proxySection = document.getElementById('ai-settings-proxy-section');
-      if (proxySection) proxySection.style.display = val === 'anthropic' ? '' : 'none';
+      if (proxySection) proxySection.style.display = (val === 'anthropic' || val === 'openrouter') ? '' : 'none';
+      const keySection = document.getElementById('ai-settings-key-section');
+      if (keySection) keySection.style.display = val === 'openrouter' ? 'none' : '';
     });
 
     // Chat engine events
@@ -216,39 +221,40 @@ export class ChatUI {
   // ============================================================================
 
   private syncProviderState(): void {
-    // Check which provider has a key
-    const openaiAvailable = !!this.openaiProvider.getApiKey();
-    const anthropicAvailable = !!this.anthropicProvider.getApiKey();
-    const hasKey = this.activeProviderId === 'anthropic' ? anthropicAvailable : openaiAvailable;
-
-    // Auto-detect: if the active provider has no key but the other does, switch
-    if (!hasKey) {
-      if (this.activeProviderId === 'openai' && anthropicAvailable) {
-        this.activeProviderId = 'anthropic';
-      } else if (this.activeProviderId === 'anthropic' && openaiAvailable) {
-        this.activeProviderId = 'openai';
-      }
-    }
-
-    const anyKey = openaiAvailable || anthropicAvailable;
     const setupEl = document.getElementById('ai-provider-setup');
     const inputArea = document.getElementById('ai-chat-input-area');
 
-    if (anyKey) {
-      if (setupEl) setupEl.style.display = 'none';
-      if (inputArea) inputArea.style.display = '';
-      this.engine.setProvider(
-        this.activeProviderId === 'anthropic' ? this.anthropicProvider : this.openaiProvider,
-      );
-    } else {
-      if (setupEl) setupEl.style.display = '';
-      if (inputArea) inputArea.style.display = 'none';
-      this.engine.setProvider(null);
-    }
+    // OpenRouter is always available (proxy mode), so always show the chat input.
+    if (inputArea) inputArea.style.display = '';
+
+    // Show the optional BYOK section unless the user has explicitly chosen a BYOK provider
+    const usingBYOK = this.activeProviderId !== 'openrouter';
+    if (setupEl) setupEl.style.display = usingBYOK ? 'none' : '';
+
+    this.engine.setProvider(this.resolveProvider());
 
     const persistEl = document.getElementById('ai-key-persist') as HTMLInputElement | null;
-    const activeProvider = this.activeProviderId === 'anthropic' ? this.anthropicProvider : this.openaiProvider;
-    if (persistEl) persistEl.checked = activeProvider.isPersisted();
+    if (persistEl) {
+      const active = this.resolveActiveByokProvider();
+      if (active) persistEl.checked = active.isPersisted();
+    }
+  }
+
+  private resolveProvider() {
+    switch (this.activeProviderId) {
+      case 'anthropic': return this.anthropicProvider;
+      case 'openai': return this.openaiProvider;
+      default: return this.openrouterProvider;
+    }
+  }
+
+  private resolveActiveByokProvider(): OpenAIProvider | AnthropicProvider | OpenRouterProvider | null {
+    switch (this.activeProviderId) {
+      case 'anthropic': return this.anthropicProvider;
+      case 'openai': return this.openaiProvider;
+      case 'openrouter': return this.openrouterProvider.isBYOK() ? this.openrouterProvider : null;
+      default: return null;
+    }
   }
 
   private handleSaveKey(): void {
@@ -280,7 +286,7 @@ export class ChatUI {
 
     if (input) input.value = '';
 
-    this.setStatus(`${providerLabel} key saved. You can now chat!`);
+    this.setStatus(`${providerLabel} key saved. Switching provider.`);
     setTimeout(() => this.setStatus(''), 3000);
 
     const summary = this.engine.getGraphSummary();
@@ -406,24 +412,34 @@ export class ChatUI {
     if (!modal) return;
     modal.style.display = '';
 
-    // Populate current settings
     const providerSelect = document.getElementById('ai-provider-select') as HTMLSelectElement | null;
     const keyInput = document.getElementById('ai-settings-key') as HTMLInputElement | null;
     const modelInput = document.getElementById('ai-settings-model') as HTMLInputElement | null;
     const proxyInput = document.getElementById('ai-settings-proxy-url') as HTMLInputElement | null;
     const persistCb = document.getElementById('ai-settings-persist') as HTMLInputElement | null;
     const proxySection = document.getElementById('ai-settings-proxy-section');
+    const keySection = document.getElementById('ai-settings-key-section');
 
     if (providerSelect) providerSelect.value = this.activeProviderId;
-    if (proxySection) proxySection.style.display = this.activeProviderId === 'anthropic' ? '' : 'none';
 
-    const provider = this.activeProviderId === 'anthropic' ? this.anthropicProvider : this.openaiProvider;
-    if (keyInput) keyInput.value = '';
-    if (keyInput) keyInput.placeholder = provider.getApiKey() ? '••••••••' : 'API key...';
-    if (modelInput) modelInput.value = provider.getModel();
-    if (persistCb) persistCb.checked = provider.isPersisted();
-    if (proxyInput && this.activeProviderId === 'anthropic') {
-      proxyInput.value = this.anthropicProvider.getProxyUrl();
+    const isProxyProvider = this.activeProviderId === 'anthropic' || this.activeProviderId === 'openrouter';
+    if (proxySection) proxySection.style.display = isProxyProvider ? '' : 'none';
+    if (keySection) keySection.style.display = this.activeProviderId === 'openrouter' ? 'none' : '';
+
+    if (this.activeProviderId === 'openrouter') {
+      if (keyInput) { keyInput.value = ''; keyInput.placeholder = 'Not needed (using default proxy)'; }
+      if (modelInput) modelInput.value = this.openrouterProvider.getModel();
+      if (persistCb) persistCb.checked = false;
+      if (proxyInput) proxyInput.value = this.openrouterProvider.getProxyUrl();
+    } else if (this.activeProviderId === 'anthropic') {
+      if (keyInput) { keyInput.value = ''; keyInput.placeholder = this.anthropicProvider.getApiKey() ? '••••••••' : 'API key...'; }
+      if (modelInput) modelInput.value = this.anthropicProvider.getModel();
+      if (persistCb) persistCb.checked = this.anthropicProvider.isPersisted();
+      if (proxyInput) proxyInput.value = this.anthropicProvider.getProxyUrl();
+    } else {
+      if (keyInput) { keyInput.value = ''; keyInput.placeholder = this.openaiProvider.getApiKey() ? '••••••••' : 'API key...'; }
+      if (modelInput) modelInput.value = this.openaiProvider.getModel();
+      if (persistCb) persistCb.checked = this.openaiProvider.isPersisted();
     }
   }
 
@@ -439,12 +455,11 @@ export class ChatUI {
     const proxyInput = document.getElementById('ai-settings-proxy-url') as HTMLInputElement | null;
     const persistCb = document.getElementById('ai-settings-persist') as HTMLInputElement | null;
 
-    const providerId = providerSelect?.value || 'openai';
+    const providerId = providerSelect?.value || 'openrouter';
     const key = keyInput?.value?.trim();
     const model = modelInput?.value?.trim();
     const persist = persistCb?.checked ?? false;
 
-    // Privacy notice on first use
     if (key && !sessionStorage.getItem('scip-callgraph-privacy-ack')) {
       const ack = window.confirm(
         'Privacy notice: Graph metadata (function names, file paths) will be sent to the AI provider. No source code is transmitted.\n\nContinue?'
@@ -453,7 +468,11 @@ export class ChatUI {
       sessionStorage.setItem('scip-callgraph-privacy-ack', '1');
     }
 
-    if (providerId === 'anthropic') {
+    if (providerId === 'openrouter') {
+      if (model) this.openrouterProvider.setModel(model);
+      const proxyUrl = proxyInput?.value?.trim();
+      if (proxyUrl) this.openrouterProvider.setProxyUrl(proxyUrl);
+    } else if (providerId === 'anthropic') {
       if (key) this.anthropicProvider.setApiKey(key, persist);
       if (model) this.anthropicProvider.setModel(model);
       const proxyUrl = proxyInput?.value?.trim();
@@ -466,22 +485,28 @@ export class ChatUI {
     this.activeProviderId = providerId;
     this.syncProviderState();
     this.closeSettings();
-    showToast(`${providerId === 'anthropic' ? 'Anthropic' : 'OpenAI'} provider configured`);
+
+    const labels: Record<string, string> = { openrouter: 'OpenRouter (default)', anthropic: 'Anthropic', openai: 'OpenAI' };
+    showToast(`${labels[providerId] || providerId} provider configured`);
   }
 
   private clearSettings(): void {
     const providerSelect = document.getElementById('ai-provider-select') as HTMLSelectElement | null;
-    const providerId = providerSelect?.value || 'openai';
+    const providerId = providerSelect?.value || 'openrouter';
 
     if (providerId === 'anthropic') {
       this.anthropicProvider.clearApiKey();
-    } else {
+    } else if (providerId === 'openai') {
       this.openaiProvider.clearApiKey();
+    } else if (providerId === 'openrouter') {
+      this.openrouterProvider.clearApiKey();
     }
 
+    // Fall back to default OpenRouter proxy
+    this.activeProviderId = 'openrouter';
     this.syncProviderState();
     this.closeSettings();
-    showToast('API key cleared');
+    showToast('Switched to default provider');
   }
 
 }
