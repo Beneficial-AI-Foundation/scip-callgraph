@@ -38,7 +38,7 @@ $$
 If $R = \emptyset$ (graph has cycles), fall back to the node with minimum in-degree:
 
 $$
-R = \left\{ \arg\min_{v \in V} \text{in-degree}(v) \right\}
+R = \{ \arg\min_{v \in V} \text{in-degree}(v) \}
 $$
 
 **1.2. BFS depth assignment.**
@@ -230,10 +230,10 @@ $$
 
 $$
 \kappa(s) = \begin{cases}
-\text{green (\#22c55e)} & \text{if } s = \text{verified} \\
-\text{red (\#ef4444)} & \text{if } s = \text{failed} \\
-\text{gray (\#9ca3af)} & \text{if } s = \text{unverified} \\
-\text{blue (\#3b82f6)} & \text{if } s = \text{unknown}
+\text{green} & \text{if } s = \text{verified} \\
+\text{red} & \text{if } s = \text{failed} \\
+\text{gray} & \text{if } s = \text{unverified} \\
+\text{blue} & \text{if } s = \text{unknown}
 \end{cases}
 $$
 
