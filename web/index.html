@@ -67,6 +67,25 @@
             </label>
           </div>
 
+          <div class="filter-group" id="verification-status-container">
+            <h3>Verification Status</h3>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-verified-nodes" checked />
+              <span class="legend-dot" style="background: #22c55e; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;"></span>
+              <span>Verified</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-failed-nodes" checked />
+              <span class="legend-dot" style="background: #ef4444; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;"></span>
+              <span>Failed</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show-unverified-nodes" checked />
+              <span class="legend-dot" style="background: #9ca3af; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;"></span>
+              <span>Unverified / Unknown</span>
+            </label>
+          </div>
+
           <div class="filter-group">
             <h3>🚫 Exclude by Name</h3>
             <label class="input-label">
@@ -273,12 +292,56 @@
         </div>
       </main>
 
-      <!-- Right Sidebar - Node Info -->
+      <!-- Right Sidebar - Node Info + AI Chat -->
       <aside class="sidebar sidebar-right">
-        <section class="panel">
-          <h2>ℹ️ Node Details</h2>
+        <div class="right-sidebar-tabs">
+          <button id="tab-node-details" class="sidebar-tab active">Node Details</button>
+          <button id="tab-ai-guide" class="sidebar-tab">AI Guide</button>
+          <button id="ai-settings-btn" class="ai-settings-gear" title="AI Settings">&#9881;</button>
+        </div>
+
+        <section id="panel-node-details" class="panel">
           <div id="node-info" class="node-info">
             <p class="placeholder">Click or hover over a node to see details</p>
+          </div>
+        </section>
+
+        <section id="panel-ai-guide" class="panel" style="display: none;">
+          <div class="ai-chat-container">
+            <!-- Static onboarding (shown when no provider or as baseline) -->
+            <div id="ai-static-onboarding" class="ai-static-onboarding">
+              <p class="ai-onboarding-title">Graph Overview</p>
+              <div id="ai-onboarding-summary"></div>
+              <div id="ai-suggested-queries" class="ai-suggested-queries"></div>
+            </div>
+
+            <!-- Chat messages -->
+            <div id="ai-chat-messages" class="ai-chat-messages"></div>
+
+            <!-- Provider setup (shown when no key configured) -->
+            <div id="ai-provider-setup" class="ai-provider-setup">
+              <p>Enter an API key to enable AI chat:</p>
+              <div class="ai-key-input-row">
+                <input type="password" id="ai-api-key-input" placeholder="Anthropic (sk-ant-...) or OpenAI (sk-...)" class="ai-key-input" />
+                <button id="ai-key-save-btn" class="btn btn-primary ai-key-save-btn">Save</button>
+              </div>
+              <label class="checkbox-label ai-persist-label">
+                <input type="checkbox" id="ai-key-persist" />
+                <span>Remember key</span>
+              </label>
+            </div>
+
+            <!-- Chat input -->
+            <div id="ai-chat-input-area" class="ai-chat-input-area" style="display: none;">
+              <div class="ai-chat-input-row">
+                <input type="text" id="ai-chat-input" placeholder="Ask about the graph..." class="ai-chat-input" />
+                <button id="ai-chat-send" class="btn btn-primary ai-chat-send">Send</button>
+              </div>
+              <div class="ai-chat-actions">
+                <button id="ai-chat-stop" class="btn btn-secondary ai-chat-stop" style="display: none;">Stop</button>
+                <span id="ai-chat-status" class="ai-chat-status"></span>
+              </div>
+            </div>
           </div>
         </section>
       </aside>
@@ -292,6 +355,50 @@
       </p>
     </footer>
   </div>
+
+  <!-- AI Settings Modal -->
+  <div id="ai-settings-modal" class="ai-settings-overlay" style="display: none;">
+    <div class="ai-settings-dialog">
+      <div class="ai-settings-header">
+        <h3>AI Settings</h3>
+        <button id="ai-settings-close" class="ai-settings-close-btn">&times;</button>
+      </div>
+      <div class="ai-settings-body">
+        <div class="ai-settings-section">
+          <label class="ai-settings-label">Provider</label>
+          <select id="ai-provider-select" class="ai-settings-select">
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI</option>
+          </select>
+        </div>
+        <div class="ai-settings-section">
+          <label class="ai-settings-label">API Key</label>
+          <input type="password" id="ai-settings-key" placeholder="API key..." class="ai-settings-input" />
+        </div>
+        <div class="ai-settings-section">
+          <label class="ai-settings-label">Model</label>
+          <input type="text" id="ai-settings-model" placeholder="e.g., gpt-4o-mini" class="ai-settings-input" />
+        </div>
+        <div class="ai-settings-section" id="ai-settings-proxy-section" style="display: none;">
+          <label class="ai-settings-label">Proxy URL</label>
+          <input type="text" id="ai-settings-proxy-url" placeholder="https://anthropic-proxy.workers.dev" class="ai-settings-input" />
+        </div>
+        <div class="ai-settings-section">
+          <label class="checkbox-label">
+            <input type="checkbox" id="ai-settings-persist" />
+            <span>Remember key across sessions</span>
+          </label>
+        </div>
+        <div class="ai-settings-actions">
+          <button id="ai-settings-save" class="btn btn-primary">Save</button>
+          <button id="ai-settings-clear" class="btn btn-secondary">Clear Key</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container for AI actions -->
+  <div id="ai-toast-container" class="ai-toast-container"></div>
 
   <script type="module" src="/src/main.ts"></script>
 </body>

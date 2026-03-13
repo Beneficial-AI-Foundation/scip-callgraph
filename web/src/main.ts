@@ -7,6 +7,10 @@ import { CrateMapVisualization, buildCrateGraph } from './crate-map';
 import { computeDerivedStatuses } from './status';
 import { parseAndNormalizeGraph } from './graph-loader';
 
+import { ChatEngine } from './ai/chat-engine';
+import { ChatUI } from './ai/chat-ui';
+import type { ViewerStateAccessor } from './ai/types';
+
 // ============================================================================
 // JSON Format Conversion (delegated to graph-loader.ts)
 // ============================================================================
@@ -238,6 +242,13 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (post !== undefined) filters.showPostconditionCalls = post;
   if (libsignal !== undefined) filters.showLibsignal = libsignal;
   if (external !== undefined) filters.showNonLibsignal = external;
+
+  const verified = parseBool('verified');
+  const failed = parseBool('failed');
+  const unverified = parseBool('unverified');
+  if (verified !== undefined) filters.showVerifiedNodes = verified;
+  if (failed !== undefined) filters.showFailedNodes = failed;
+  if (unverified !== undefined) filters.showUnverifiedNodes = unverified;
   
   // Exclude patterns from URL
   if (params.has('excludeName')) {
@@ -307,6 +318,9 @@ function generateShareableURL(): string {
   }
   if (!state.filters.showLibsignal) params.set('libsignal', '0');
   if (!state.filters.showNonLibsignal) params.set('external', '0');
+  if (!state.filters.showVerifiedNodes) params.set('verified', '0');
+  if (!state.filters.showFailedNodes) params.set('failed', '0');
+  if (!state.filters.showUnverifiedNodes) params.set('unverified', '0');
   // Exclude patterns
   if (state.filters.excludeNamePatterns) {
     params.set('excludeName', state.filters.excludeNamePatterns);
@@ -377,6 +391,9 @@ function applyURLFiltersToState(urlFilters: Partial<FilterOptions>): void {
   setCheckbox('show-postcondition-calls', state.filters.showPostconditionCalls);
   setCheckbox('show-libsignal', state.filters.showLibsignal);
   setCheckbox('show-non-libsignal', state.filters.showNonLibsignal);
+  setCheckbox('show-verified-nodes', state.filters.showVerifiedNodes);
+  setCheckbox('show-failed-nodes', state.filters.showFailedNodes);
+  setCheckbox('show-unverified-nodes', state.filters.showUnverifiedNodes);
 }
 
 /**
@@ -404,6 +421,9 @@ const initialFilters: FilterOptions = {
   showExecFunctions: true,        // Show exec functions by default
   showProofFunctions: true,       // Show proof functions by default
   showSpecFunctions: false,       // Hide spec functions by default
+  showVerifiedNodes: true,        // Show verified nodes by default
+  showFailedNodes: true,          // Show failed nodes by default
+  showUnverifiedNodes: true,      // Show unverified/unknown nodes by default
   excludeNamePatterns: '',        // Exclude by function name (e.g., *_comm*)
   excludePathPatterns: '',        // Exclude by path (e.g., */specs/*)
   includeFiles: '',               // Comma-separated file patterns to include (empty = all)
@@ -434,6 +454,105 @@ let selectedTargetCrate: string = '';
 let crateDependencyMap: Map<string, Set<string>> = new Map();
 let crateReverseDependencyMap: Map<string, Set<string>> = new Map();
 let deferredComputationsDone = false;
+
+// ============================================================================
+// AI Chat Integration
+// ============================================================================
+
+const viewerStateAccessor: ViewerStateAccessor = {
+  getFullGraph: () => state.fullGraph,
+  getFilteredGraph: () => state.filteredGraph,
+  getFilters: () => ({ ...state.filters }),
+  getSelectedNode: () => state.selectedNode,
+  getProjectLanguage: () => state.projectLanguage,
+  getActiveView: () => activeView,
+  setFilters: (updates) => {
+    Object.assign(state.filters, updates);
+    // Sync UI checkboxes for verification status
+    if ('showVerifiedNodes' in updates) {
+      const el = document.getElementById('show-verified-nodes') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showVerifiedNodes;
+    }
+    if ('showFailedNodes' in updates) {
+      const el = document.getElementById('show-failed-nodes') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showFailedNodes;
+    }
+    if ('showUnverifiedNodes' in updates) {
+      const el = document.getElementById('show-unverified-nodes') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showUnverifiedNodes;
+    }
+    if ('showExecFunctions' in updates) {
+      const el = document.getElementById('show-exec-functions') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showExecFunctions;
+    }
+    if ('showProofFunctions' in updates) {
+      const el = document.getElementById('show-proof-functions') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showProofFunctions;
+    }
+    if ('showSpecFunctions' in updates) {
+      const el = document.getElementById('show-spec-functions') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showSpecFunctions;
+    }
+    if ('excludeNamePatterns' in updates) {
+      const el = document.getElementById('exclude-name-patterns') as HTMLInputElement | null;
+      if (el) el.value = updates.excludeNamePatterns ?? '';
+    }
+    if ('includeFiles' in updates) {
+      const el = document.getElementById('include-files') as HTMLInputElement | null;
+      if (el) el.value = updates.includeFiles ?? '';
+    }
+  },
+  setSource: (query) => {
+    state.filters.sourceQuery = query;
+    const el = document.getElementById('source-input') as HTMLInputElement | null;
+    if (el) el.value = query;
+  },
+  setSink: (query) => {
+    state.filters.sinkQuery = query;
+    const el = document.getElementById('sink-input') as HTMLInputElement | null;
+    if (el) el.value = query;
+  },
+  setDepth: (depth) => {
+    state.filters.maxDepth = depth;
+    const el = document.getElementById('depth-limit') as HTMLInputElement | null;
+    if (el) el.value = depth !== null ? depth.toString() : '0';
+    const label = document.getElementById('depth-value');
+    if (label) label.textContent = depth !== null ? depth.toString() : 'All';
+  },
+  switchView: (view) => {
+    if (view === 'callgraph' || view === 'blueprint' || view === 'crate-map') {
+      switchView(view as ActiveView);
+    }
+  },
+  selectNodeByName: (name) => {
+    if (!state.filteredGraph) return false;
+    const lower = name.toLowerCase();
+    const node = state.filteredGraph.nodes.find(n => n.display_name.toLowerCase() === lower)
+      || state.filteredGraph.nodes.find(n => n.display_name.toLowerCase().includes(lower));
+    if (!node) return false;
+    state.selectedNode = node;
+    updateNodeInfo();
+    return true;
+  },
+  resetFilters: () => resetFilters(),
+  applyFiltersAndUpdate: () => applyFiltersAndUpdate(),
+};
+
+const chatEngine = new ChatEngine(viewerStateAccessor);
+let chatUI: ChatUI | null = null;
+
+function initAIChat(): void {
+  if (chatUI) return;
+  chatUI = new ChatUI(chatEngine, viewerStateAccessor);
+}
+
+function refreshAIOnboarding(): void {
+  chatEngine.refreshSummary();
+  const summary = chatEngine.getGraphSummary();
+  if (summary && chatUI) {
+    chatUI.renderStaticOnboarding(summary);
+  }
+}
 
 /** Language-aware label for the crate/namespace map view. */
 function crateMapLabel(lang: ProjectLanguage): string {
@@ -517,6 +636,9 @@ function syncInputsToState(): void {
   state.filters.showExecFunctions = (document.getElementById('show-exec-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showProofFunctions = (document.getElementById('show-proof-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showSpecFunctions = (document.getElementById('show-spec-functions') as HTMLInputElement)?.checked ?? false;
+  state.filters.showVerifiedNodes = (document.getElementById('show-verified-nodes') as HTMLInputElement)?.checked ?? true;
+  state.filters.showFailedNodes = (document.getElementById('show-failed-nodes') as HTMLInputElement)?.checked ?? true;
+  state.filters.showUnverifiedNodes = (document.getElementById('show-unverified-nodes') as HTMLInputElement)?.checked ?? true;
 }
 
 /**
@@ -553,6 +675,9 @@ function init(): void {
 
   // Setup VS Code integration if running in webview
   setupVSCodeIntegration();
+
+  // Initialize AI chat panel
+  initAIChat();
 
   // Try to auto-load graph.json if it exists (skipped in VS Code mode)
   if (!isVSCodeEnvironment()) {
@@ -706,6 +831,20 @@ function setupUIHandlers(): void {
 
   document.getElementById('show-non-libsignal')?.addEventListener('change', (e) => {
     state.filters.showNonLibsignal = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
+  // Verification status filters
+  document.getElementById('show-verified-nodes')?.addEventListener('change', (e) => {
+    state.filters.showVerifiedNodes = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+  document.getElementById('show-failed-nodes')?.addEventListener('change', (e) => {
+    state.filters.showFailedNodes = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+  document.getElementById('show-unverified-nodes')?.addEventListener('change', (e) => {
+    state.filters.showUnverifiedNodes = (e.target as HTMLInputElement).checked;
     applyFiltersAndUpdate();
   });
 
@@ -1596,6 +1735,9 @@ function loadGraph(graph: D3Graph, message: string): void {
     
     statsDiv.insertBefore(successMsg, statsDiv.firstChild);
   }
+
+  // Refresh AI onboarding with new graph data
+  refreshAIOnboarding();
 }
 
 /**
@@ -2597,6 +2739,12 @@ function resetFilters(): void {
   (document.getElementById('show-exec-functions') as HTMLInputElement).checked = true;
   (document.getElementById('show-proof-functions') as HTMLInputElement).checked = true;
   (document.getElementById('show-spec-functions') as HTMLInputElement).checked = false;
+  const verifiedEl = document.getElementById('show-verified-nodes') as HTMLInputElement | null;
+  const failedEl = document.getElementById('show-failed-nodes') as HTMLInputElement | null;
+  const unverifiedEl = document.getElementById('show-unverified-nodes') as HTMLInputElement | null;
+  if (verifiedEl) verifiedEl.checked = true;
+  if (failedEl) failedEl.checked = true;
+  if (unverifiedEl) unverifiedEl.checked = true;
   (document.getElementById('exclude-name-patterns') as HTMLInputElement).value = '';
   (document.getElementById('exclude-path-patterns') as HTMLInputElement).value = '';
   (document.getElementById('include-files') as HTMLInputElement).value = '';

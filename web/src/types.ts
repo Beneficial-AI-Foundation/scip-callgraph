@@ -176,6 +176,10 @@ export interface FilterOptions {
   showExecFunctions: boolean;      // Show exec/def/class/structure/... (default: true)
   showProofFunctions: boolean;     // Show proof/theorem (default: true)
   showSpecFunctions: boolean;      // Show spec/axiom (default: false)
+  // Verification status filters
+  showVerifiedNodes: boolean;      // Show verified nodes (default: true)
+  showFailedNodes: boolean;        // Show failed nodes (default: true)
+  showUnverifiedNodes: boolean;    // Show unverified/unknown nodes (default: true)
   // Pattern-based exclusion (comma-separated glob patterns)
   excludeNamePatterns: string;     // Matches display_name, e.g., "*_comm*, lemma_mul_*"
   excludePathPatterns: string;     // Matches node ID path, e.g., "*/specs/*, */common_lemmas/*"

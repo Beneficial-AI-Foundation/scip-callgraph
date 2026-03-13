@@ -62,6 +62,9 @@ export interface TraversalPredicates {
 export interface DisplayPredicates {
   showLibsignal: boolean;
   showNonLibsignal: boolean;
+  showVerifiedNodes: boolean;
+  showFailedNodes: boolean;
+  showUnverifiedNodes: boolean;
 }
 
 export interface FocusConfig {
@@ -586,6 +589,9 @@ export function compileQuery(
   const displayPredicates: DisplayPredicates = {
     showLibsignal: filters.showLibsignal,
     showNonLibsignal: filters.showNonLibsignal,
+    showVerifiedNodes: filters.showVerifiedNodes,
+    showFailedNodes: filters.showFailedNodes,
+    showUnverifiedNodes: filters.showUnverifiedNodes,
   };
 
   const focusConfig: FocusConfig = {
@@ -743,6 +749,18 @@ export function executeQuery(
     resultNodes = resultNodes.filter(n => {
       if (n.is_libsignal && !displayPredicates.showLibsignal) return false;
       if (!n.is_libsignal && !displayPredicates.showNonLibsignal) return false;
+      return true;
+    });
+  }
+
+  const allStatusShown = displayPredicates.showVerifiedNodes
+    && displayPredicates.showFailedNodes && displayPredicates.showUnverifiedNodes;
+  if (!allStatusShown) {
+    resultNodes = resultNodes.filter(n => {
+      const vs = n.verification_status;
+      if (vs === 'verified' && !displayPredicates.showVerifiedNodes) return false;
+      if (vs === 'failed' && !displayPredicates.showFailedNodes) return false;
+      if ((vs === 'unverified' || !vs) && !displayPredicates.showUnverifiedNodes) return false;
       return true;
     });
   }
