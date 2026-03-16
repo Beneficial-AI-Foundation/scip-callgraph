@@ -237,9 +237,14 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (exec !== undefined) filters.showExecFunctions = exec;
   if (proof !== undefined) filters.showProofFunctions = proof;
   if (spec !== undefined) filters.showSpecFunctions = spec;
+  const translation = parseBool('translation');
+  const specLinks = parseBool('speclinks');
+
   if (inner !== undefined) filters.showInnerCalls = inner;
   if (pre !== undefined) filters.showPreconditionCalls = pre;
   if (post !== undefined) filters.showPostconditionCalls = post;
+  if (translation !== undefined) filters.showTranslationLinks = translation;
+  if (specLinks !== undefined) filters.showSpecLinks = specLinks;
   if (libsignal !== undefined) filters.showLibsignal = libsignal;
   if (external !== undefined) filters.showNonLibsignal = external;
 
@@ -289,8 +294,9 @@ function generateShareableURL(): string {
   const params = url.searchParams;
   
   // Clear existing filter params (keep json, github, etc.)
-  ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec', 
-   'inner', 'pre', 'post', 'libsignal', 'external', 'hidden', 'focus', 'view',
+  ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec',
+   'inner', 'pre', 'post', 'translation', 'speclinks',
+   'libsignal', 'external', 'hidden', 'focus', 'view',
    'source-crate', 'target-crate'].forEach(k => params.delete(k));
 
   // View param (only set for non-default)
@@ -315,6 +321,8 @@ function generateShareableURL(): string {
     if (!state.filters.showInnerCalls) params.set('inner', '0');
     if (state.filters.showPreconditionCalls) params.set('pre', '1');
     if (state.filters.showPostconditionCalls) params.set('post', '1');
+    if (!state.filters.showTranslationLinks) params.set('translation', '0');
+    if (!state.filters.showSpecLinks) params.set('speclinks', '0');
   }
   if (!state.filters.showLibsignal) params.set('libsignal', '0');
   if (!state.filters.showNonLibsignal) params.set('external', '0');
@@ -418,9 +426,13 @@ const initialFilters: FilterOptions = {
   showInnerCalls: true,           // Show body calls by default
   showPreconditionCalls: false,   // Hide requires calls by default
   showPostconditionCalls: false,  // Hide ensures calls by default
+  showTranslationLinks: true,     // Show Rust <-> Lean translation edges by default
+  showSpecLinks: true,            // Show spec theorem edges by default
   showExecFunctions: true,        // Show exec functions by default
   showProofFunctions: true,       // Show proof functions by default
   showSpecFunctions: false,       // Hide spec functions by default
+  showRustNodes: true,            // Show Rust/Verus nodes by default
+  showLeanNodes: true,            // Show Lean nodes by default
   showVerifiedNodes: true,        // Show verified nodes by default
   showFailedNodes: true,          // Show failed nodes by default
   showUnverifiedNodes: true,      // Show unverified/unknown nodes by default
@@ -1347,10 +1359,12 @@ function runDeferredComputations(): void {
  * Check if user has specified meaningful filters (source, sink, or include files)
  */
 function hasSearchFilters(): boolean {
-  return state.filters.sourceQuery.trim() !== '' || 
+  return state.filters.sourceQuery.trim() !== '' ||
          state.filters.sinkQuery.trim() !== '' ||
          state.filters.includeFiles.trim() !== '' ||
-         state.filters.focusNodeIds.size > 0;
+         state.filters.focusNodeIds.size > 0 ||
+         state.filters.showRustNodes === false ||
+         state.filters.showLeanNodes === false;
 }
 
 /**
@@ -1469,6 +1483,57 @@ async function loadFocusSet(url: string): Promise<void> {
 }
 
 /**
+ * Render Language filter checkboxes when the graph contains multiple languages.
+ * Only shown when both Rust and Lean nodes are present.
+ */
+function renderLanguageFilters(): void {
+  const container = document.getElementById('language-filter-container');
+  if (!container) return;
+
+  const langs = new Set<string>();
+  for (const node of state.fullGraph?.nodes ?? []) {
+    if (node.language) langs.add(node.language);
+  }
+
+  const hasRust = langs.has('rust') || langs.has('verus');
+  const hasLean = langs.has('lean');
+
+  if (!hasRust || !hasLean) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = '';
+  const rustLabel = langs.has('verus') ? 'Verus' : 'Rust';
+  container.innerHTML = `
+    <h3>Language</h3>
+    <label class="checkbox-label">
+      <input type="checkbox" id="show-rust-nodes" checked />
+      <span class="exec-badge">${rustLabel}</span>
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" id="show-lean-nodes" checked />
+      <span class="proof-badge">Lean</span>
+    </label>`;
+
+  document.getElementById('show-rust-nodes')?.addEventListener('change', (e) => {
+    state.filters.showRustNodes = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+  document.getElementById('show-lean-nodes')?.addEventListener('change', (e) => {
+    state.filters.showLeanNodes = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+
+  const setCheckbox = (id: string, checked: boolean) => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el) el.checked = checked;
+  };
+  setCheckbox('show-rust-nodes', state.filters.showRustNodes);
+  setCheckbox('show-lean-nodes', state.filters.showLeanNodes);
+}
+
+/**
  * Dynamically render Declaration Kind filter checkboxes based on detected language.
  */
 function renderKindFilters(lang: ProjectLanguage): void {
@@ -1510,15 +1575,15 @@ function renderKindFilters(lang: ProjectLanguage): void {
     html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-exec-functions" checked />
-        <span class="exec-badge">Exec / Definitions</span>
+        <span class="exec-badge">Definitions</span>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="show-proof-functions" checked />
-        <span class="proof-badge">Proof / Theorems</span>
+        <span class="proof-badge">Theorems</span>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="show-spec-functions" />
-        <span class="spec-badge">Spec / Axioms</span>
+        <span class="spec-badge">Axioms</span>
       </label>`;
   }
 
@@ -1567,13 +1632,28 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
 
   container.style.display = '';
 
-  let html = '<h3>Call Types</h3>';
+  const isVerus = lang === 'verus' || lang === 'mixed';
+  const hasTranslationLinks = state.fullGraph?.links.some(l => l.type === 'translation') ?? false;
+  const hasSpecLinks = state.fullGraph?.links.some(l => l.type === 'spec') ?? false;
+
+  if (!isVerus && !hasTranslationLinks && !hasSpecLinks) {
+    container.style.display = 'none';
+    state.filters.showInnerCalls = true;
+    state.filters.showPreconditionCalls = false;
+    state.filters.showPostconditionCalls = false;
+    return;
+  }
+
+  let html = '<h3>Edge Types</h3>';
 
   html += `
     <label class="checkbox-label">
       <input type="checkbox" id="show-inner-calls" checked />
       <span class="inner-badge">Body Calls</span>
-    </label>
+    </label>`;
+
+  if (isVerus) {
+    html += `
     <label class="checkbox-label">
       <input type="checkbox" id="show-precondition-calls" />
       <span class="precondition-badge">Requires</span>
@@ -1581,10 +1661,30 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
     <label class="checkbox-label">
       <input type="checkbox" id="show-postcondition-calls" />
       <span class="postcondition-badge">Ensures</span>
-    </label>
+    </label>`;
+  }
+
+  if (hasTranslationLinks) {
+    html += `
+    <label class="checkbox-label">
+      <input type="checkbox" id="show-translation-links" checked />
+      <span class="translation-badge">Translation</span>
+    </label>`;
+  }
+  if (hasSpecLinks) {
+    html += `
+    <label class="checkbox-label">
+      <input type="checkbox" id="show-spec-links" checked />
+      <span class="spec-link-badge">Specifications</span>
+    </label>`;
+  }
+
+  if (isVerus && !hasTranslationLinks && !hasSpecLinks) {
+    html += `
     <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-      💡 Requires/Ensures edges typically connect to Spec functions
+      Requires/Ensures edges typically connect to Spec functions
     </small>`;
+  }
 
   container.innerHTML = html;
 
@@ -1600,6 +1700,14 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
     state.filters.showPostconditionCalls = (e.target as HTMLInputElement).checked;
     applyFiltersAndUpdate();
   });
+  document.getElementById('show-translation-links')?.addEventListener('change', (e) => {
+    state.filters.showTranslationLinks = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
+  document.getElementById('show-spec-links')?.addEventListener('change', (e) => {
+    state.filters.showSpecLinks = (e.target as HTMLInputElement).checked;
+    applyFiltersAndUpdate();
+  });
 
   const setCheckbox = (id: string, checked: boolean) => {
     const el = document.getElementById(id) as HTMLInputElement | null;
@@ -1608,6 +1716,8 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
   setCheckbox('show-inner-calls', state.filters.showInnerCalls);
   setCheckbox('show-precondition-calls', state.filters.showPreconditionCalls);
   setCheckbox('show-postcondition-calls', state.filters.showPostconditionCalls);
+  setCheckbox('show-translation-links', state.filters.showTranslationLinks);
+  setCheckbox('show-spec-links', state.filters.showSpecLinks);
 }
 
 /**
@@ -1635,6 +1745,7 @@ function loadGraph(graph: D3Graph, message: string): void {
   
   // Detect project language and update UI accordingly
   state.projectLanguage = detectProjectLanguage(state.fullGraph);
+  renderLanguageFilters();
   renderKindFilters(state.projectLanguage);
   renderCallTypeFilters(state.projectLanguage);
   updateLanguageLabels(state.projectLanguage);
@@ -2048,6 +2159,61 @@ function updateNodeInfo(): void {
     return `<span class="${badgeClass}" style="font-size: 0.75rem;">${kind}</span>`;
   };
 
+  const getLanguageBadge = (lang: string | undefined): string => {
+    if (!lang) return '';
+    if (lang === 'rust') return '<span class="lang-badge-rust" style="font-size: 0.75rem;">Rust</span>';
+    if (lang === 'lean') return '<span class="lang-badge-lean" style="font-size: 0.75rem;">Lean</span>';
+    return '';
+  };
+
+  // Build Lean Translation section (for Rust nodes with a translation)
+  let translationHtml = '';
+  if (node.translation_id && state.fullGraph) {
+    const translationNode = state.fullGraph.nodes.find(n => n.id === node.translation_id);
+    const translationName = translationNode?.display_name || node.translation_id;
+    const translationLineInfo = node.translation_lines
+      ? ` (L${node.translation_lines.start}-${node.translation_lines.end})`
+      : '';
+    translationHtml = `
+      <div class="node-detail">
+        <strong>Lean Translation:</strong>
+        <ul class="node-list">
+          <li><a href="#" class="navigate-to-node" data-node-id="${escapeHtml(node.translation_id)}" style="cursor:pointer; text-decoration:underline; color:#7c3aed;">${escapeHtml(translationName)}</a>
+          <span style="color: #888; font-size: 0.85rem;">${node.translation_path || ''}${translationLineInfo}</span></li>
+        </ul>
+      </div>`;
+  }
+
+  // Build Specifications section (for Lean nodes with specs)
+  let specsHtml = '';
+  if (node.specs && node.specs.length > 0 && state.fullGraph) {
+    const specItems = node.specs.map(specId => {
+      const specNode = state.fullGraph!.nodes.find(n => n.id === specId);
+      const specName = specNode?.display_name || specId;
+      const vs = specNode?.verification_status;
+      const vsBadge = vs === 'verified' ? '<span style="color:#22c55e; margin-left:4px;">&#10003;</span>'
+        : vs === 'failed' ? '<span style="color:#ef4444; margin-left:4px;">&#10007;</span>'
+        : vs === 'unverified' ? '<span style="color:#f59e0b; margin-left:4px;">&#9675;</span>'
+        : '';
+      return `<li><a href="#" class="navigate-to-node" data-node-id="${escapeHtml(specId)}" style="cursor:pointer; text-decoration:underline; color:#0891b2;">${escapeHtml(specName)}</a>${vsBadge}</li>`;
+    }).join('');
+    specsHtml = `
+      <div class="node-detail">
+        <strong>Specifications (${node.specs.length}):</strong>
+        <ul class="node-list">${specItems}</ul>
+      </div>`;
+  }
+
+  // Build Rust Source section (for Lean nodes with rust_source)
+  let rustSourceHtml = '';
+  if (node.rust_source && node.language === 'lean') {
+    rustSourceHtml = `
+      <div class="node-detail">
+        <strong>Rust Source:</strong>
+        <code class="code-block" style="font-size: 0.85rem;">${escapeHtml(node.rust_source)}</code>
+      </div>`;
+  }
+
   nodeInfoDiv.innerHTML = `
     <div class="node-detail">
       <h3>${node.display_name}</h3>
@@ -2057,6 +2223,7 @@ function updateNodeInfo(): void {
         </div>
         ${getVerificationBadge(node.verification_status)}
         ${getKindBadge(node.kind)}
+        ${getLanguageBadge(node.language)}
       </div>
     </div>
     <div class="node-detail">
@@ -2064,7 +2231,7 @@ function updateNodeInfo(): void {
       ${lineInfo ? `<span style="color: #888; margin-left: 0.5rem;">(${lineInfo})</span>` : ''}
     </div>
     <div class="node-detail">
-      <strong>Path:</strong> 
+      <strong>Path:</strong>
       <code class="code-block">${node.relative_path}</code>
     </div>
     <div class="node-detail">
@@ -2072,6 +2239,9 @@ function updateNodeInfo(): void {
         ${isVSCodeEnvironment() ? '📂 Open in Editor' : (githubLink ? '📂 View on GitHub' : '')}
       </button>
     </div>
+    ${translationHtml}
+    ${specsHtml}
+    ${rustSourceHtml}
     <div class="node-detail">
       <strong>Callers (${allCallers.length}):</strong>
       <ul class="node-list">${callersHtml}</ul>
@@ -2082,7 +2252,7 @@ function updateNodeInfo(): void {
     </div>
     ${node.similar_lemmas && node.similar_lemmas.length > 0 ? `
       <div class="node-detail">
-        <strong>🔍 Similar Lemmas:</strong>
+        <strong>Similar Lemmas:</strong>
         <ul class="similar-lemmas-list">
           ${node.similar_lemmas.map(lemma => `
             <li class="similar-lemma-item">
@@ -2097,7 +2267,7 @@ function updateNodeInfo(): void {
       </div>
     ` : ''}
   `;
-  
+
   // Add click handler for navigate button
   const navigateBtn = document.getElementById('navigate-to-source-btn');
   if (navigateBtn && node) {
@@ -2105,6 +2275,21 @@ function updateNodeInfo(): void {
       navigateToSource(node);
     });
   }
+
+  // Add click handlers for cross-reference navigation links
+  nodeInfoDiv.querySelectorAll('.navigate-to-node').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = (el as HTMLElement).dataset.nodeId;
+      if (!targetId || !state.fullGraph) return;
+      const targetNode = state.fullGraph.nodes.find(n => n.id === targetId);
+      if (targetNode) {
+        const newState = { ...state };
+        newState.selectedNode = targetNode;
+        handleStateChange(newState, false);
+      }
+    });
+  });
 }
 
 /**
@@ -2739,6 +2924,10 @@ function resetFilters(): void {
   (document.getElementById('show-exec-functions') as HTMLInputElement).checked = true;
   (document.getElementById('show-proof-functions') as HTMLInputElement).checked = true;
   (document.getElementById('show-spec-functions') as HTMLInputElement).checked = false;
+  const rustNodesEl = document.getElementById('show-rust-nodes') as HTMLInputElement | null;
+  const leanNodesEl = document.getElementById('show-lean-nodes') as HTMLInputElement | null;
+  if (rustNodesEl) rustNodesEl.checked = true;
+  if (leanNodesEl) leanNodesEl.checked = true;
   const verifiedEl = document.getElementById('show-verified-nodes') as HTMLInputElement | null;
   const failedEl = document.getElementById('show-failed-nodes') as HTMLInputElement | null;
   const unverifiedEl = document.getElementById('show-unverified-nodes') as HTMLInputElement | null;

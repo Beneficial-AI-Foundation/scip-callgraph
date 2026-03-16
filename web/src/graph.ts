@@ -389,6 +389,8 @@ export class CallGraphVisualization {
         const linkType = d.type || 'inner';
         if (linkType === 'precondition') return '#e65100';
         if (linkType === 'postcondition') return '#c2185b';
+        if (linkType === 'translation') return '#7c3aed';
+        if (linkType === 'spec') return '#0891b2';
         return '#999';
       })
       .attr('stroke-opacity', 0.6)
@@ -396,6 +398,8 @@ export class CallGraphVisualization {
       .attr('stroke-dasharray', (d) => {
         const linkType = d.type || 'inner';
         if (linkType === 'precondition' || linkType === 'postcondition') return '5,3';
+        if (linkType === 'translation') return '2,4';
+        if (linkType === 'spec') return '3,3';
         return 'none';
       })
       .attr('marker-end', 'url(#arrowhead)');

@@ -74,6 +74,8 @@ function createFilters(overrides: Partial<FilterOptions> = {}): FilterOptions {
     showInnerCalls: true,
     showPreconditionCalls: true,
     showPostconditionCalls: true,
+    showTranslationLinks: true,
+    showSpecLinks: true,
     showExecFunctions: true,
     showProofFunctions: true,
     showSpecFunctions: true,
@@ -346,6 +348,8 @@ describe('filterLinksByType', () => {
       showInnerCalls: true,
       showPreconditionCalls: true,
       showPostconditionCalls: true,
+      showTranslationLinks: true,
+      showSpecLinks: true,
     });
     expect(result.length).toBe(3);
   });
@@ -355,6 +359,8 @@ describe('filterLinksByType', () => {
       showInnerCalls: true,
       showPreconditionCalls: false,
       showPostconditionCalls: true,
+      showTranslationLinks: true,
+      showSpecLinks: true,
     });
     expect(result.length).toBe(2);
     expect(result.every(l => l.type !== 'precondition')).toBe(true);
@@ -365,6 +371,8 @@ describe('filterLinksByType', () => {
       showInnerCalls: true,
       showPreconditionCalls: false,
       showPostconditionCalls: false,
+      showTranslationLinks: true,
+      showSpecLinks: true,
     });
     expect(result.length).toBe(1);
     expect(result[0].type).toBe('inner');
@@ -376,8 +384,44 @@ describe('filterLinksByType', () => {
       showInnerCalls: false,
       showPreconditionCalls: true,
       showPostconditionCalls: true,
+      showTranslationLinks: true,
+      showSpecLinks: true,
     });
     expect(result.length).toBe(0);
+  });
+
+  it('filters translation links', () => {
+    const mixedLinks = [
+      createLink('a', 'b', 'inner'),
+      createLink('a', 'c', 'translation'),
+      createLink('d', 'c', 'spec'),
+    ];
+    const result = filterLinksByType(mixedLinks, {
+      showInnerCalls: true,
+      showPreconditionCalls: true,
+      showPostconditionCalls: true,
+      showTranslationLinks: false,
+      showSpecLinks: true,
+    });
+    expect(result.length).toBe(2);
+    expect(result.every(l => l.type !== 'translation')).toBe(true);
+  });
+
+  it('filters spec links', () => {
+    const mixedLinks = [
+      createLink('a', 'b', 'inner'),
+      createLink('a', 'c', 'translation'),
+      createLink('d', 'c', 'spec'),
+    ];
+    const result = filterLinksByType(mixedLinks, {
+      showInnerCalls: true,
+      showPreconditionCalls: true,
+      showPostconditionCalls: true,
+      showTranslationLinks: true,
+      showSpecLinks: false,
+    });
+    expect(result.length).toBe(2);
+    expect(result.every(l => l.type !== 'spec')).toBe(true);
   });
 });
 

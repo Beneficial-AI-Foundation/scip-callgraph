@@ -65,6 +65,8 @@ export interface DisplayPredicates {
   showVerifiedNodes: boolean;
   showFailedNodes: boolean;
   showUnverifiedNodes: boolean;
+  showRustNodes: boolean;
+  showLeanNodes: boolean;
 }
 
 export interface FocusConfig {
@@ -75,6 +77,8 @@ export interface LinkTypeFilter {
   showInnerCalls: boolean;
   showPreconditionCalls: boolean;
   showPostconditionCalls: boolean;
+  showTranslationLinks: boolean;
+  showSpecLinks: boolean;
 }
 
 /** Full compiled result returned by compileQuery. */
@@ -404,6 +408,8 @@ export function filterLinksByType(
     if (t === 'calls' || t === 'inner') return filter.showInnerCalls;
     if (t === 'precondition') return filter.showPreconditionCalls;
     if (t === 'postcondition') return filter.showPostconditionCalls;
+    if (t === 'translation') return filter.showTranslationLinks;
+    if (t === 'spec') return filter.showSpecLinks;
     return true;
   });
 }
@@ -592,6 +598,8 @@ export function compileQuery(
     showVerifiedNodes: filters.showVerifiedNodes,
     showFailedNodes: filters.showFailedNodes,
     showUnverifiedNodes: filters.showUnverifiedNodes,
+    showRustNodes: filters.showRustNodes ?? true,
+    showLeanNodes: filters.showLeanNodes ?? true,
   };
 
   const focusConfig: FocusConfig = {
@@ -602,6 +610,8 @@ export function compileQuery(
     showInnerCalls: filters.showInnerCalls,
     showPreconditionCalls: filters.showPreconditionCalls,
     showPostconditionCalls: filters.showPostconditionCalls,
+    showTranslationLinks: filters.showTranslationLinks,
+    showSpecLinks: filters.showSpecLinks,
   };
 
   return {
@@ -761,6 +771,16 @@ export function executeQuery(
       if (vs === 'verified' && !displayPredicates.showVerifiedNodes) return false;
       if (vs === 'failed' && !displayPredicates.showFailedNodes) return false;
       if ((vs === 'unverified' || !vs) && !displayPredicates.showUnverifiedNodes) return false;
+      return true;
+    });
+  }
+
+  // Language filter (post-traversal so BFS can still reach cross-language nodes)
+  if (!displayPredicates.showRustNodes || !displayPredicates.showLeanNodes) {
+    resultNodes = resultNodes.filter(n => {
+      const lang = n.language || 'rust';
+      if (lang === 'lean' && !displayPredicates.showLeanNodes) return false;
+      if (lang !== 'lean' && !displayPredicates.showRustNodes) return false;
       return true;
     });
   }

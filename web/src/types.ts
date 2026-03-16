@@ -63,7 +63,7 @@ export function isD3GraphFormat(data: unknown): data is D3Graph {
 export type DeclKind = string;
 
 /** Detected project language based on kind values in the graph */
-export type ProjectLanguage = 'verus' | 'lean' | 'unknown';
+export type ProjectLanguage = 'verus' | 'lean' | 'mixed' | 'unknown';
 
 const VERUS_KINDS = new Set(['exec', 'proof', 'spec']);
 const LEAN_KINDS = new Set([
@@ -71,16 +71,35 @@ const LEAN_KINDS = new Set([
   'inductive', 'instance', 'axiom', 'opaque', 'quot',
 ]);
 
-/** Detect whether a graph comes from a Verus or Lean project by scanning kind values. */
+/**
+ * Detect project language by scanning the `language` field on nodes.
+ * Falls back to kind-based heuristic when no language field is present.
+ */
 export function detectProjectLanguage(graph: D3Graph): ProjectLanguage {
+  const langs = new Set<string>();
+  for (const node of graph.nodes) {
+    if (node.language) langs.add(node.language);
+  }
+
+  if (langs.size > 0) {
+    const hasVerus = langs.has('verus');
+    const hasLean = langs.has('lean');
+    if (hasVerus && hasLean) return 'mixed';
+    if (hasVerus) return 'verus';
+    if (hasLean) return 'lean';
+    return 'unknown';
+  }
+
+  // Fallback: infer from kind values (for older graph formats without language field)
   const kinds = new Set<string>();
   for (const node of graph.nodes) {
     if (node.kind) kinds.add(node.kind);
   }
-  const hasVerus = [...kinds].some(k => VERUS_KINDS.has(k));
-  const hasLean = [...kinds].some(k => LEAN_KINDS.has(k) && !VERUS_KINDS.has(k));
-  if (hasVerus && !hasLean) return 'verus';
-  if (hasLean && !hasVerus) return 'lean';
+  const hasVerusKinds = [...kinds].some(k => VERUS_KINDS.has(k));
+  const hasLeanKinds = [...kinds].some(k => LEAN_KINDS.has(k) && !VERUS_KINDS.has(k));
+  if (hasVerusKinds && hasLeanKinds) return 'mixed';
+  if (hasVerusKinds) return 'verus';
+  if (hasLeanKinds) return 'lean';
   return 'unknown';
 }
 
@@ -97,6 +116,8 @@ export function getKindSetsForLanguage(lang: ProjectLanguage): {
       return { proofKinds: new Set(['proof']), specKinds: new Set(['spec']) };
     case 'lean':
       return { proofKinds: new Set(['theorem']), specKinds: new Set(['axiom']) };
+    case 'mixed':
+      return { proofKinds: new Set(['proof', 'theorem']), specKinds: new Set(['spec', 'axiom']) };
     default:
       return { proofKinds: new Set(['proof', 'theorem']), specKinds: new Set(['spec', 'axiom']) };
   }
@@ -130,6 +151,13 @@ export interface D3Node {
   similar_lemmas?: SimilarLemma[];
   kind: DeclKind;  // Declaration kind: exec, proof, spec (Verus) or theorem, def, axiom, ... (Lean)
   verification_status?: VerificationStatus;  // Verification status: verified, failed, unverified
+  language?: string;  // Per-atom language: "rust" or "lean"
+  // Cross-language links (merged Rust/Lean atoms)
+  translation_id?: string;  // Lean translation probe ID (on Rust nodes)
+  translation_path?: string;  // Lean file path
+  translation_lines?: { start: number; end: number };
+  specs?: string[];  // Probe IDs of spec theorems (on Lean def nodes)
+  rust_source?: string;  // Rust source file path (on Lean nodes)
   // Derived statuses computed by DAG walk (used by File Map view)
   border_status?: BorderStatus;
   fill_status?: FillStatus;
@@ -143,7 +171,7 @@ export interface D3Node {
 }
 
 /** The type of a call/dependency link */
-export type LinkType = 'inner' | 'precondition' | 'postcondition';
+export type LinkType = 'inner' | 'precondition' | 'postcondition' | 'translation' | 'spec';
 
 export interface D3Link {
   source: string | D3Node;
@@ -172,10 +200,15 @@ export interface FilterOptions {
   showInnerCalls: boolean;         // Show calls from function body (default: true)
   showPreconditionCalls: boolean;  // Show calls from requires clauses (default: false)
   showPostconditionCalls: boolean; // Show calls from ensures clauses (default: false)
+  showTranslationLinks: boolean;   // Show Rust <-> Lean translation edges (default: true)
+  showSpecLinks: boolean;          // Show spec theorem edges (default: true)
   // Declaration kind filters
   showExecFunctions: boolean;      // Show exec/def/class/structure/... (default: true)
   showProofFunctions: boolean;     // Show proof/theorem (default: true)
   showSpecFunctions: boolean;      // Show spec/axiom (default: false)
+  // Language filters (for multi-language projects)
+  showRustNodes: boolean;          // Show Rust/Verus nodes (default: true)
+  showLeanNodes: boolean;          // Show Lean nodes (default: true)
   // Verification status filters
   showVerifiedNodes: boolean;      // Show verified nodes (default: true)
   showFailedNodes: boolean;        // Show failed nodes (default: true)
@@ -217,6 +250,13 @@ export interface ProbeAtom {
     location: string;
     line: number;
   }>;
+  language?: string;
+  "rust-qualified-name"?: string;
+  "translation-name"?: string;
+  "translation-path"?: string;
+  "translation-text"?: { "lines-start": number; "lines-end": number };
+  specs?: string[];
+  "rust-source"?: string | null;
 }
 
 /**
@@ -241,17 +281,20 @@ export function isAtomDictFormat(data: unknown): data is Record<string, ProbeAto
  * Schema 2.0 metadata envelope wrapping tool output.
  * probe-lean (schema-2.0-envelope branch) wraps all output in this structure.
  */
+export interface Schema2Source {
+  repo: string;
+  commit: string;
+  language: string;
+  package: string;
+  "package-version": string;
+}
+
 export interface Schema2Envelope {
   schema: string;
   "schema-version": string;
   tool: { name: string; version: string; command: string };
-  source: {
-    repo: string;
-    commit: string;
-    language: string;
-    package: string;
-    "package-version": string;
-  };
+  source?: Schema2Source;
+  inputs?: Array<{ schema: string; source: Schema2Source }>;
   timestamp: string;
   data: unknown;
 }
@@ -305,10 +348,14 @@ export interface CrateGraph {
  * to give a more granular module hierarchy. Falls back to one segment if only one exists.
  */
 export function extractCrateName(
-  node: Pick<D3Node, 'id' | 'relative_path'>,
+  node: Pick<D3Node, 'id' | 'relative_path' | 'language'>,
   language: ProjectLanguage = 'unknown',
 ): string {
-  if (language === 'lean' && node.relative_path) {
+  const nodeLang = (node as D3Node).language;
+  const useLeanExtraction = language === 'lean'
+    || (language === 'mixed' && nodeLang === 'lean');
+
+  if (useLeanExtraction && node.relative_path) {
     const parts = node.relative_path.split('/');
     if (parts.length >= 2) return `${parts[0]}/${parts[1]}`;
     return parts[0] || 'unknown';

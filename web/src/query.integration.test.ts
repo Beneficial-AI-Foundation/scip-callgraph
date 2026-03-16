@@ -31,6 +31,8 @@ function createFilters(overrides: Partial<FilterOptions> = {}): FilterOptions {
     showInnerCalls: true,
     showPreconditionCalls: true,
     showPostconditionCalls: true,
+    showTranslationLinks: true,
+    showSpecLinks: true,
     showExecFunctions: true,
     showProofFunctions: true,
     showSpecFunctions: true,
@@ -69,6 +71,7 @@ function backfillCrateNames(graph: D3Graph): void {
 // ---------------------------------------------------------------------------
 
 const GRAPH_TMP_PATH = resolve(__dirname, '../public/graph_tmp.json');
+const MERGED_ATOMS_PATH = resolve(__dirname, '../public/merged_rust_lean_atoms.json');
 const PMEMLOG_PATH = '/home/lacra/git_repos/baif/verus_projects/pmemlog/.verilib/atoms.json';
 const KATYDID_PATH = '/home/lacra/git_repos/baif/katydid-proofs/.verilib/atoms.json';
 
@@ -300,6 +303,143 @@ describe.skipIf(!existsSync(KATYDID_PATH))('Golden: katydid-proofs atoms.json (L
     const result = applyFilters(graph, filters, undefined, 'lean');
 
     expect(result.nodes.length).toBeGreaterThan(0);
+    expect(result.nodes.length).toMatchSnapshot();
+    expect(result.links.length).toMatchSnapshot();
+  });
+});
+
+// ============================================================================
+// graph.json  (Rust + Lean, the current public graph)
+// ============================================================================
+
+const GRAPH_JSON_PATH = resolve(__dirname, '../public/graph.json');
+
+describe.skipIf(!existsSync(GRAPH_JSON_PATH))('Language filter: graph.json (Rust+Lean)', () => {
+  let graph: D3Graph;
+
+  beforeAll(() => {
+    const raw = loadJsonFile(GRAPH_JSON_PATH);
+    graph = parseAndNormalizeGraph(raw);
+    backfillCrateNames(graph);
+  });
+
+  it('detects as lean (not mixed, not verus)', () => {
+    expect(detectProjectLanguage(graph)).toBe('lean');
+  });
+
+  it('has both rust and lean nodes', () => {
+    const rustNodes = graph.nodes.filter(n => n.language === 'rust');
+    const leanNodes = graph.nodes.filter(n => n.language === 'lean');
+    expect(rustNodes.length).toBeGreaterThan(0);
+    expect(leanNodes.length).toBeGreaterThan(0);
+  });
+
+  it('showRustNodes=false keeps Lean nodes', () => {
+    const filters = createFilters({ showRustNodes: false, showLeanNodes: true });
+    const result = applyFilters(graph, filters, undefined, 'lean');
+    expect(result.nodes.length).toBeGreaterThan(0);
+    const rustInResult = result.nodes.filter(n => n.language === 'rust');
+    expect(rustInResult.length).toBe(0);
+    const leanInResult = result.nodes.filter(n => n.language === 'lean');
+    expect(leanInResult.length).toBeGreaterThan(100);
+  });
+
+  it('showLeanNodes=false keeps Rust nodes', () => {
+    const filters = createFilters({ showRustNodes: true, showLeanNodes: false });
+    const result = applyFilters(graph, filters, undefined, 'lean');
+    expect(result.nodes.length).toBeGreaterThan(0);
+    const leanInResult = result.nodes.filter(n => n.language === 'lean');
+    expect(leanInResult.length).toBe(0);
+    const rustInResult = result.nodes.filter(n => n.language === 'rust');
+    expect(rustInResult.length).toBeGreaterThan(100);
+  });
+});
+
+// ============================================================================
+// merged_rust_lean_atoms.json  (Rust + Lean merged atoms, Schema 2.0 envelope)
+// ============================================================================
+
+describe.skipIf(!existsSync(MERGED_ATOMS_PATH))('Golden: merged_rust_lean_atoms.json (mixed Rust/Lean)', () => {
+  let graph: D3Graph;
+
+  beforeAll(() => {
+    const raw = loadJsonFile(MERGED_ATOMS_PATH);
+    graph = parseAndNormalizeGraph(raw);
+    backfillCrateNames(graph);
+  });
+
+  it('loads correct number of nodes', () => {
+    expect(graph.nodes.length).toBe(2130);
+  });
+
+  it('language detection returns mixed', () => {
+    const lang = detectProjectLanguage(graph);
+    expect(lang).toBe('mixed');
+  });
+
+  it('contains both Rust and Lean nodes', () => {
+    const rustNodes = graph.nodes.filter(n => n.language === 'rust');
+    const leanNodes = graph.nodes.filter(n => n.language === 'lean');
+    expect(rustNodes.length).toBeGreaterThan(0);
+    expect(leanNodes.length).toBeGreaterThan(0);
+    expect(rustNodes.length).toMatchSnapshot();
+    expect(leanNodes.length).toMatchSnapshot();
+  });
+
+  it('contains translation links', () => {
+    const translationLinks = graph.links.filter(l => l.type === 'translation');
+    expect(translationLinks.length).toBeGreaterThan(0);
+    expect(translationLinks.length).toMatchSnapshot();
+  });
+
+  it('contains spec links', () => {
+    const specLinks = graph.links.filter(l => l.type === 'spec');
+    expect(specLinks.length).toBeGreaterThan(0);
+    expect(specLinks.length).toMatchSnapshot();
+  });
+
+  it('Rust nodes with translation_id link to existing Lean nodes', () => {
+    const rustWithTranslation = graph.nodes.filter(n => n.language === 'rust' && n.translation_id);
+    expect(rustWithTranslation.length).toBeGreaterThan(0);
+
+    const nodeIds = new Set(graph.nodes.map(n => n.id));
+    for (const node of rustWithTranslation) {
+      expect(nodeIds.has(node.translation_id!)).toBe(true);
+    }
+    expect(rustWithTranslation.length).toMatchSnapshot();
+  });
+
+  it('Lean nodes with specs reference existing atoms', () => {
+    const leanWithSpecs = graph.nodes.filter(n => n.specs && n.specs.length > 0);
+    expect(leanWithSpecs.length).toBeGreaterThan(0);
+
+    const nodeIds = new Set(graph.nodes.map(n => n.id));
+    for (const node of leanWithSpecs) {
+      for (const specId of node.specs!) {
+        expect(nodeIds.has(specId)).toBe(true);
+      }
+    }
+    expect(leanWithSpecs.length).toMatchSnapshot();
+  });
+
+  it('filtering: showTranslationLinks=false removes translation links', () => {
+    const filters = createFilters({ showTranslationLinks: false });
+    const result = applyFilters(graph, filters, undefined, 'mixed');
+
+    const translationLinks = result.links.filter(l => l.type === 'translation');
+    expect(translationLinks.length).toBe(0);
+  });
+
+  it('filtering: showSpecLinks=false removes spec links', () => {
+    const filters = createFilters({ showSpecLinks: false });
+    const result = applyFilters(graph, filters, undefined, 'mixed');
+
+    const specLinks = result.links.filter(l => l.type === 'spec');
+    expect(specLinks.length).toBe(0);
+  });
+
+  it('full graph (no filters)', () => {
+    const result = applyFilters(graph, createFilters(), undefined, 'mixed');
     expect(result.nodes.length).toMatchSnapshot();
     expect(result.links.length).toMatchSnapshot();
   });

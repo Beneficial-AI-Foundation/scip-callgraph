@@ -296,13 +296,18 @@ export class BlueprintVisualization {
         const t = d.type || 'inner';
         if (t === 'precondition') return '#e65100';
         if (t === 'postcondition') return '#c2185b';
+        if (t === 'translation') return '#7c3aed';
+        if (t === 'spec') return '#0891b2';
         return '#888';
       })
       .attr('stroke-opacity', 0.55)
       .attr('stroke-width', 1.5)
       .attr('stroke-dasharray', d => {
         const t = d.type || 'inner';
-        return (t === 'precondition' || t === 'postcondition') ? '6,3' : 'none';
+        if (t === 'precondition' || t === 'postcondition') return '6,3';
+        if (t === 'translation') return '2,4';
+        if (t === 'spec') return '3,3';
+        return 'none';
       })
       .attr('marker-end', 'url(#bp-arrow)')
       .attr('d', d => {
@@ -385,9 +390,9 @@ export class BlueprintVisualization {
     if (existing) existing.remove();
 
     const lang = this.state.projectLanguage;
-    const rectLabel = lang === 'lean' ? 'Definition' : lang === 'verus' ? 'Exec function' : 'Exec / Definition';
-    const ellipseLabel = lang === 'lean' ? 'Theorem' : lang === 'verus' ? 'Proof / lemma' : 'Proof / Theorem';
-    const diamondLabel = lang === 'lean' ? 'Axiom' : lang === 'verus' ? 'Spec function' : 'Spec / Axiom';
+    const rectLabel = lang === 'verus' ? 'Exec function' : 'Definition';
+    const ellipseLabel = lang === 'verus' ? 'Proof / lemma' : 'Theorem';
+    const diamondLabel = lang === 'verus' ? 'Spec function' : 'Axiom';
 
     const legend = document.createElement('div');
     legend.className = 'bp-legend';
@@ -425,7 +430,7 @@ export class BlueprintVisualization {
           <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#888" stroke-width="1.5"/></svg>
           <span>${lang === 'lean' ? 'Dependency' : 'Body call'}</span>
         </div>
-        ${lang !== 'lean' ? `
+        ${(lang === 'verus' || lang === 'mixed') ? `
         <div class="bp-legend-item">
           <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#e65100" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
           <span>Requires</span>
@@ -433,6 +438,15 @@ export class BlueprintVisualization {
         <div class="bp-legend-item">
           <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#c2185b" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
           <span>Ensures</span>
+        </div>` : ''}
+        ${lang === 'mixed' ? `
+        <div class="bp-legend-item">
+          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="2,4"/></svg>
+          <span>Translation</span>
+        </div>
+        <div class="bp-legend-item">
+          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="3,3"/></svg>
+          <span>Specification</span>
         </div>` : ''}
       </div>
     `;

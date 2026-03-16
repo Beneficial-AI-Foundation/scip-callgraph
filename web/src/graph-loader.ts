@@ -98,6 +98,8 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
 
     const codeText = atom["code-text"];
 
+    const translationText = atom["translation-text"];
+
     return {
       id: atomName,
       display_name: atom["display-name"],
@@ -114,6 +116,14 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
       dependents,
       kind: atom.kind || 'exec',
       verification_status: atom["verification-status"] as VerificationStatus | undefined,
+      language: atom.language,
+      translation_id: atom["translation-name"],
+      translation_path: atom["translation-path"],
+      translation_lines: translationText
+        ? { start: translationText["lines-start"], end: translationText["lines-end"] }
+        : undefined,
+      specs: atom.specs?.filter(s => knownIds.has(s)),
+      rust_source: atom["rust-source"] ?? undefined,
     };
   });
 
@@ -133,6 +143,24 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
       for (const dep of atom.dependencies) {
         if (knownIds.has(dep)) {
           links.push({ source: atomName, target: dep, type: 'inner' });
+        }
+      }
+    }
+
+    // Rust -> Lean translation link
+    if (atom["translation-name"] && knownIds.has(atom["translation-name"])) {
+      links.push({
+        source: atomName,
+        target: atom["translation-name"],
+        type: 'translation',
+      });
+    }
+
+    // Lean def -> spec theorem links (spec *specifies* the def)
+    if (atom.specs) {
+      for (const specId of atom.specs) {
+        if (knownIds.has(specId)) {
+          links.push({ source: specId, target: atomName, type: 'spec' });
         }
       }
     }

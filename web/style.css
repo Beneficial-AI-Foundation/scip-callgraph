@@ -149,6 +149,7 @@ body {
 }
 
 .libsignal-badge, .other-badge, .inner-badge, .precondition-badge, .postcondition-badge,
+.translation-badge, .spec-link-badge, .lang-badge-rust, .lang-badge-lean,
 .exec-badge, .proof-badge, .spec-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
@@ -180,6 +181,26 @@ body {
 .postcondition-badge {
   background: #fce4ec;
   color: #c2185b;
+}
+
+.translation-badge {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.spec-link-badge {
+  background: #ecfeff;
+  color: #0891b2;
+}
+
+.lang-badge-rust {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.lang-badge-lean {
+  background: #dbeafe;
+  color: #1e40af;
 }
 
 /* Declaration kind badges */

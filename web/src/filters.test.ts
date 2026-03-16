@@ -53,6 +53,8 @@ function createFilters(overrides: Partial<FilterOptions> = {}): FilterOptions {
     showInnerCalls: true,
     showPreconditionCalls: true,
     showPostconditionCalls: true,
+    showTranslationLinks: true,
+    showSpecLinks: true,
     showExecFunctions: true,
     showProofFunctions: true,
     showSpecFunctions: true,
