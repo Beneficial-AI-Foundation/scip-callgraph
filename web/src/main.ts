@@ -162,42 +162,54 @@ function showLargeGraphPrompt(fileSize: number): void {
 
 
 /**
- * Build a GitHub link to the source code
+ * Build a full-path string from a relative_path and optional prefix,
+ * avoiding duplication when the path already starts with the prefix.
+ */
+function buildFullPath(relativePath: string, prefix: string): string {
+  const cleanPrefix = prefix.replace(/^\/|\/$/g, '');
+  if (!cleanPrefix) return relativePath;
+  if (relativePath.startsWith(cleanPrefix + '/') || relativePath === cleanPrefix) {
+    return relativePath;
+  }
+  return `${cleanPrefix}/${relativePath}`;
+}
+
+/**
+ * Append #L<start>-L<end> line-number fragment to a link.
+ */
+function appendLineFragment(link: string, start?: number, end?: number): string {
+  if (!start) return link;
+  link += `#L${start}`;
+  if (end && end > start) link += `-L${end}`;
+  return link;
+}
+
+/**
+ * Build a GitHub link to the source code.
+ * Prefers per-language source configs from the Schema 2.0 envelope,
+ * falling back to the global githubBaseUrl / githubBranch / githubPathPrefix.
  */
 function buildGitHubLink(node: D3Node): string | null {
+  if (!node.relative_path) return null;
+
+  // Try per-language source config (from Schema 2.0 envelope metadata)
+  if (node.language && state.fullGraph?.metadata.source_configs) {
+    const config = state.fullGraph.metadata.source_configs.find(
+      c => c.language === node.language,
+    );
+    if (config) {
+      const fullPath = buildFullPath(node.relative_path, config.path_prefix);
+      const link = `${config.github_url}/blob/${config.ref}/${fullPath}`;
+      return appendLineFragment(link, node.start_line, node.end_line);
+    }
+  }
+
+  // Fallback: global settings
   if (!githubBaseUrl) return null;
-  
-  // Clean up the base URL (remove trailing slash)
   const baseUrl = githubBaseUrl.replace(/\/$/, '');
-  
-  // Clean up path prefix (remove leading/trailing slashes)
-  const prefix = githubPathPrefix.replace(/^\/|\/$/g, '');
-  
-  // Build the full path, but avoid duplicating if relative_path already starts with prefix
-  let fullPath: string;
-  if (prefix) {
-    // Check if relative_path already starts with the prefix (avoid duplication)
-    if (node.relative_path.startsWith(prefix + '/') || node.relative_path === prefix) {
-      fullPath = node.relative_path;
-    } else {
-      fullPath = `${prefix}/${node.relative_path}`;
-    }
-  } else {
-    fullPath = node.relative_path;
-  }
-  
-  // Build the link with line numbers if available
-  let link = `${baseUrl}/blob/${githubBranch}/${fullPath}`;
-  
-  if (node.start_line) {
-    link += `#L${node.start_line}`;
-    // Only add end line if it's greater than start line (sanity check)
-    if (node.end_line && node.end_line > node.start_line) {
-      link += `-L${node.end_line}`;
-    }
-  }
-  
-  return link;
+  const fullPath = buildFullPath(node.relative_path, githubPathPrefix);
+  const link = `${baseUrl}/blob/${githubBranch}/${fullPath}`;
+  return appendLineFragment(link, node.start_line, node.end_line);
 }
 
 /**

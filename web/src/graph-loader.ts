@@ -1,5 +1,6 @@
 import {
-  D3Graph, D3Node, D3Link, SimplifiedNode, ProbeAtom,
+  D3Graph, D3Node, D3Link, SimplifiedNode, ProbeAtom, SourceConfig,
+  Schema2Envelope, Schema2Source,
   isSimplifiedFormat, isD3GraphFormat, isAtomDictFormat, isSchema2Envelope,
   VerificationStatus,
 } from './types';
@@ -183,9 +184,35 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
  * Supports D3Graph format, simplified format, probe atom dict format,
  * and Schema 2.0 envelopes.
  */
+/**
+ * Extract per-language GitHub source configs from a Schema 2.0 envelope.
+ * Uses the commit hash as the git ref (always valid on GitHub).
+ * For Rust workspace crates the package name becomes the path prefix.
+ */
+function extractSourceConfigs(envelope: Schema2Envelope): SourceConfig[] {
+  const entries: Schema2Source[] = [];
+  if (envelope.inputs) {
+    for (const input of envelope.inputs) entries.push(input.source);
+  } else if (envelope.source) {
+    entries.push(envelope.source);
+  }
+
+  return entries.map(src => ({
+    github_url: src.repo.replace(/\.git$/, ''),
+    ref: src.commit,
+    path_prefix: src.language === 'rust' ? src.package : '',
+    language: src.language,
+  }));
+}
+
 export function parseAndNormalizeGraph(data: unknown): D3Graph {
   if (isSchema2Envelope(data)) {
-    return parseAndNormalizeGraph(data.data);
+    const sourceConfigs = extractSourceConfigs(data);
+    const graph = parseAndNormalizeGraph(data.data);
+    if (sourceConfigs.length > 0) {
+      graph.metadata.source_configs = sourceConfigs;
+    }
+    return graph;
   }
   if (isD3GraphFormat(data)) {
     return data;

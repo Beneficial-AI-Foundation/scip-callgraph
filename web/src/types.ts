@@ -179,12 +179,21 @@ export interface D3Link {
   type: LinkType | string;  // 'inner' | 'precondition' | 'postcondition' (or legacy 'calls')
 }
 
+/** Per-language GitHub source config derived from Schema 2.0 envelope inputs. */
+export interface SourceConfig {
+  github_url: string;
+  ref: string;
+  path_prefix: string;
+  language: string;
+}
+
 export interface D3GraphMetadata {
   total_nodes: number;
   total_edges: number;
   project_root: string;
   generated_at: string;
   github_url?: string;
+  source_configs?: SourceConfig[];
 }
 
 export interface D3Graph {
