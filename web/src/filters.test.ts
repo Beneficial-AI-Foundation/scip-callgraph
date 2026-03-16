@@ -58,6 +58,8 @@ function createFilters(overrides: Partial<FilterOptions> = {}): FilterOptions {
     showExecFunctions: true,
     showProofFunctions: true,
     showSpecFunctions: true,
+    showRustNodes: true,
+    showLeanNodes: true,
     showVerifiedNodes: true,
     showFailedNodes: true,
     showUnverifiedNodes: true,
