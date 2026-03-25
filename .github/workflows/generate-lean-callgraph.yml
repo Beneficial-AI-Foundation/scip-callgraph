@@ -202,7 +202,7 @@ jobs:
       - name: Generate enriched call graph
         working-directory: project/${{ inputs.project_path }}
         run: |
-          FLAGS="--skip-build --from-file ${{ github.workspace }}/build_output.txt"
+          FLAGS="--from-file ${{ github.workspace }}/build_output.txt"
           if [ "${{ inputs.skip_verification }}" = "true" ]; then
             FLAGS="$FLAGS --skip-verify"
           fi
