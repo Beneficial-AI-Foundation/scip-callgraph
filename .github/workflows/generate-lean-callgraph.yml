@@ -14,6 +14,13 @@
 #         github_url: https://github.com/my-org/my-lean-project
 #         github_branch: master  # if default branch is not 'main'
 #
+# With pre-built atoms (skips lake build + probe-lean extract):
+#   jobs:
+#     callgraph:
+#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+#       with:
+#         pre_built_atoms: 'my-artifact-name'  # artifact containing atoms JSON
+#
 name: Generate Lean Call Graph
 
 on:
@@ -64,6 +71,11 @@ on:
         required: false
         default: 'callgraph'
         type: string
+      pre_built_atoms:
+        description: 'Artifact name containing pre-built atoms JSON (graph.json). When provided, skips lake build and probe-lean extract entirely.'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   build:
@@ -88,9 +100,11 @@ jobs:
           echo "  use_mathlib_cache:   ${{ inputs.use_mathlib_cache }}"
           echo "  deploy_mode:         ${{ inputs.deploy_mode }}"
           echo "  subpath:             ${{ inputs.subpath }}"
+          echo "  pre_built_atoms:     ${{ inputs.pre_built_atoms || '(none — will build from source)' }}"
           echo "═══════════════════════════════════════════════════════════"
 
       - name: Checkout calling repository
+        if: inputs.pre_built_atoms == ''
         uses: actions/checkout@v4
         with:
           path: project
@@ -102,7 +116,28 @@ jobs:
           repository: Beneficial-AI-Foundation/scip-callgraph
           path: scip-callgraph
 
+      # --- Pre-built atoms path (skip build + extract) ---
+      - name: Download pre-built atoms
+        if: inputs.pre_built_atoms != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.pre_built_atoms }}
+          path: pre-built
+
+      - name: Use pre-built atoms as graph.json
+        if: inputs.pre_built_atoms != ''
+        run: |
+          ATOMS_FILE=$(find pre-built -name '*.json' | head -1)
+          if [ -z "$ATOMS_FILE" ]; then
+            echo "✗ No JSON file found in pre-built atoms artifact"
+            exit 1
+          fi
+          cp "$ATOMS_FILE" scip-callgraph/web/public/graph.json
+          echo "✓ Using pre-built atoms as graph.json ($(wc -c < scip-callgraph/web/public/graph.json) bytes)"
+
+      # --- Full build path (build from source) ---
       - name: Checkout probe-lean
+        if: inputs.pre_built_atoms == ''
         uses: actions/checkout@v4
         with:
           repository: Beneficial-AI-Foundation/probe-lean
@@ -110,11 +145,13 @@ jobs:
           path: probe-lean
 
       - name: Install elan (Lean toolchain manager)
+        if: inputs.pre_built_atoms == ''
         run: |
           curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
 
       - name: Align probe-lean toolchain to target project
+        if: inputs.pre_built_atoms == ''
         run: |
           PROJECT_TC="project/${{ inputs.project_path }}/lean-toolchain"
           PROBE_TC="probe-lean/lean-toolchain"
@@ -154,6 +191,7 @@ jobs:
           node-version: '20'
 
       - name: Cache Lake packages
+        if: inputs.pre_built_atoms == ''
         uses: actions/cache@v4
         with:
           path: |
@@ -165,6 +203,7 @@ jobs:
 
       # Step 1: Build probe-lean
       - name: Build probe-lean
+        if: inputs.pre_built_atoms == ''
         working-directory: probe-lean
         run: |
           lake build probe-lean
@@ -172,7 +211,7 @@ jobs:
 
       # Step 2: Download Mathlib cache (saves hours for Mathlib-dependent projects)
       - name: Download Mathlib cache
-        if: inputs.use_mathlib_cache
+        if: inputs.pre_built_atoms == '' && inputs.use_mathlib_cache
         working-directory: project/${{ inputs.project_path }}
         run: |
           echo "Cleaning stale cache..."
@@ -183,6 +222,7 @@ jobs:
 
       # Step 3: Build the target project (visible output for progress tracking)
       - name: Build target project
+        if: inputs.pre_built_atoms == ''
         working-directory: project/${{ inputs.project_path }}
         run: |
           echo "Building target project (output streams below)..."
@@ -200,9 +240,10 @@ jobs:
 
       # Step 4: Run probe-lean extract (atomize + specify + sorry detection → unified atoms)
       - name: Generate enriched call graph
+        if: inputs.pre_built_atoms == ''
         working-directory: project/${{ inputs.project_path }}
         run: |
-          FLAGS="--from-file ${{ github.workspace }}/build_output.txt"
+          FLAGS="--skip-build --from-file ${{ github.workspace }}/build_output.txt"
           if [ "${{ inputs.skip_verification }}" = "true" ]; then
             FLAGS="$FLAGS --skip-verify"
           fi
