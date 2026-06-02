@@ -130,20 +130,26 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
 
   const links: D3Link[] = [];
   for (const [atomName, atom] of Object.entries(atoms)) {
+    const srcLang = atom.language;
+
     if (atom["dependencies-with-locations"] && atom["dependencies-with-locations"].length > 0) {
       for (const dep of atom["dependencies-with-locations"]) {
         if (knownIds.has(dep["code-name"])) {
+          const tgtLang = atoms[dep["code-name"]]?.language;
+          const isCrossLang = srcLang && tgtLang && srcLang !== tgtLang;
           links.push({
             source: atomName,
             target: dep["code-name"],
-            type: dep.location || 'inner',
+            type: isCrossLang ? 'translation' : (dep.location || 'inner'),
           });
         }
       }
     } else {
       for (const dep of atom.dependencies) {
         if (knownIds.has(dep)) {
-          links.push({ source: atomName, target: dep, type: 'inner' });
+          const tgtLang = atoms[dep]?.language;
+          const isCrossLang = srcLang && tgtLang && srcLang !== tgtLang;
+          links.push({ source: atomName, target: dep, type: isCrossLang ? 'translation' : 'inner' });
         }
       }
     }
