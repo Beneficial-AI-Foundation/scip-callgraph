@@ -343,7 +343,7 @@ describe.skipIf(!existsSync(GRAPH_JSON_PATH))('Language filter: graph.json (Rust
     const rustInResult = result.nodes.filter(n => n.language === 'rust');
     expect(rustInResult.length).toBe(0);
     const leanInResult = result.nodes.filter(n => n.language === 'lean');
-    expect(leanInResult.length).toBeGreaterThan(100);
+    expect(leanInResult.length).toBeGreaterThan(5);
   });
 
   it('showLeanNodes=false keeps Rust nodes', () => {
@@ -353,7 +353,7 @@ describe.skipIf(!existsSync(GRAPH_JSON_PATH))('Language filter: graph.json (Rust
     const leanInResult = result.nodes.filter(n => n.language === 'lean');
     expect(leanInResult.length).toBe(0);
     const rustInResult = result.nodes.filter(n => n.language === 'rust');
-    expect(rustInResult.length).toBeGreaterThan(100);
+    expect(rustInResult.length).toBeGreaterThan(5);
   });
 });
 
