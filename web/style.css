@@ -149,7 +149,7 @@ body {
 }
 
 .libsignal-badge, .other-badge, .inner-badge, .precondition-badge, .postcondition-badge,
-.translation-badge, .spec-link-badge, .lang-badge-rust, .lang-badge-lean,
+.mapping-badge, .spec-link-badge, .lang-badge-rust, .lang-badge-lean,
 .exec-badge, .proof-badge, .spec-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
@@ -183,7 +183,7 @@ body {
   color: #c2185b;
 }
 
-.translation-badge {
+.mapping-badge {
   background: #ede9fe;
   color: #7c3aed;
 }

@@ -31,7 +31,7 @@ function createFilters(overrides: Partial<FilterOptions> = {}): FilterOptions {
     showInnerCalls: true,
     showPreconditionCalls: true,
     showPostconditionCalls: true,
-    showTranslationLinks: true,
+    showMappingLinks: true,
     showSpecLinks: true,
     showExecFunctions: true,
     showProofFunctions: true,
@@ -388,10 +388,10 @@ describe.skipIf(!existsSync(MERGED_ATOMS_PATH))('Golden: merged_rust_lean_atoms.
     expect(leanNodes.length).toMatchSnapshot();
   });
 
-  it('contains translation links', () => {
-    const translationLinks = graph.links.filter(l => l.type === 'translation');
-    expect(translationLinks.length).toBeGreaterThan(0);
-    expect(translationLinks.length).toMatchSnapshot();
+  it('contains mapping links', () => {
+    const mappingLinks = graph.links.filter(l => l.type === 'mapping');
+    expect(mappingLinks.length).toBeGreaterThan(0);
+    expect(mappingLinks.length).toMatchSnapshot();
   });
 
   it('contains spec links', () => {
@@ -400,15 +400,15 @@ describe.skipIf(!existsSync(MERGED_ATOMS_PATH))('Golden: merged_rust_lean_atoms.
     expect(specLinks.length).toMatchSnapshot();
   });
 
-  it('Rust nodes with translation_id link to existing Lean nodes', () => {
-    const rustWithTranslation = graph.nodes.filter(n => n.language === 'rust' && n.translation_id);
-    expect(rustWithTranslation.length).toBeGreaterThan(0);
+  it('Rust nodes with mapping_id link to existing Lean nodes', () => {
+    const rustWithMapping = graph.nodes.filter(n => n.language === 'rust' && n.mapping_id);
+    expect(rustWithMapping.length).toBeGreaterThan(0);
 
     const nodeIds = new Set(graph.nodes.map(n => n.id));
-    for (const node of rustWithTranslation) {
-      expect(nodeIds.has(node.translation_id!)).toBe(true);
+    for (const node of rustWithMapping) {
+      expect(nodeIds.has(node.mapping_id!)).toBe(true);
     }
-    expect(rustWithTranslation.length).toMatchSnapshot();
+    expect(rustWithMapping.length).toMatchSnapshot();
   });
 
   it('Lean nodes with specs reference existing atoms', () => {
@@ -424,12 +424,12 @@ describe.skipIf(!existsSync(MERGED_ATOMS_PATH))('Golden: merged_rust_lean_atoms.
     expect(leanWithSpecs.length).toMatchSnapshot();
   });
 
-  it('filtering: showTranslationLinks=false removes translation links', () => {
-    const filters = createFilters({ showTranslationLinks: false });
+  it('filtering: showMappingLinks=false removes mapping links', () => {
+    const filters = createFilters({ showMappingLinks: false });
     const result = applyFilters(graph, filters, undefined, 'mixed');
 
-    const translationLinks = result.links.filter(l => l.type === 'translation');
-    expect(translationLinks.length).toBe(0);
+    const mappingLinks = result.links.filter(l => l.type === 'mapping');
+    expect(mappingLinks.length).toBe(0);
   });
 
   it('filtering: showSpecLinks=false removes spec links', () => {

@@ -99,7 +99,7 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
 
     const codeText = atom["code-text"];
 
-    const translationText = atom["translation-text"];
+    const mappingText = atom["translation-text"];
 
     return {
       id: atomName,
@@ -118,10 +118,10 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
       kind: atom.kind || 'exec',
       verification_status: atom["verification-status"] as VerificationStatus | undefined,
       language: atom.language,
-      translation_id: atom["translation-name"],
-      translation_path: atom["translation-path"],
-      translation_lines: translationText
-        ? { start: translationText["lines-start"], end: translationText["lines-end"] }
+      mapping_id: atom["translation-name"],
+      mapping_path: atom["translation-path"],
+      mapping_lines: mappingText
+        ? { start: mappingText["lines-start"], end: mappingText["lines-end"] }
         : undefined,
       specs: atom.specs?.filter(s => knownIds.has(s)),
       rust_source: atom["rust-source"] ?? undefined,
@@ -140,7 +140,7 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
           links.push({
             source: atomName,
             target: dep["code-name"],
-            type: isCrossLang ? 'translation' : (dep.location || 'inner'),
+            type: isCrossLang ? 'mapping' : (dep.location || 'inner'),
           });
         }
       }
@@ -149,17 +149,17 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
         if (knownIds.has(dep)) {
           const tgtLang = atoms[dep]?.language;
           const isCrossLang = srcLang && tgtLang && srcLang !== tgtLang;
-          links.push({ source: atomName, target: dep, type: isCrossLang ? 'translation' : 'inner' });
+          links.push({ source: atomName, target: dep, type: isCrossLang ? 'mapping' : 'inner' });
         }
       }
     }
 
-    // Rust -> Lean translation link
+    // Rust -> Lean mapping link
     if (atom["translation-name"] && knownIds.has(atom["translation-name"])) {
       links.push({
         source: atomName,
         target: atom["translation-name"],
-        type: 'translation',
+        type: 'mapping',
       });
     }
 

@@ -573,11 +573,11 @@ export class CrateMapVisualization {
 
       const edgeColor = call.type === 'precondition' ? '#e65100'
         : call.type === 'postcondition' ? '#c2185b'
-        : call.type === 'translation' ? '#7c3aed'
+        : call.type === 'mapping' ? '#7c3aed'
         : call.type === 'spec' ? '#0891b2'
         : '#666';
       const dashArray = (call.type === 'precondition' || call.type === 'postcondition') ? '6,3'
-        : (call.type === 'translation') ? '2,4'
+        : (call.type === 'mapping') ? '2,4'
         : (call.type === 'spec') ? '3,3'
         : 'none';
 
@@ -773,11 +773,11 @@ export class CrateMapVisualization {
 
       const edgeColor = call.type === 'precondition' ? '#e65100'
         : call.type === 'postcondition' ? '#c2185b'
-        : call.type === 'translation' ? '#7c3aed'
+        : call.type === 'mapping' ? '#7c3aed'
         : call.type === 'spec' ? '#0891b2'
         : '#666';
       const dashArray = (call.type === 'precondition' || call.type === 'postcondition') ? '6,3'
-        : (call.type === 'translation') ? '2,4'
+        : (call.type === 'mapping') ? '2,4'
         : (call.type === 'spec') ? '3,3'
         : 'none';
 

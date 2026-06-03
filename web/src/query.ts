@@ -77,7 +77,7 @@ export interface LinkTypeFilter {
   showInnerCalls: boolean;
   showPreconditionCalls: boolean;
   showPostconditionCalls: boolean;
-  showTranslationLinks: boolean;
+  showMappingLinks: boolean;
   showSpecLinks: boolean;
 }
 
@@ -408,7 +408,7 @@ export function filterLinksByType(
     if (t === 'calls' || t === 'inner') return filter.showInnerCalls;
     if (t === 'precondition') return filter.showPreconditionCalls;
     if (t === 'postcondition') return filter.showPostconditionCalls;
-    if (t === 'translation') return filter.showTranslationLinks;
+    if (t === 'mapping') return filter.showMappingLinks;
     if (t === 'spec') return filter.showSpecLinks;
     return true;
   });
@@ -610,7 +610,7 @@ export function compileQuery(
     showInnerCalls: filters.showInnerCalls,
     showPreconditionCalls: filters.showPreconditionCalls,
     showPostconditionCalls: filters.showPostconditionCalls,
-    showTranslationLinks: filters.showTranslationLinks,
+    showMappingLinks: filters.showMappingLinks,
     showSpecLinks: filters.showSpecLinks,
   };
 

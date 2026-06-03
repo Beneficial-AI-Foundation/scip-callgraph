@@ -153,9 +153,9 @@ export interface D3Node {
   verification_status?: VerificationStatus;  // Verification status: verified, failed, unverified
   language?: string;  // Per-atom language: "rust" or "lean"
   // Cross-language links (merged Rust/Lean atoms)
-  translation_id?: string;  // Lean translation probe ID (on Rust nodes)
-  translation_path?: string;  // Lean file path
-  translation_lines?: { start: number; end: number };
+  mapping_id?: string;  // Lean translation probe ID (on Rust nodes)
+  mapping_path?: string;  // Lean file path
+  mapping_lines?: { start: number; end: number };
   specs?: string[];  // Probe IDs of spec theorems (on Lean def nodes)
   rust_source?: string;  // Rust source file path (on Lean nodes)
   // Derived statuses computed by DAG walk (used by File Map view)
@@ -171,7 +171,7 @@ export interface D3Node {
 }
 
 /** The type of a call/dependency link */
-export type LinkType = 'inner' | 'precondition' | 'postcondition' | 'translation' | 'spec';
+export type LinkType = 'inner' | 'precondition' | 'postcondition' | 'mapping' | 'spec';
 
 export interface D3Link {
   source: string | D3Node;
@@ -209,7 +209,7 @@ export interface FilterOptions {
   showInnerCalls: boolean;         // Show calls from function body (default: true)
   showPreconditionCalls: boolean;  // Show calls from requires clauses (default: false)
   showPostconditionCalls: boolean; // Show calls from ensures clauses (default: false)
-  showTranslationLinks: boolean;   // Show Rust <-> Lean translation edges (default: true)
+  showMappingLinks: boolean;       // Show cross-language mapping edges (default: true)
   showSpecLinks: boolean;          // Show spec theorem edges (default: true)
   // Declaration kind filters
   showExecFunctions: boolean;      // Show exec/def/class/structure/... (default: true)

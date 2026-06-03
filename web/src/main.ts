@@ -249,13 +249,13 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (exec !== undefined) filters.showExecFunctions = exec;
   if (proof !== undefined) filters.showProofFunctions = proof;
   if (spec !== undefined) filters.showSpecFunctions = spec;
-  const translation = parseBool('translation');
+  const mapping = parseBool('mapping');
   const specLinks = parseBool('speclinks');
 
   if (inner !== undefined) filters.showInnerCalls = inner;
   if (pre !== undefined) filters.showPreconditionCalls = pre;
   if (post !== undefined) filters.showPostconditionCalls = post;
-  if (translation !== undefined) filters.showTranslationLinks = translation;
+  if (mapping !== undefined) filters.showMappingLinks = mapping;
   if (specLinks !== undefined) filters.showSpecLinks = specLinks;
   if (libsignal !== undefined) filters.showLibsignal = libsignal;
   if (external !== undefined) filters.showNonLibsignal = external;
@@ -307,7 +307,7 @@ function generateShareableURL(): string {
   
   // Clear existing filter params (keep json, github, etc.)
   ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec',
-   'inner', 'pre', 'post', 'translation', 'speclinks',
+   'inner', 'pre', 'post', 'mapping', 'speclinks',
    'libsignal', 'external', 'hidden', 'focus', 'view',
    'source-crate', 'target-crate'].forEach(k => params.delete(k));
 
@@ -333,7 +333,7 @@ function generateShareableURL(): string {
     if (!state.filters.showInnerCalls) params.set('inner', '0');
     if (state.filters.showPreconditionCalls) params.set('pre', '1');
     if (state.filters.showPostconditionCalls) params.set('post', '1');
-    if (!state.filters.showTranslationLinks) params.set('translation', '0');
+    if (!state.filters.showMappingLinks) params.set('mapping', '0');
     if (!state.filters.showSpecLinks) params.set('speclinks', '0');
   }
   if (!state.filters.showLibsignal) params.set('libsignal', '0');
@@ -438,7 +438,7 @@ const initialFilters: FilterOptions = {
   showInnerCalls: true,           // Show body calls by default
   showPreconditionCalls: false,   // Hide requires calls by default
   showPostconditionCalls: false,  // Hide ensures calls by default
-  showTranslationLinks: true,     // Show Rust <-> Lean translation edges by default
+  showMappingLinks: true,         // Show cross-language mapping edges by default
   showSpecLinks: true,            // Show spec theorem edges by default
   showExecFunctions: true,        // Show exec functions by default
   showProofFunctions: true,       // Show proof functions by default
@@ -1645,10 +1645,10 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
   container.style.display = '';
 
   const isVerus = lang === 'verus' || lang === 'mixed';
-  const hasTranslationLinks = state.fullGraph?.links.some(l => l.type === 'translation') ?? false;
+  const hasMappingLinks = state.fullGraph?.links.some(l => l.type === 'mapping') ?? false;
   const hasSpecLinks = state.fullGraph?.links.some(l => l.type === 'spec') ?? false;
 
-  if (!isVerus && !hasTranslationLinks && !hasSpecLinks) {
+  if (!isVerus && !hasMappingLinks && !hasSpecLinks) {
     container.style.display = 'none';
     state.filters.showInnerCalls = true;
     state.filters.showPreconditionCalls = false;
@@ -1676,11 +1676,11 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
     </label>`;
   }
 
-  if (hasTranslationLinks) {
+  if (hasMappingLinks) {
     html += `
     <label class="checkbox-label">
-      <input type="checkbox" id="show-translation-links" checked />
-      <span class="translation-badge">Translation</span>
+      <input type="checkbox" id="show-mapping-links" checked />
+      <span class="mapping-badge">Mapping</span>
     </label>`;
   }
   if (hasSpecLinks) {
@@ -1691,7 +1691,7 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
     </label>`;
   }
 
-  if (isVerus && !hasTranslationLinks && !hasSpecLinks) {
+  if (isVerus && !hasMappingLinks && !hasSpecLinks) {
     html += `
     <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
       Requires/Ensures edges typically connect to Spec functions
@@ -1712,8 +1712,8 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
     state.filters.showPostconditionCalls = (e.target as HTMLInputElement).checked;
     applyFiltersAndUpdate();
   });
-  document.getElementById('show-translation-links')?.addEventListener('change', (e) => {
-    state.filters.showTranslationLinks = (e.target as HTMLInputElement).checked;
+  document.getElementById('show-mapping-links')?.addEventListener('change', (e) => {
+    state.filters.showMappingLinks = (e.target as HTMLInputElement).checked;
     applyFiltersAndUpdate();
   });
   document.getElementById('show-spec-links')?.addEventListener('change', (e) => {
@@ -1728,7 +1728,7 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
   setCheckbox('show-inner-calls', state.filters.showInnerCalls);
   setCheckbox('show-precondition-calls', state.filters.showPreconditionCalls);
   setCheckbox('show-postcondition-calls', state.filters.showPostconditionCalls);
-  setCheckbox('show-translation-links', state.filters.showTranslationLinks);
+  setCheckbox('show-mapping-links', state.filters.showMappingLinks);
   setCheckbox('show-spec-links', state.filters.showSpecLinks);
 }
 
@@ -2178,20 +2178,20 @@ function updateNodeInfo(): void {
     return '';
   };
 
-  // Build Lean Translation section (for Rust nodes with a translation)
-  let translationHtml = '';
-  if (node.translation_id && state.fullGraph) {
-    const translationNode = state.fullGraph.nodes.find(n => n.id === node.translation_id);
-    const translationName = translationNode?.display_name || node.translation_id;
-    const translationLineInfo = node.translation_lines
-      ? ` (L${node.translation_lines.start}-${node.translation_lines.end})`
+  // Build Lean Translation section (for Rust nodes with a mapping to Lean)
+  let mappingHtml = '';
+  if (node.mapping_id && state.fullGraph) {
+    const mappingNode = state.fullGraph.nodes.find(n => n.id === node.mapping_id);
+    const mappingName = mappingNode?.display_name || node.mapping_id;
+    const mappingLineInfo = node.mapping_lines
+      ? ` (L${node.mapping_lines.start}-${node.mapping_lines.end})`
       : '';
-    translationHtml = `
+    mappingHtml = `
       <div class="node-detail">
         <strong>Lean Translation:</strong>
         <ul class="node-list">
-          <li><a href="#" class="navigate-to-node" data-node-id="${escapeHtml(node.translation_id)}" style="cursor:pointer; text-decoration:underline; color:#7c3aed;">${escapeHtml(translationName)}</a>
-          <span style="color: #888; font-size: 0.85rem;">${node.translation_path || ''}${translationLineInfo}</span></li>
+          <li><a href="#" class="navigate-to-node" data-node-id="${escapeHtml(node.mapping_id)}" style="cursor:pointer; text-decoration:underline; color:#7c3aed;">${escapeHtml(mappingName)}</a>
+          <span style="color: #888; font-size: 0.85rem;">${node.mapping_path || ''}${mappingLineInfo}</span></li>
         </ul>
       </div>`;
   }
@@ -2251,7 +2251,7 @@ function updateNodeInfo(): void {
         ${isVSCodeEnvironment() ? '📂 Open in Editor' : (githubLink ? '📂 View on GitHub' : '')}
       </button>
     </div>
-    ${translationHtml}
+    ${mappingHtml}
     ${specsHtml}
     ${rustSourceHtml}
     <div class="node-detail">

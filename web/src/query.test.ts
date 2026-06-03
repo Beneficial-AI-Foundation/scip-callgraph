@@ -74,7 +74,7 @@ function createFilters(overrides: Partial<FilterOptions> = {}): FilterOptions {
     showInnerCalls: true,
     showPreconditionCalls: true,
     showPostconditionCalls: true,
-    showTranslationLinks: true,
+    showMappingLinks: true,
     showSpecLinks: true,
     showExecFunctions: true,
     showProofFunctions: true,
@@ -350,7 +350,7 @@ describe('filterLinksByType', () => {
       showInnerCalls: true,
       showPreconditionCalls: true,
       showPostconditionCalls: true,
-      showTranslationLinks: true,
+      showMappingLinks: true,
       showSpecLinks: true,
     });
     expect(result.length).toBe(3);
@@ -361,7 +361,7 @@ describe('filterLinksByType', () => {
       showInnerCalls: true,
       showPreconditionCalls: false,
       showPostconditionCalls: true,
-      showTranslationLinks: true,
+      showMappingLinks: true,
       showSpecLinks: true,
     });
     expect(result.length).toBe(2);
@@ -373,7 +373,7 @@ describe('filterLinksByType', () => {
       showInnerCalls: true,
       showPreconditionCalls: false,
       showPostconditionCalls: false,
-      showTranslationLinks: true,
+      showMappingLinks: true,
       showSpecLinks: true,
     });
     expect(result.length).toBe(1);
@@ -386,40 +386,40 @@ describe('filterLinksByType', () => {
       showInnerCalls: false,
       showPreconditionCalls: true,
       showPostconditionCalls: true,
-      showTranslationLinks: true,
+      showMappingLinks: true,
       showSpecLinks: true,
     });
     expect(result.length).toBe(0);
   });
 
-  it('filters translation links', () => {
+  it('filters mapping links', () => {
     const mixedLinks = [
       createLink('a', 'b', 'inner'),
-      createLink('a', 'c', 'translation'),
+      createLink('a', 'c', 'mapping'),
       createLink('d', 'c', 'spec'),
     ];
     const result = filterLinksByType(mixedLinks, {
       showInnerCalls: true,
       showPreconditionCalls: true,
       showPostconditionCalls: true,
-      showTranslationLinks: false,
+      showMappingLinks: false,
       showSpecLinks: true,
     });
     expect(result.length).toBe(2);
-    expect(result.every(l => l.type !== 'translation')).toBe(true);
+    expect(result.every(l => l.type !== 'mapping')).toBe(true);
   });
 
   it('filters spec links', () => {
     const mixedLinks = [
       createLink('a', 'b', 'inner'),
-      createLink('a', 'c', 'translation'),
+      createLink('a', 'c', 'mapping'),
       createLink('d', 'c', 'spec'),
     ];
     const result = filterLinksByType(mixedLinks, {
       showInnerCalls: true,
       showPreconditionCalls: true,
       showPostconditionCalls: true,
-      showTranslationLinks: true,
+      showMappingLinks: true,
       showSpecLinks: false,
     });
     expect(result.length).toBe(2);

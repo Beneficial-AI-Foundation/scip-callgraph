@@ -296,7 +296,7 @@ export class BlueprintVisualization {
         const t = d.type || 'inner';
         if (t === 'precondition') return '#e65100';
         if (t === 'postcondition') return '#c2185b';
-        if (t === 'translation') return '#7c3aed';
+        if (t === 'mapping') return '#7c3aed';
         if (t === 'spec') return '#0891b2';
         return '#888';
       })
@@ -305,7 +305,7 @@ export class BlueprintVisualization {
       .attr('stroke-dasharray', d => {
         const t = d.type || 'inner';
         if (t === 'precondition' || t === 'postcondition') return '6,3';
-        if (t === 'translation') return '2,4';
+        if (t === 'mapping') return '2,4';
         if (t === 'spec') return '3,3';
         return 'none';
       })
@@ -442,7 +442,7 @@ export class BlueprintVisualization {
         ${lang === 'mixed' ? `
         <div class="bp-legend-item">
           <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="2,4"/></svg>
-          <span>Translation</span>
+          <span>Mapping</span>
         </div>
         <div class="bp-legend-item">
           <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="3,3"/></svg>
