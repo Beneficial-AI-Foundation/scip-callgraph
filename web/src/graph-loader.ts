@@ -70,6 +70,22 @@ export function convertSimplifiedToD3Graph(nodes: SimplifiedNode[]): D3Graph {
 }
 
 /**
+ * Dependencies the extractor recorded as outside its project (probe-lean's
+ * `*-dependencies-external`) that resolve to atoms in the loaded graph — this
+ * happens after a cross-project `probe merge`. Unresolved externals and names
+ * already in `dependencies` are dropped.
+ */
+function resolvedExternalDeps(atom: ProbeAtom, knownIds: Set<string>): string[] {
+  const external = [
+    ...(atom["type-dependencies-external"] ?? []),
+    ...(atom["term-dependencies-external"] ?? []),
+  ];
+  return [...new Set(external)].filter(
+    dep => knownIds.has(dep) && !atom.dependencies.includes(dep)
+  );
+}
+
+/**
  * Convert probe atom dict format (probe-verus / probe-lean atoms.json) to D3Graph format.
  */
 export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
@@ -80,7 +96,7 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
     if (!dependentsMap.has(atomName)) {
       dependentsMap.set(atomName, []);
     }
-    for (const dep of atom.dependencies) {
+    for (const dep of [...atom.dependencies, ...resolvedExternalDeps(atom, knownIds)]) {
       if (!dependentsMap.has(dep)) {
         dependentsMap.set(dep, []);
       }
@@ -94,7 +110,10 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
     const fileName = parts[parts.length - 1] || 'unknown';
     const parentFolder = parts.length >= 2 ? parts[parts.length - 2] : 'unknown';
 
-    const filteredDeps = atom.dependencies.filter(dep => knownIds.has(dep));
+    const filteredDeps = [
+      ...atom.dependencies.filter(dep => knownIds.has(dep)),
+      ...resolvedExternalDeps(atom, knownIds),
+    ];
     const dependents = (dependentsMap.get(atomName) || []).filter(dep => knownIds.has(dep));
 
     const codeText = atom["code-text"];
@@ -152,6 +171,13 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
           links.push({ source: atomName, target: dep, type: isCrossLang ? 'mapping' : 'inner' });
         }
       }
+    }
+
+    // Cross-project edges: externals that resolve after a merge
+    for (const dep of resolvedExternalDeps(atom, knownIds)) {
+      const tgtLang = atoms[dep]?.language;
+      const isCrossLang = srcLang && tgtLang && srcLang !== tgtLang;
+      links.push({ source: atomName, target: dep, type: isCrossLang ? 'mapping' : 'inner' });
     }
 
     // Rust -> Lean mapping link
