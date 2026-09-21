@@ -248,6 +248,10 @@ export interface FilterOptions {
 export interface ProbeAtom {
   "display-name": string;
   dependencies: string[];
+  /** probe-lean: names outside the extracted project referenced by the type signature. */
+  "type-dependencies-external"?: string[];
+  /** probe-lean: names outside the extracted project referenced by the body/proof. */
+  "term-dependencies-external"?: string[];
   "code-text": { "lines-start": number; "lines-end": number } | null;
   "code-path": string;
   "code-module": string;
