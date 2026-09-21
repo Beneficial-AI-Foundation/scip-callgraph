@@ -234,7 +234,26 @@ function extractSourceConfigs(envelope: Schema2Envelope): SourceConfig[] {
     ref: src.commit,
     path_prefix: src.language === 'rust' ? src.package : '',
     language: src.language,
+    package: src.package,
   }));
+}
+
+/**
+ * Pick the source config for a node. Language must match; when several
+ * same-language inputs exist (a cross-project merge), prefer the config whose
+ * package matches the node's root path segment (e.g.
+ * `SecureMessaging/ErasureCode/Defs.lean` → `SecureMessaging`), falling back
+ * to the first language match.
+ */
+export function pickSourceConfig(
+  configs: SourceConfig[],
+  language: string | undefined,
+  relativePath: string,
+): SourceConfig | undefined {
+  if (!language) return undefined;
+  const candidates = configs.filter(c => c.language === language);
+  const root = relativePath.split('/')[0].replace(/\.lean$/, '');
+  return candidates.find(c => c.package === root) ?? candidates[0];
 }
 
 export function parseAndNormalizeGraph(data: unknown): D3Graph {
