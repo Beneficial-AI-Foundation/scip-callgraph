@@ -2053,6 +2053,8 @@ function updateStats(truncatedTo?: number): void {
   
   // Count verification statuses
   const verifiedCount = filtered.nodes.filter(n => n.verification_status === 'verified').length;
+  const transitivelyVerifiedCount = filtered.nodes.filter(n => n.verification_status === 'transitively-verified').length;
+  const trustedCount = filtered.nodes.filter(n => n.verification_status === 'trusted').length;
   const failedCount = filtered.nodes.filter(n => n.verification_status === 'failed').length;
   const unverifiedCount = filtered.nodes.filter(n => n.verification_status === 'unverified').length;
   const unknownCount = filtered.nodes.filter(n => !n.verification_status).length;
@@ -2086,7 +2088,15 @@ function updateStats(truncatedTo?: number): void {
     </div>
     <div class="stat-item">
       <span class="stat-label">Verified:</span>
-      <span class="stat-value" style="color: #22c55e;">${verifiedCount}</span>
+      <span class="stat-value" style="color: #4ade80;">${verifiedCount}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Transitively verified:</span>
+      <span class="stat-value" style="color: #15803d;">${transitivelyVerifiedCount}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Trusted:</span>
+      <span class="stat-value" style="color: #a855f7;">${trustedCount}</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Failed:</span>
@@ -2155,6 +2165,10 @@ function updateNodeInfo(): void {
     switch (status) {
       case 'verified':
         return '<div class="node-badge badge-verified">✓ Verified</div>';
+      case 'transitively-verified':
+        return '<div class="node-badge badge-verified">✓✓ Transitively verified</div>';
+      case 'trusted':
+        return '<div class="node-badge badge-trusted">◆ Trusted</div>';
       case 'failed':
         return '<div class="node-badge badge-failed">✗ Failed</div>';
       case 'unverified':
@@ -2205,7 +2219,9 @@ function updateNodeInfo(): void {
       const specNode = state.fullGraph!.nodes.find(n => n.id === specId);
       const specName = specNode?.display_name || specId;
       const vs = specNode?.verification_status;
-      const vsBadge = vs === 'verified' ? '<span style="color:#22c55e; margin-left:4px;">&#10003;</span>'
+      const vsBadge = vs === 'verified' ? '<span style="color:#4ade80; margin-left:4px;">&#10003;</span>'
+        : vs === 'transitively-verified' ? '<span style="color:#15803d; margin-left:4px;">&#10003;</span>'
+        : vs === 'trusted' ? '<span style="color:#a855f7; margin-left:4px;">&#9670;</span>'
         : vs === 'failed' ? '<span style="color:#ef4444; margin-left:4px;">&#10007;</span>'
         : vs === 'unverified' ? '<span style="color:#f59e0b; margin-left:4px;">&#9675;</span>'
         : '';

@@ -123,8 +123,18 @@ export function getKindSetsForLanguage(lang: ProjectLanguage): {
   }
 }
 
-/** Verification status from Verus verification results */
-export type VerificationStatus = 'verified' | 'failed' | 'unverified';
+/** Verification status from Verus or probe-lean verification results */
+export type VerificationStatus =
+  | 'verified'
+  | 'transitively-verified'
+  | 'trusted'
+  | 'failed'
+  | 'unverified';
+
+/** Statuses that count as "verified" for readiness/subtree computations */
+export function isVerifiedStatus(status: VerificationStatus | undefined): boolean {
+  return status === 'verified' || status === 'transitively-verified' || status === 'trusted';
+}
 
 /** Derived border status (this node's readiness to be verified) */
 export type BorderStatus = 'verified' | 'ready' | 'blocked' | 'not_ready' | 'unknown';

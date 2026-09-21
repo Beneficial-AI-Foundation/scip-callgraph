@@ -74,8 +74,8 @@
             <h3>Verification Status</h3>
             <label class="checkbox-label">
               <input type="checkbox" id="show-verified-nodes" checked />
-              <span class="legend-dot" style="background: #22c55e; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;"></span>
-              <span>Verified</span>
+              <span class="legend-dot" style="background: #4ade80; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;"></span>
+              <span>Verified / Trusted</span>
             </label>
             <label class="checkbox-label">
               <input type="checkbox" id="show-failed-nodes" checked />
@@ -257,8 +257,16 @@
           <h2>🎨 Verification Legend</h2>
           <div class="legend-container">
             <div class="legend-item">
-              <span class="legend-dot" style="background: #22c55e;"></span>
+              <span class="legend-dot" style="background: #4ade80;"></span>
               <span>Verified</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot" style="background: #15803d;"></span>
+              <span>Transitively verified</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot" style="background: #a855f7;"></span>
+              <span>Trusted</span>
             </div>
             <div class="legend-item">
               <span class="legend-dot" style="background: #ef4444;"></span>

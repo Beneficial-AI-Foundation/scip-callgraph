@@ -784,6 +784,11 @@ select.search-input {
   color: #15803d;
 }
 
+.badge-trusted {
+  background: #f3e8ff;
+  color: #9333ea;
+}
+
 .badge-failed {
   background: #fee2e2;
   color: #dc2626;

@@ -1,4 +1,4 @@
-import { D3Graph, D3Node, BorderStatus, FillStatus } from './types';
+import { D3Graph, D3Node, BorderStatus, FillStatus, isVerifiedStatus } from './types';
 
 /**
  * Compute derived border_status and fill_status for each node in the graph.
@@ -80,7 +80,7 @@ export function computeDerivedStatuses(graph: D3Graph): void {
       const allDepsVerified = nodeDeps.length > 0 &&
         nodeDeps.every(d => borderOf.get(d) === 'verified');
       borderOf.set(id, allDepsVerified ? 'ready' : 'unknown');
-    } else if (node.verification_status === 'verified') {
+    } else if (isVerifiedStatus(node.verification_status)) {
       borderOf.set(id, 'verified');
     } else if (node.verification_status === 'failed') {
       borderOf.set(id, 'blocked');
@@ -91,7 +91,7 @@ export function computeDerivedStatuses(graph: D3Graph): void {
     }
 
     // Compute fill_status
-    if (node.verification_status === 'verified') {
+    if (isVerifiedStatus(node.verification_status)) {
       const allDepsFullyVerified = nodeDeps.length === 0 ||
         nodeDeps.every(d => fillOf.get(d) === 'fully_verified');
       fillOf.set(id, allDepsFullyVerified ? 'fully_verified' : 'verified');
