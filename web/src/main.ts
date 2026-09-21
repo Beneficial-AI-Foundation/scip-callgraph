@@ -5,7 +5,7 @@ import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
 import { CrateMapVisualization, buildCrateGraph } from './crate-map';
 import { computeDerivedStatuses } from './status';
-import { parseAndNormalizeGraph } from './graph-loader';
+import { parseAndNormalizeGraph, pickSourceConfig } from './graph-loader';
 
 import { ChatEngine } from './ai/chat-engine';
 import { ChatUI } from './ai/chat-ui';
@@ -194,8 +194,10 @@ function buildGitHubLink(node: D3Node): string | null {
 
   // Try per-language source config (from Schema 2.0 envelope metadata)
   if (node.language && state.fullGraph?.metadata.source_configs) {
-    const config = state.fullGraph.metadata.source_configs.find(
-      c => c.language === node.language,
+    const config = pickSourceConfig(
+      state.fullGraph.metadata.source_configs,
+      node.language,
+      node.relative_path,
     );
     if (config) {
       const fullPath = buildFullPath(node.relative_path, config.path_prefix);

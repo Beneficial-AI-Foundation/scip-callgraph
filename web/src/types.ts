@@ -185,6 +185,8 @@ export interface SourceConfig {
   ref: string;
   path_prefix: string;
   language: string;
+  /** Package name of the envelope input, used to disambiguate several same-language inputs. */
+  package: string;
 }
 
 export interface D3GraphMetadata {
