@@ -768,7 +768,8 @@ export function executeQuery(
   if (!allStatusShown) {
     resultNodes = resultNodes.filter(n => {
       const vs = n.verification_status;
-      if (vs === 'verified' && !displayPredicates.showVerifiedNodes) return false;
+      const isVerifiedLike = vs === 'verified' || vs === 'transitively-verified' || vs === 'trusted';
+      if (isVerifiedLike && !displayPredicates.showVerifiedNodes) return false;
       if (vs === 'failed' && !displayPredicates.showFailedNodes) return false;
       if ((vs === 'unverified' || !vs) && !displayPredicates.showUnverifiedNodes) return false;
       return true;

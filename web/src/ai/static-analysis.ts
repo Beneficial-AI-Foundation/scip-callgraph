@@ -6,7 +6,7 @@
  */
 
 import type { D3Graph, D3Node, ProjectLanguage } from '../types';
-import { detectProjectLanguage } from '../types';
+import { detectProjectLanguage, isVerifiedStatus } from '../types';
 import type {
   GraphSummary, CrateSummary, VerificationBreakdown,
   KindBreakdown, NodeRank, SuggestedQuery,
@@ -74,7 +74,10 @@ function computeVerification(nodes: D3Node[]): VerificationBreakdown {
   const result: VerificationBreakdown = { verified: 0, failed: 0, unverified: 0 };
   for (const n of nodes) {
     switch (n.verification_status) {
-      case 'verified': result.verified++; break;
+      case 'verified':
+      case 'transitively-verified':
+      case 'trusted':
+        result.verified++; break;
       case 'failed': result.failed++; break;
       default: result.unverified++; break;
     }
@@ -123,11 +126,11 @@ function computeUnverifiedHotspots(
 
   const hotspots: Array<NodeRank & { verifiedCallerCount: number }> = [];
   for (const n of nodes) {
-    if (n.verification_status === 'verified' || n.verification_status === 'failed') continue;
+    if (isVerifiedStatus(n.verification_status) || n.verification_status === 'failed') continue;
     let verifiedCallers = 0;
     for (const depId of n.dependents || []) {
       const caller = nodeMap.get(depId);
-      if (caller?.verification_status === 'verified') verifiedCallers++;
+      if (isVerifiedStatus(caller?.verification_status)) verifiedCallers++;
     }
     if (verifiedCallers > 0) {
       hotspots.push({ ...nodeToRank(n), verifiedCallerCount: verifiedCallers });

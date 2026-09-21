@@ -478,7 +478,9 @@ export class CallGraphVisualization {
 
   /**
    * Get node color based on verification status
-   * - verified: green (#22c55e)
+   * - verified: light green (#4ade80)
+   * - transitively-verified: dark green (#15803d)
+   * - trusted: purple (#a855f7)
    * - failed: red (#ef4444)
    * - unverified: grey (#9ca3af)
    * - unknown (no status): blue (#3b82f6)
@@ -486,7 +488,11 @@ export class CallGraphVisualization {
   private getNodeColor(node: D3Node): string {
     switch (node.verification_status) {
       case 'verified':
-        return '#22c55e';  // Green
+        return '#4ade80';  // Light green
+      case 'transitively-verified':
+        return '#15803d';  // Dark green
+      case 'trusted':
+        return '#a855f7';  // Purple
       case 'failed':
         return '#ef4444';  // Red
       case 'unverified':
