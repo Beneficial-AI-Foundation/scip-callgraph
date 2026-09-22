@@ -311,12 +311,13 @@ describe.skipIf(!existsSync(KATYDID_PATH))('Golden: katydid-proofs atoms.json (L
 });
 
 // ============================================================================
-// graph.json  (Rust + Lean, the current public graph)
+// graph.json  (the current public graph; mixed-language filtering is covered
+// by the merged_rust_lean_atoms.json golden suite below)
 // ============================================================================
 
 const GRAPH_JSON_PATH = resolve(__dirname, '../public/graph.json');
 
-describe.skipIf(!existsSync(GRAPH_JSON_PATH))('Language filter: graph.json (Rust+Lean)', () => {
+describe.skipIf(!existsSync(GRAPH_JSON_PATH))('Language filter: graph.json', () => {
   let graph: D3Graph;
 
   beforeAll(() => {
@@ -329,13 +330,6 @@ describe.skipIf(!existsSync(GRAPH_JSON_PATH))('Language filter: graph.json (Rust
     expect(detectProjectLanguage(graph)).toBe('lean');
   });
 
-  it('has both rust and lean nodes', () => {
-    const rustNodes = graph.nodes.filter(n => n.language === 'rust');
-    const leanNodes = graph.nodes.filter(n => n.language === 'lean');
-    expect(rustNodes.length).toBeGreaterThan(0);
-    expect(leanNodes.length).toBeGreaterThan(0);
-  });
-
   it('showRustNodes=false keeps Lean nodes', () => {
     const filters = createFilters({ showRustNodes: false, showLeanNodes: true });
     const result = applyFilters(graph, filters, undefined, 'lean');
@@ -344,16 +338,6 @@ describe.skipIf(!existsSync(GRAPH_JSON_PATH))('Language filter: graph.json (Rust
     expect(rustInResult.length).toBe(0);
     const leanInResult = result.nodes.filter(n => n.language === 'lean');
     expect(leanInResult.length).toBeGreaterThan(5);
-  });
-
-  it('showLeanNodes=false keeps Rust nodes', () => {
-    const filters = createFilters({ showRustNodes: true, showLeanNodes: false });
-    const result = applyFilters(graph, filters, undefined, 'lean');
-    expect(result.nodes.length).toBeGreaterThan(0);
-    const leanInResult = result.nodes.filter(n => n.language === 'lean');
-    expect(leanInResult.length).toBe(0);
-    const rustInResult = result.nodes.filter(n => n.language === 'rust');
-    expect(rustInResult.length).toBeGreaterThan(5);
   });
 });
 
