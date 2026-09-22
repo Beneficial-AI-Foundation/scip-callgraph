@@ -84,8 +84,130 @@ test.describe('Seeded initial view (large graph)', () => {
     await expect(page.locator('#query-label')).toContainText('selected', { timeout: 30000 });
     await expect(page.locator('#graph-container svg circle').first()).toBeVisible();
 
-    // Clearing the selection returns to the seeded view
+    // Clearing the selection returns to the seeded view, and the query label
+    // names the seeded view rather than showing the stale selection query
     await page.locator('#clear-selection').click();
     await expect(stats).toContainText('entry points, depth 1', { timeout: 30000 });
+    await expect(page.locator('#query-label')).toContainText('entry points');
+  });
+});
+
+// ============================================================================
+// Synthetic fixture: always runs (CI-safe, no sibling checkout needed).
+// 2,100 nodes (> LARGE_GRAPH_NODE_THRESHOLD): 100 roots, each with 5 verified
+// children (depth-1 view = 600 nodes / 500 links), plus a 1,500-node filler
+// chain below the children to push the total over the threshold.
+// ============================================================================
+
+const SYNTHETIC_PUBLIC = path.resolve(__dirname, '../public/seeded-view-synthetic-fixture.json');
+
+function makeSyntheticGraph() {
+  const node = (id: string, verification_status?: string) => ({
+    id,
+    display_name: id,
+    symbol: id,
+    full_path: `/synthetic/${id}.rs`,
+    relative_path: `src/${id}.rs`,
+    file_name: `${id}.rs`,
+    parent_folder: 'src',
+    crate_name: 'synthetic',
+    is_libsignal: false,
+    dependencies: [],
+    dependents: [],
+    kind: 'def',
+    ...(verification_status ? { verification_status } : {}),
+  });
+  const nodes = [];
+  const links = [];
+  for (let i = 0; i < 100; i++) {
+    nodes.push(node(`r${i}`));
+    for (let j = 0; j < 5; j++) {
+      const child = `c${i * 5 + j}`;
+      nodes.push(node(child, 'verified'));
+      links.push({ source: `r${i}`, target: child, type: 'inner' });
+    }
+  }
+  let prev = 'c0';
+  for (let k = 0; k < 1500; k++) {
+    const filler = `f${k}`;
+    nodes.push(node(filler));
+    links.push({ source: prev, target: filler, type: 'inner' });
+    prev = filler;
+  }
+  return {
+    nodes,
+    links,
+    metadata: {
+      total_nodes: nodes.length,
+      total_edges: links.length,
+      project_root: '/synthetic',
+      generated_at: '2026-01-01',
+    },
+  };
+}
+
+test.describe('Seeded initial view (synthetic large graph)', () => {
+  test.beforeAll(() => {
+    fs.writeFileSync(SYNTHETIC_PUBLIC, JSON.stringify(makeSyntheticGraph()));
+  });
+
+  test.afterAll(() => {
+    fs.rmSync(SYNTHETIC_PUBLIC, { force: true });
+  });
+
+  test('renders the seeded view and applies display-only toggles on top', async ({ page }) => {
+    await page.goto('/scip-callgraph/?json=./seeded-view-synthetic-fixture.json');
+    const stats = page.locator('#stats');
+    await expect(stats).toContainText('Showing 600 of 2,100 nodes (entry points, depth 1)', { timeout: 30000 });
+    await expect(page.locator('#graph-container svg circle')).toHaveCount(600, { timeout: 30000 });
+
+    // Display-only toggle: hiding verified nodes drops the 500 children but
+    // stays in seeded mode (no reseeding, banner still present)
+    await page.locator('#show-verified-nodes').setChecked(false);
+    await expect(stats).toContainText('Showing 100 of 2,100 nodes (entry points, depth 1)', { timeout: 30000 });
+    await page.locator('#show-verified-nodes').setChecked(true);
+    await expect(stats).toContainText('Showing 600 of 2,100 nodes (entry points, depth 1)', { timeout: 30000 });
+  });
+
+  test('hide node (shift+click) applies on top of the seeded view', async ({ page }) => {
+    await page.goto('/scip-callgraph/?json=./seeded-view-synthetic-fixture.json');
+    const stats = page.locator('#stats');
+    await expect(stats).toContainText('Showing 600 of 2,100 nodes', { timeout: 30000 });
+
+    await page.locator('#graph-container svg circle').first().dispatchEvent('click', { shiftKey: true });
+    await expect(stats).toContainText('Showing 599 of 2,100 nodes (entry points, depth 1)', { timeout: 30000 });
+  });
+});
+
+// ============================================================================
+// Fixture where every seed tier exceeds the budget: 2,100 isolated nodes,
+// so all of them are in-degree-0 seeds (> 2,000 node budget). The viewer must
+// fall back to the "use filters" message, and — regression guard — the depth
+// slider must keep its normal behavior of pre-setting maxDepth for a later
+// query instead of refusing.
+// ============================================================================
+
+const UNSEEDABLE_PUBLIC = path.resolve(__dirname, '../public/seeded-view-unseedable-fixture.json');
+
+test.describe('Large graph where seeding fails', () => {
+  test.beforeAll(() => {
+    const g = makeSyntheticGraph();
+    fs.writeFileSync(UNSEEDABLE_PUBLIC, JSON.stringify({ ...g, links: [] }));
+  });
+
+  test.afterAll(() => {
+    fs.rmSync(UNSEEDABLE_PUBLIC, { force: true });
+  });
+
+  test('falls back to the filter prompt and keeps the depth slider usable', async ({ page }) => {
+    await page.goto('/scip-callgraph/?json=./seeded-view-unseedable-fixture.json');
+    const stats = page.locator('#stats');
+    await expect(stats).toContainText('Large Graph', { timeout: 30000 });
+    await expect(stats).not.toContainText('entry points');
+
+    // Pre-setting depth for a later query must not be refused or reverted
+    await page.locator('#depth-limit').fill('3');
+    await expect(page.locator('#depth-value')).toHaveText('3');
+    await expect(stats).not.toContainText('would need');
   });
 });

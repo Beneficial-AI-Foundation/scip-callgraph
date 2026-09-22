@@ -4,10 +4,15 @@ import { D3Graph, D3Node, D3Link, GraphState } from './types';
 /**
  * Compute topological depth for each node in the graph.
  * Nodes with no incoming edges (callers) are at depth 0.
- * Depth increases as we follow call edges.
+ * Depth increases as we follow call edges (longest path on a DAG).
+ * On cyclic inputs, depths around a cycle are capped at the node count so the
+ * walk terminates; the resulting layering is arbitrary there but finite.
  * Returns a Map from node id to depth.
+ *
+ * Exported for testing (the renderer calls it as the fallback when the
+ * filtered graph carries no precomputed nodeDepths).
  */
-function computeTopologicalDepth(nodes: D3Node[], links: D3Link[]): Map<string, number> {
+export function computeTopologicalDepth(nodes: D3Node[], links: D3Link[]): Map<string, number> {
   const depths = new Map<string, number>();
   const nodeIds = new Set(nodes.map(n => n.id));
   
@@ -54,13 +59,15 @@ function computeTopologicalDepth(nodes: D3Node[], links: D3Link[]): Map<string, 
   
   while (queue.length > 0) {
     const { id, depth } = queue.shift()!;
-    
-    // Take max depth if already visited (handles DAG correctly)
+
+    // Take max depth if already visited (handles DAG correctly).
+    // The depth cap makes cycles terminate: without it, a reachable cycle
+    // raises depths forever and this loop never ends.
     const currentDepth = depths.get(id);
-    if (currentDepth !== undefined && currentDepth >= depth) {
+    if ((currentDepth !== undefined && currentDepth >= depth) || depth > nodes.length) {
       continue;
     }
-    
+
     depths.set(id, depth);
     
     // Process callees (outgoing edges)

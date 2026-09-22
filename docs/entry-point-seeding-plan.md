@@ -215,13 +215,16 @@ Notes:
    failing budget; query-intent interactions exit seeded mode (clearing
    them returns to it), display-only filters apply on top, keyed off the
    actual event rather than the shared `selectionChanged` flag.
-4. Vitest coverage: fallback chain, budget refusal, expansion counts,
-   rejected-depth rollback (state untouched on refusal), a cyclic-graph
-   render-path test, seed-selection and hide-node transitions, and
-   clearing filters returning to the seeded view; fixture check against
-   the sm-import-test numbers as re-measured through the loader on the
-   pinned fixture (currently 133 sources → 646 nodes / 4,487 links at
-   depth 1).
+4. Test coverage. Vitest: fallback chain, budget refusal, expansion
+   counts, rejected-depth rollback (state untouched on refusal),
+   cyclic-expansion termination, the cycle guard in the renderer's
+   `computeTopologicalDepth` fallback, the shared display predicate, and
+   the golden fixture check (133 sources → 648 nodes / 4,514 links at
+   depth 1; skipped without the sibling checkout). Playwright: seeded
+   render and banner, transactional slider commit/refusal, selection
+   exit plus reset return, and hide-node/display-toggle on top of the
+   seeded view — the latter on a self-contained synthetic 2,100-node
+   fixture so CI exercises the seeded paths without external data.
 
 ### Phase 2 — explicit entry-point signals
 

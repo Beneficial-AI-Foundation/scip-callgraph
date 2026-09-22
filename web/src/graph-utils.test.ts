@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { computeSeedTiers, expandFromSeeds, SeedBudget } from './graph-utils';
+import { computeTopologicalDepth } from './graph';
 import { parseAndNormalizeGraph } from './graph-loader';
 import { D3Graph, D3Node, D3Link } from './types';
 
@@ -215,6 +216,45 @@ describe('expandFromSeeds', () => {
     const r = expandFromSeeds(g, ['a', 'a', 'ghost'], 1, WIDE_BUDGET);
     if (!r.ok) throw new Error('expected ok');
     expect([...r.nodeIds].sort()).toEqual(['a', 'b']);
+  });
+});
+
+describe('computeTopologicalDepth (renderer fallback)', () => {
+  it('terminates with finite depths on cyclic graphs', () => {
+    // root -> x, x <-> y mutual recursion; without the depth cap this looped
+    // forever, so seeded views bypass it — but selection/paths views do not.
+    const g = createGraph(
+      [['root'], ['x'], ['y']],
+      [['root', 'x'], ['x', 'y'], ['y', 'x']],
+    );
+    const depths = computeTopologicalDepth(g.nodes, g.links);
+    expect(depths.size).toBe(3);
+    for (const d of depths.values()) {
+      expect(Number.isFinite(d)).toBe(true);
+      expect(d).toBeLessThanOrEqual(g.nodes.length);
+    }
+    expect(depths.get('root')).toBe(0);
+  });
+
+  it('terminates on a rootless pure cycle', () => {
+    const g = createGraph(
+      [['x'], ['y'], ['z']],
+      [['x', 'y'], ['y', 'z'], ['z', 'x']],
+    );
+    const depths = computeTopologicalDepth(g.nodes, g.links);
+    expect(depths.size).toBe(3);
+  });
+
+  it('still computes longest-path layering on a DAG', () => {
+    // a -> b -> c plus shortcut a -> c: c must sit at depth 2, not 1
+    const g = createGraph(
+      [['a'], ['b'], ['c']],
+      [['a', 'b'], ['b', 'c'], ['a', 'c']],
+    );
+    const depths = computeTopologicalDepth(g.nodes, g.links);
+    expect(depths.get('a')).toBe(0);
+    expect(depths.get('b')).toBe(1);
+    expect(depths.get('c')).toBe(2);
   });
 });
 
