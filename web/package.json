@@ -1,5 +1,5 @@
 {
-  "name": "scip-callgraph-viewer",
+  "name": "probegraph-viewer",
   "version": "1.0.0",
   "description": "Interactive D3.js visualization for SCIP call graphs",
   "type": "module",

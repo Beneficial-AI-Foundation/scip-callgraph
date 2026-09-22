@@ -2,7 +2,7 @@
 
 *One workflow. Zero setup. Instant visibility into your codebase.*
 
-`Beneficial-AI-Foundation/scip-callgraph`
+`Beneficial-AI-Foundation/probegraph`
 
 ---
 
@@ -51,7 +51,7 @@ permissions:
 
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
 ```
 
 That's it. GitHub URL is auto-detected. Deploys to GitHub Pages automatically.
@@ -193,7 +193,7 @@ The workflow accepts optional inputs for flexibility:
 ```yaml
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
     with:
       # Pin a specific Verus version for reproducibility
       verus_version: '0.2025.11.23.41c5885'
@@ -218,7 +218,7 @@ Not using Verus? Switch to `rust-analyzer`:
 ```yaml
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
     with:
       use_rust_analyzer: true
       skip_verification: true
@@ -265,7 +265,7 @@ with:
 ## What the Pipeline Does Under the Hood
 
 ```
-1. Checkout your repo + scip-callgraph repo
+1. Checkout your repo + probegraph repo
 2. Install toolchain (Rust, verus-analyzer/rust-analyzer, SCIP CLI)
 3. Generate SCIP index from your source code
 4. Run the enrichment pipeline:
@@ -319,7 +319,7 @@ permissions:
 
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
 ```
 
 3. **Push to `main`.** Done.
@@ -404,4 +404,4 @@ Same enrichments. Same search. Same visualization. Different delivery.
 - **Meet engineers where they are** — on GitHub via Pages, in the editor via VS Code extension
 - **One codebase, two surfaces** — same viewer, same data, delivered to both
 
-**Try it today:** [github.com/Beneficial-AI-Foundation/scip-callgraph](https://github.com/Beneficial-AI-Foundation/scip-callgraph)
+**Try it today:** [github.com/Beneficial-AI-Foundation/probegraph](https://github.com/Beneficial-AI-Foundation/probegraph)

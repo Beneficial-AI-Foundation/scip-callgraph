@@ -190,7 +190,7 @@ Notes:
 - **probe-leanblueprint**: used as-is; its output becomes the
   `?entrypoints=` payload for tex-macro blueprint projects.
 
-## Implementation phases (scip-callgraph/web)
+## Implementation phases (probegraph/web)
 
 ### Phase 1 — seeded initial view (fixes sm-import-test)
 

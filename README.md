@@ -1,4 +1,4 @@
-# scip-callgraph
+# probegraph
 
 A call graph generator, visualizer, and **complexity metrics analyzer** for Rust projects using rust-analyzer (or verus-analyzer) and SCIP.
 
@@ -13,7 +13,7 @@ This workspace provides three main capabilities:
 ## Workspace Structure
 
 ```
-scip-callgraph/
+probegraph/
 ├── crates/
 │   ├── scip-core/           # Core SCIP parsing library
 │   ├── verus-metrics/       # Halstead metrics for Verus specs/proofs
@@ -92,7 +92,7 @@ cargo run --bin generate_function_subgraph_dot -- \
 
 ### 4. Interactive Call Graph Viewer
 
-**Online:** Visit https://beneficial-ai-foundation.github.io/scip-callgraph/
+**Online:** Visit https://beneficial-ai-foundation.github.io/probegraph/
 
 **Local (Unified Pipeline - Recommended):**
 
@@ -100,8 +100,8 @@ The `pipeline` command generates a fully enriched call graph in one step:
 
 ```bash
 # First time setup (clone with submodules)
-git clone --recurse-submodules https://github.com/Beneficial-AI-Foundation/scip-callgraph.git
-cd scip-callgraph
+git clone --recurse-submodules https://github.com/Beneficial-AI-Foundation/probegraph.git
+cd probegraph
 
 # Build the workspace
 cargo build --release --workspace
@@ -301,7 +301,7 @@ permissions:
 
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
     with:
       github_url: https://github.com/YOUR_ORG/YOUR_REPO
 ```
@@ -313,7 +313,7 @@ Use `use_rust_analyzer: true` to use rust-analyzer instead of verus-analyzer:
 ```yaml
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
     with:
       github_url: https://github.com/YOUR_ORG/YOUR_REPO
       use_rust_analyzer: true
@@ -330,7 +330,7 @@ Use the Lean-specific reusable workflow powered by [probe-lean](https://github.c
 ```yaml
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-lean-callgraph.yml@main
     with:
       github_url: https://github.com/YOUR_ORG/YOUR_LEAN_REPO
 ```

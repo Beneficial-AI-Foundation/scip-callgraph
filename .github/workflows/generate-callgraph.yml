@@ -3,19 +3,19 @@
 # Usage in your project (minimal - github_url is auto-detected):
 #   jobs:
 #     callgraph:
-#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+#       uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
 #
 # Specify a Verus version (recommended for reproducibility):
 #   jobs:
 #     callgraph:
-#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+#       uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
 #       with:
 #         verus_version: '0.2025.11.23.41c5885'
 #
 # For non-Verus projects, use rust-analyzer instead:
 #   jobs:
 #     callgraph:
-#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+#       uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
 #       with:
 #         use_rust_analyzer: true
 #         skip_verification: true
@@ -23,7 +23,7 @@
 # Override github_url if needed (e.g., for forks pointing to upstream):
 #   jobs:
 #     callgraph:
-#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+#       uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
 #       with:
 #         github_url: https://github.com/upstream-org/upstream-repo
 #
@@ -126,11 +126,11 @@ jobs:
           path: project
           submodules: recursive
 
-      - name: Checkout scip-callgraph
+      - name: Checkout probegraph
         uses: actions/checkout@v4
         with:
-          repository: Beneficial-AI-Foundation/scip-callgraph
-          path: scip-callgraph
+          repository: Beneficial-AI-Foundation/probegraph
+          path: probegraph
           submodules: recursive
 
       - name: Install Rust toolchain
@@ -221,13 +221,13 @@ jobs:
           sudo mv scip /usr/local/bin/
           scip --version
 
-      - name: Build scip-callgraph pipeline
-        working-directory: scip-callgraph
+      - name: Build probegraph pipeline
+        working-directory: probegraph
         run: cargo build --release --bin pipeline
 
       - name: Setup Python environment for similar lemmas
         if: ${{ !inputs.skip_similar_lemmas }}
-        working-directory: scip-callgraph
+        working-directory: probegraph
         run: |
           uv sync --extra enrich
           cd external/verus_lemma_finder && uv tool run maturin develop --release && cd ../..
@@ -256,14 +256,14 @@ jobs:
         env:
           PROJECT_PATH: ${{ github.workspace }}/project/${{ inputs.project_path }}
           SCIP_JSON: ${{ github.workspace }}/project/${{ inputs.project_path }}/index.scip.json
-          OUTPUT_PATH: ${{ github.workspace }}/scip-callgraph/web/public/graph.json
+          OUTPUT_PATH: ${{ github.workspace }}/probegraph/web/public/graph.json
           # Auto-detect github_url from context if not explicitly provided
           GITHUB_URL: ${{ inputs.github_url || format('{0}/{1}', github.server_url, github.repository) }}
           SKIP_VERIFICATION: ${{ inputs.skip_verification }}
           SKIP_SIMILAR_LEMMAS: ${{ inputs.skip_similar_lemmas }}
           PACKAGE: ${{ inputs.package }}
           USE_RUST_ANALYZER: ${{ inputs.use_rust_analyzer }}
-        working-directory: scip-callgraph
+        working-directory: probegraph
         run: |
           ARGS="--use-cached-scip"
           
@@ -292,7 +292,7 @@ jobs:
 
       # Step 3: Build web viewer
       - name: Build web viewer
-        working-directory: scip-callgraph/web
+        working-directory: probegraph/web
         env:
           # Auto-detect github_url if not explicitly provided (same as pipeline step)
           VITE_GITHUB_URL: ${{ inputs.github_url || format('{0}/{1}', github.server_url, github.repository) }}
@@ -317,9 +317,9 @@ jobs:
       - name: Prepare deployment artifact
         run: |
           mkdir -p artifact
-          cp -r scip-callgraph/web/dist/* artifact/
+          cp -r probegraph/web/dist/* artifact/
           # Ensure graph.json is in the artifact
-          cp scip-callgraph/web/public/graph.json artifact/
+          cp probegraph/web/public/graph.json artifact/
           
           echo "Artifact contents:"
           ls -la artifact/

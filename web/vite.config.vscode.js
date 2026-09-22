@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
  * Vite config for building the web app for VS Code webview embedding.
  * 
  * Key differences from production config:
- * - Base path is './' (relative) instead of '/scip-callgraph/' 
+ * - Base path is './' (relative) instead of '/probegraph/' 
  * - Output goes to dist-vscode/
  * - All assets are inlined or bundled (no CDN dependencies)
  */

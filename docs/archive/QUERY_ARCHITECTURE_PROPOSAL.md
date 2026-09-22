@@ -1,8 +1,8 @@
-# Query Architecture: Composable Graph Views for scip-callgraph
+# Query Architecture: Composable Graph Views for probegraph
 
 ## 1. Problem Statement
 
-The scip-callgraph interactive viewer currently implements six distinct graph
+The probegraph interactive viewer currently implements six distinct graph
 query patterns (forward reachability, backward reachability, neighborhood,
 path finding, crate boundary projection, and predicate-filtered subgraph)
 inside a single 430-line `applyFilters()` function with deeply nested branching
@@ -38,9 +38,9 @@ are the deterministic output of those queries.
 | **CodeGraph (optave)** | Code dependencies | MCP server with 30 tools; tree-sitter based | CLI-only | Yes |
 | **Quantickle** | Threat intel / general | Cytoscape.js with 20+ layouts; dynamic filtering | Graph, table, JSON views | Yes (Apache 2.0) |
 
-### 2.2 Where scip-callgraph Is Unique
+### 2.2 Where probegraph Is Unique
 
-scip-callgraph occupies a distinct niche that no existing tool covers:
+probegraph occupies a distinct niche that no existing tool covers:
 
 **Language-agnostic call graph visualization with verification-aware semantics.**
 

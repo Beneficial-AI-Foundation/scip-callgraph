@@ -24,7 +24,7 @@ Example workflow:
        uv run python -m verus_lemma_finder index scip_data.json -o lemma_index.json
     
     3. Enrich graph with similar lemmas:
-       cd /path/to/scip-callgraph
+       cd /path/to/probegraph
        uv run python scripts/enrich_graph_with_similar_lemmas.py \
            --graph graph.json \
            --index /path/to/lemma_index.json

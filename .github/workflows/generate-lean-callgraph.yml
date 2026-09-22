@@ -3,12 +3,12 @@
 # Usage in your Lean project (minimal):
 #   jobs:
 #     callgraph:
-#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+#       uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-lean-callgraph.yml@main
 #
 # With custom options:
 #   jobs:
 #     callgraph:
-#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+#       uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-lean-callgraph.yml@main
 #       with:
 #         project_path: 'MyLeanLib'
 #         github_url: https://github.com/my-org/my-lean-project
@@ -17,7 +17,7 @@
 # With pre-built atoms (skips lake build + probe-lean extract):
 #   jobs:
 #     callgraph:
-#       uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+#       uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-lean-callgraph.yml@main
 #       with:
 #         pre_built_atoms: 'my-artifact-name'  # artifact containing atoms JSON
 #
@@ -110,11 +110,11 @@ jobs:
           path: project
           submodules: recursive
 
-      - name: Checkout scip-callgraph (for web viewer)
+      - name: Checkout probegraph (for web viewer)
         uses: actions/checkout@v4
         with:
-          repository: Beneficial-AI-Foundation/scip-callgraph
-          path: scip-callgraph
+          repository: Beneficial-AI-Foundation/probegraph
+          path: probegraph
 
       # --- Pre-built atoms path (skip build + extract) ---
       - name: Download pre-built atoms
@@ -132,8 +132,8 @@ jobs:
             echo "✗ No JSON file found in pre-built atoms artifact"
             exit 1
           fi
-          cp "$ATOMS_FILE" scip-callgraph/web/public/graph.json
-          echo "✓ Using pre-built atoms as graph.json ($(wc -c < scip-callgraph/web/public/graph.json) bytes)"
+          cp "$ATOMS_FILE" probegraph/web/public/graph.json
+          echo "✓ Using pre-built atoms as graph.json ($(wc -c < probegraph/web/public/graph.json) bytes)"
 
       # --- Full build path (build from source) ---
       - name: Checkout probe-lean
@@ -249,15 +249,15 @@ jobs:
           fi
           echo "Running probe-lean extract (build already done, analyzing...)..."
           ${{ github.workspace }}/probe-lean/.lake/build/bin/probe-lean extract \
-            -o ${{ github.workspace }}/scip-callgraph/web/public/graph.json \
+            -o ${{ github.workspace }}/probegraph/web/public/graph.json \
             $FLAGS \
             .
           echo "✓ graph.json generated"
-          echo "Atom count: $(python3 -c "import json; d=json.load(open('${{ github.workspace }}/scip-callgraph/web/public/graph.json')); a=d.get('data',d) if isinstance(d,dict) and 'schema-version' in d else d; print(len(a))")"
+          echo "Atom count: $(python3 -c "import json; d=json.load(open('${{ github.workspace }}/probegraph/web/public/graph.json')); a=d.get('data',d) if isinstance(d,dict) and 'schema-version' in d else d; print(len(a))")"
 
       # Step 5: Build web viewer
       - name: Build web viewer
-        working-directory: scip-callgraph/web
+        working-directory: probegraph/web
         env:
           VITE_GITHUB_URL: ${{ inputs.github_url || format('{0}/{1}', github.server_url, github.repository) }}
           VITE_GITHUB_BRANCH: ${{ inputs.github_branch }}
@@ -278,8 +278,8 @@ jobs:
       - name: Prepare deployment artifact
         run: |
           mkdir -p artifact
-          cp -r scip-callgraph/web/dist/* artifact/
-          cp scip-callgraph/web/public/graph.json artifact/
+          cp -r probegraph/web/dist/* artifact/
+          cp probegraph/web/public/graph.json artifact/
 
           echo "Artifact contents:"
           ls -la artifact/

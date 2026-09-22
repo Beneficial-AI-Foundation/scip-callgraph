@@ -36,7 +36,7 @@ test.describe('Seeded initial view (large graph)', () => {
 
   test('renders a bounded seeded view instead of a blank page', async ({ page }) => {
     const start = Date.now();
-    await page.goto('/scip-callgraph/?json=./seeded-view-e2e-fixture.json');
+    await page.goto('/probegraph/?json=./seeded-view-e2e-fixture.json');
 
     // The 6 MB file is under the 10 MiB auto-load cap, so it loads without
     // the "Load & Search" prompt, and the seeded banner appears.
@@ -50,7 +50,7 @@ test.describe('Seeded initial view (large graph)', () => {
   });
 
   test('depth slider commits admissible depths and refuses over-budget ones', async ({ page }) => {
-    await page.goto('/scip-callgraph/?json=./seeded-view-e2e-fixture.json');
+    await page.goto('/probegraph/?json=./seeded-view-e2e-fixture.json');
     const stats = page.locator('#stats');
     await expect(stats).toContainText('entry points, depth 1', { timeout: 30000 });
 
@@ -73,7 +73,7 @@ test.describe('Seeded initial view (large graph)', () => {
   });
 
   test('node selection exits seeded mode without blanking; reset returns to it', async ({ page }) => {
-    await page.goto('/scip-callgraph/?json=./seeded-view-e2e-fixture.json');
+    await page.goto('/probegraph/?json=./seeded-view-e2e-fixture.json');
     const stats = page.locator('#stats');
     await expect(stats).toContainText('entry points, depth 1', { timeout: 30000 });
 
@@ -156,7 +156,7 @@ test.describe('Seeded initial view (synthetic large graph)', () => {
   });
 
   test('renders the seeded view and applies display-only toggles on top', async ({ page }) => {
-    await page.goto('/scip-callgraph/?json=./seeded-view-synthetic-fixture.json');
+    await page.goto('/probegraph/?json=./seeded-view-synthetic-fixture.json');
     const stats = page.locator('#stats');
     await expect(stats).toContainText('Showing 600 of 2,100 nodes (entry points, depth 1)', { timeout: 30000 });
     await expect(page.locator('#graph-container svg circle')).toHaveCount(600, { timeout: 30000 });
@@ -170,7 +170,7 @@ test.describe('Seeded initial view (synthetic large graph)', () => {
   });
 
   test('hide node (shift+click) applies on top of the seeded view', async ({ page }) => {
-    await page.goto('/scip-callgraph/?json=./seeded-view-synthetic-fixture.json');
+    await page.goto('/probegraph/?json=./seeded-view-synthetic-fixture.json');
     const stats = page.locator('#stats');
     await expect(stats).toContainText('Showing 600 of 2,100 nodes', { timeout: 30000 });
 
@@ -204,7 +204,7 @@ test.describe('Seeded initial view (explicit entry points)', () => {
   });
 
   test('prefers the entry-points tier over the sources tier', async ({ page }) => {
-    await page.goto('/scip-callgraph/?json=./seeded-view-entrypoint-fixture.json');
+    await page.goto('/probegraph/?json=./seeded-view-entrypoint-fixture.json');
     const stats = page.locator('#stats');
     // 10 roots -> 50 children, plus the flagged non-root child c495
     await expect(stats).toContainText('Showing 61 of 2,100 nodes (entry points, depth 1)', { timeout: 30000 });
@@ -248,7 +248,7 @@ test.describe('Seeded initial view (?entrypoints= blueprint payload)', () => {
   });
 
   test('seeds from matched blueprint declarations and reports the match count', async ({ page }) => {
-    await page.goto('/scip-callgraph/?json=./seeded-view-blueprint-graph.json&entrypoints=./seeded-view-blueprint-payload.json');
+    await page.goto('/probegraph/?json=./seeded-view-blueprint-graph.json&entrypoints=./seeded-view-blueprint-payload.json');
     const stats = page.locator('#stats');
     // 8 matched roots -> 40 children (the async fetch re-renders the initial
     // sources-tier view, so wait for the final banner)
@@ -260,7 +260,7 @@ test.describe('Seeded initial view (?entrypoints= blueprint payload)', () => {
 
   test('falls through the normal seed chain with a banner note when the payload has no blueprint labels', async ({ page }) => {
     // The graph file itself is valid JSON but carries no blueprint-label atoms
-    await page.goto('/scip-callgraph/?json=./seeded-view-blueprint-graph.json&entrypoints=./seeded-view-blueprint-graph.json');
+    await page.goto('/probegraph/?json=./seeded-view-blueprint-graph.json&entrypoints=./seeded-view-blueprint-graph.json');
     const stats = page.locator('#stats');
     await expect(stats).toContainText('?entrypoints= no atoms carry blueprint-label', { timeout: 30000 });
     // Sources-tier view still renders
@@ -319,7 +319,7 @@ test.describe('Seeded view depth request survives the async blueprint re-seed', 
   });
 
   test('re-seeds at the requested depth once the blueprint payload arrives', async ({ page }) => {
-    await page.goto('/scip-callgraph/?json=./seeded-view-depth-graph.json&depth=3&entrypoints=./seeded-view-depth-payload.json');
+    await page.goto('/probegraph/?json=./seeded-view-depth-graph.json&depth=3&entrypoints=./seeded-view-depth-payload.json');
     const stats = page.locator('#stats');
     // 3 blueprint roots -> 6 children -> 30 leaves, at the requested depth 3
     // (saturated at 2), not at the provisional sources tier's achieved depth 1
@@ -349,7 +349,7 @@ test.describe('Large graph where seeding fails', () => {
   });
 
   test('falls back to the filter prompt and keeps the depth slider usable', async ({ page }) => {
-    await page.goto('/scip-callgraph/?json=./seeded-view-unseedable-fixture.json');
+    await page.goto('/probegraph/?json=./seeded-view-unseedable-fixture.json');
     const stats = page.locator('#stats');
     await expect(stats).toContainText('Large Graph', { timeout: 30000 });
     await expect(stats).not.toContainText('entry points');

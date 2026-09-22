@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: '.',
-  base: '/scip-callgraph/',  // GitHub Pages subdirectory
+  base: '/probegraph/',  // GitHub Pages subdirectory
   publicDir: 'public',
   build: {
     outDir: 'dist',

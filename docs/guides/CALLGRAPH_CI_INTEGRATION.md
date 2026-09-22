@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
     with:
       github_url: https://github.com/YOUR_ORG/YOUR_REPO
       deploy_mode: standalone
@@ -43,7 +43,7 @@ For regular Rust projects (not using Verus), use `use_rust_analyzer: true`:
 ```yaml
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
     with:
       github_url: https://github.com/YOUR_ORG/YOUR_REPO
       use_rust_analyzer: true
@@ -78,7 +78,7 @@ concurrency:
 jobs:
   # Generate the call graph
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
     with:
       github_url: https://github.com/YOUR_ORG/YOUR_REPO
       github_path_prefix: ''  # Set if your source is in a subdirectory
@@ -165,7 +165,7 @@ concurrency:
 
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-lean-callgraph.yml@main
     with:
       project_path: '.'
       github_url: https://github.com/YOUR_ORG/YOUR_LEAN_REPO
@@ -178,7 +178,7 @@ To generate only the call graph structure without sorry detection:
 ```yaml
 jobs:
   callgraph:
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-lean-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-lean-callgraph.yml@main
     with:
       github_url: https://github.com/YOUR_ORG/YOUR_LEAN_REPO
       skip_verification: true

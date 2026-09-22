@@ -21,7 +21,7 @@ To regenerate these files:
 
 ### 1. graph.json
 
-Run the scip-callgraph pipeline on the libsignal workspace:
+Run the probegraph pipeline on the libsignal workspace:
 
 ```bash
 cargo run --release --bin pipeline ../libsignal_focus_dalek_lite --skip-verification --skip-similar-lemmas --use-rust-analyzer

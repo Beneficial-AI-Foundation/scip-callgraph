@@ -1,6 +1,6 @@
 # Query Pipeline Architecture
 
-This document describes the composable query pipeline that powers the scip-callgraph interactive viewer's filtering and traversal system.
+This document describes the composable query pipeline that powers the probegraph interactive viewer's filtering and traversal system.
 
 > **History.** The pipeline replaced a monolithic `applyFilters()` function (~983 lines in `filters.ts`). The pre-refactor design proposal and the original filter docs are archived in `docs/archive/QUERY_ARCHITECTURE_PROPOSAL.md` and `docs/archive/FILTERS_PRE_REFACTOR.md` respectively.
 

@@ -1,7 +1,7 @@
 [project]
-name = "scip-callgraph-scripts"
+name = "probegraph-scripts"
 version = "0.1.0"
-description = "Python scripts for scip-callgraph: graph enrichment, visualization, and analysis"
+description = "Python scripts for probegraph: graph enrichment, visualization, and analysis"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
@@ -24,11 +24,11 @@ viz = [
 
 # All optional dependencies
 all = [
-    "scip-callgraph-scripts[enrich,viz]",
+    "probegraph-scripts[enrich,viz]",
 ]
 
 dev = [
-    "scip-callgraph-scripts[all]",
+    "probegraph-scripts[all]",
 ]
 
 [tool.uv]

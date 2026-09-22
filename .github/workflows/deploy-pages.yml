@@ -12,7 +12,7 @@ on:
         description: 'Default graph.json URL to load'
         required: false
         type: string
-        default: 'https://raw.githubusercontent.com/Beneficial-AI-Foundation/scip-callgraph/main/web/public/graph.json'
+        default: 'https://raw.githubusercontent.com/Beneficial-AI-Foundation/probegraph/main/web/public/graph.json'
       github_url:
         description: 'Default GitHub URL for source links'
         required: false
@@ -64,7 +64,7 @@ jobs:
       - name: Build web viewer
         working-directory: web
         env:
-          VITE_GRAPH_JSON_URL: ${{ inputs.graph_json_url || 'https://raw.githubusercontent.com/Beneficial-AI-Foundation/scip-callgraph/main/web/public/graph.json' }}
+          VITE_GRAPH_JSON_URL: ${{ inputs.graph_json_url || 'https://raw.githubusercontent.com/Beneficial-AI-Foundation/probegraph/main/web/public/graph.json' }}
           VITE_GITHUB_URL: ${{ inputs.github_url || 'https://github.com/Beneficial-AI-Foundation/dalek-lite' }}
           VITE_GITHUB_PATH_PREFIX: ${{ inputs.github_path_prefix || '' }}
         run: npm run build

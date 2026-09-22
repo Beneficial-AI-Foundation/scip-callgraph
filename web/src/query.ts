@@ -1,5 +1,5 @@
 /**
- * Composable query pipeline for scip-callgraph.
+ * Composable query pipeline for probegraph.
  *
  * This module implements a clean separation between:
  *   - Query AST (what traversal to perform)

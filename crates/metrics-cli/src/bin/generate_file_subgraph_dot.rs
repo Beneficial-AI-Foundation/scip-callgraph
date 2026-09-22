@@ -1,4 +1,4 @@
-// filepath: /home/lacra/git_repos/baif/scip-callgraph/src/bin/generate_file_subgraph_dot.rs
+// filepath: /home/lacra/git_repos/baif/probegraph/src/bin/generate_file_subgraph_dot.rs
 use log::{debug, error, info, warn};
 use scip_core::logging::{init_logger, should_enable_debug};
 use scip_core::{build_call_graph, parse_scip_json, FunctionNode};

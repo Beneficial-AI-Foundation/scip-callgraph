@@ -72,7 +72,7 @@ jobs:
           if [ -z "$VERSION" ] || [ "$VERSION" = "$GITHUB_REF" ]; then
             VERSION="${{ inputs.version }}"
           fi
-          ARCHIVE_NAME="scip-callgraph-${VERSION}-${{ matrix.target }}"
+          ARCHIVE_NAME="probegraph-${VERSION}-${{ matrix.target }}"
           
           mkdir -p "${ARCHIVE_NAME}"
           
@@ -107,7 +107,7 @@ jobs:
           if ([string]::IsNullOrEmpty($VERSION) -or $VERSION -eq $env:GITHUB_REF) {
             $VERSION = "${{ inputs.version }}"
           }
-          $ARCHIVE_NAME = "scip-callgraph-$VERSION-${{ matrix.target }}"
+          $ARCHIVE_NAME = "probegraph-$VERSION-${{ matrix.target }}"
           
           New-Item -ItemType Directory -Force -Path $ARCHIVE_NAME
           
@@ -164,7 +164,7 @@ jobs:
           fi
           
           cat > release_notes.md << 'EOF'
-          # scip-callgraph $VERSION
+          # probegraph $VERSION
           
           ## What's New in v4.0.0
           
@@ -188,15 +188,15 @@ jobs:
           
           ### Linux
           ```bash
-          tar -xzf scip-callgraph-$VERSION-x86_64-unknown-linux-gnu.tar.gz
-          cd scip-callgraph-$VERSION-x86_64-unknown-linux-gnu
+          tar -xzf probegraph-$VERSION-x86_64-unknown-linux-gnu.tar.gz
+          cd probegraph-$VERSION-x86_64-unknown-linux-gnu
           sudo cp * /usr/local/bin/
           ```
           
           ### macOS
           ```bash
-          tar -xzf scip-callgraph-$VERSION-x86_64-apple-darwin.tar.gz
-          cd scip-callgraph-$VERSION-x86_64-apple-darwin
+          tar -xzf probegraph-$VERSION-x86_64-apple-darwin.tar.gz
+          cd probegraph-$VERSION-x86_64-apple-darwin
           sudo cp * /usr/local/bin/
           ```
           
@@ -240,9 +240,9 @@ jobs:
           
           ## Documentation
           
-          - [README](https://github.com/Beneficial-AI-Foundation/scip-callgraph/blob/main/README.md)
-          - [Metrics Pipeline Guide](https://github.com/Beneficial-AI-Foundation/scip-callgraph/blob/main/METRICS_PIPELINE.md)
-          - [Correlation Analysis Findings](https://github.com/Beneficial-AI-Foundation/scip-callgraph/blob/main/docs/CORRELATION_ANALYSIS_FINDINGS.md)
+          - [README](https://github.com/Beneficial-AI-Foundation/probegraph/blob/main/README.md)
+          - [Metrics Pipeline Guide](https://github.com/Beneficial-AI-Foundation/probegraph/blob/main/METRICS_PIPELINE.md)
+          - [Correlation Analysis Findings](https://github.com/Beneficial-AI-Foundation/probegraph/blob/main/docs/CORRELATION_ANALYSIS_FINDINGS.md)
           
           ## Requirements
           

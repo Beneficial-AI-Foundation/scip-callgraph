@@ -528,7 +528,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     init_logger(args.debug);
 
     println!("════════════════════════════════════════════════════════════════");
-    println!("  scip-callgraph Pipeline");
+    println!("  probegraph Pipeline");
     println!("  Unified call graph generation with enrichments");
     println!("════════════════════════════════════════════════════════════════");
     println!();
