@@ -168,6 +168,12 @@ export interface D3Node {
   mapping_lines?: { start: number; end: number };
   specs?: string[];  // Probe IDs of spec theorems (on Lean def nodes)
   rust_source?: string;  // Rust source file path (on Lean nodes)
+  is_public_api?: boolean;  // Part of the crate's public API (probe-rust/probe-verus)
+  attributes?: string[];  // Lean declaration attributes, e.g. "blueprint" (probe-lean)
+  // Derived at load time: public-API Rust/Verus atom, Lean translation target
+  // of one (Aeneas mapping join), or @[blueprint]-attributed Lean atom.
+  // Preferred seeds for the large-graph seeded initial view.
+  is_entry_point?: boolean;
   // Derived statuses computed by DAG walk (used by File Map view)
   border_status?: BorderStatus;
   fill_status?: FillStatus;
@@ -277,6 +283,10 @@ export interface ProbeAtom {
   }>;
   language?: string;
   "rust-qualified-name"?: string;
+  /** probe-rust/probe-verus: part of the crate's public API (ground truth with --with-public-api). */
+  "is-public-api"?: boolean;
+  /** probe-lean: declaration attributes from the header scan, e.g. "blueprint" for @[blueprint]. */
+  attributes?: string[];
   "translation-name"?: string;
   "translation-path"?: string;
   "translation-text"?: { "lines-start": number; "lines-end": number };

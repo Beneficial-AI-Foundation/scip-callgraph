@@ -180,6 +180,155 @@ test.describe('Seeded initial view (synthetic large graph)', () => {
 });
 
 // ============================================================================
+// Explicit entry points (Phase 2): same synthetic graph, but with
+// is_entry_point flags as the loader would derive them from is-public-api /
+// the Aeneas join / @[blueprint]. 10 roots plus one non-root child are
+// flagged, so the entry-points tier (61 nodes at depth 1) must win over the
+// sources tier (600 nodes).
+// ============================================================================
+
+const ENTRYPOINT_PUBLIC = path.resolve(__dirname, '../public/seeded-view-entrypoint-fixture.json');
+
+test.describe('Seeded initial view (explicit entry points)', () => {
+  test.beforeAll(() => {
+    const g = makeSyntheticGraph();
+    const flagged = new Set(['r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'c495']);
+    for (const n of g.nodes) {
+      if (flagged.has(n.id)) (n as Record<string, unknown>).is_entry_point = true;
+    }
+    fs.writeFileSync(ENTRYPOINT_PUBLIC, JSON.stringify(g));
+  });
+
+  test.afterAll(() => {
+    fs.rmSync(ENTRYPOINT_PUBLIC, { force: true });
+  });
+
+  test('prefers the entry-points tier over the sources tier', async ({ page }) => {
+    await page.goto('/scip-callgraph/?json=./seeded-view-entrypoint-fixture.json');
+    const stats = page.locator('#stats');
+    // 10 roots -> 50 children, plus the flagged non-root child c495
+    await expect(stats).toContainText('Showing 61 of 2,100 nodes (entry points, depth 1)', { timeout: 30000 });
+    await expect(stats).toContainText('Seeded from 11 explicit entry points (public API / blueprint)');
+  });
+});
+
+// ============================================================================
+// ?entrypoints= URL param (Phase 2): a probe-leanblueprint payload whose
+// blueprint-label-carrying atoms seed the view. 8 of its 12 labeled atoms
+// exist in the graph; the banner reports the matched/unmatched split. The
+// failure test points ?entrypoints= at a JSON with no blueprint-label atoms
+// and expects the fallback banner note on top of the sources-tier view.
+// ============================================================================
+
+const BLUEPRINT_GRAPH_PUBLIC = path.resolve(__dirname, '../public/seeded-view-blueprint-graph.json');
+const BLUEPRINT_PAYLOAD_PUBLIC = path.resolve(__dirname, '../public/seeded-view-blueprint-payload.json');
+
+test.describe('Seeded initial view (?entrypoints= blueprint payload)', () => {
+  test.beforeAll(() => {
+    fs.writeFileSync(BLUEPRINT_GRAPH_PUBLIC, JSON.stringify(makeSyntheticGraph()));
+    const payload: Record<string, unknown> = {};
+    for (const id of ['r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7']) {
+      payload[id] = { 'blueprint-label': `label-${id}`, 'blueprint-kind': 'theorem' };
+    }
+    for (const id of ['ghost0', 'ghost1', 'ghost2', 'ghost3']) {
+      payload[id] = { 'blueprint-label': `label-${id}` };
+    }
+    // Unlabeled atoms must not become seeds
+    payload['r98'] = { 'display-name': 'r98' };
+    // Synthetic blueprint-layer nodes (language: "blueprint") carry labels but
+    // must count for neither the seeds nor the banner's denominator — even
+    // when their id collides with a graph node (r99 is a real root here)
+    payload['r99'] = { 'blueprint-label': 'label-r99', language: 'blueprint' };
+    fs.writeFileSync(BLUEPRINT_PAYLOAD_PUBLIC, JSON.stringify(payload));
+  });
+
+  test.afterAll(() => {
+    fs.rmSync(BLUEPRINT_GRAPH_PUBLIC, { force: true });
+    fs.rmSync(BLUEPRINT_PAYLOAD_PUBLIC, { force: true });
+  });
+
+  test('seeds from matched blueprint declarations and reports the match count', async ({ page }) => {
+    await page.goto('/scip-callgraph/?json=./seeded-view-blueprint-graph.json&entrypoints=./seeded-view-blueprint-payload.json');
+    const stats = page.locator('#stats');
+    // 8 matched roots -> 40 children (the async fetch re-renders the initial
+    // sources-tier view, so wait for the final banner)
+    await expect(stats).toContainText('Showing 48 of 2,100 nodes (entry points, depth 1)', { timeout: 30000 });
+    await expect(stats).toContainText('Seeded from 8 of 12 blueprint declarations (?entrypoints=) matched in this graph');
+    // The param survives in the shareable URL
+    expect(page.url()).toContain('entrypoints=');
+  });
+
+  test('falls through the normal seed chain with a banner note when the payload has no blueprint labels', async ({ page }) => {
+    // The graph file itself is valid JSON but carries no blueprint-label atoms
+    await page.goto('/scip-callgraph/?json=./seeded-view-blueprint-graph.json&entrypoints=./seeded-view-blueprint-graph.json');
+    const stats = page.locator('#stats');
+    await expect(stats).toContainText('?entrypoints= no atoms carry blueprint-label', { timeout: 30000 });
+    // Sources-tier view still renders
+    await expect(stats).toContainText('Showing 600 of 2,100 nodes (entry points, depth 1)');
+    await expect(stats).toContainText('root functions (no callers)');
+  });
+});
+
+// ============================================================================
+// Depth preservation across the async ?entrypoints= re-seed: the provisional
+// sources-tier render can only achieve depth 1 here (300 roots -> 900 nodes at
+// depth 1, 3,900 at depth 2 > the 2,000 budget) and commits that to the
+// slider, but the blueprint tier arriving later must retry the URL's ?depth=3,
+// not the fallback's achieved depth.
+// ============================================================================
+
+const DEPTH_GRAPH_PUBLIC = path.resolve(__dirname, '../public/seeded-view-depth-graph.json');
+const DEPTH_PAYLOAD_PUBLIC = path.resolve(__dirname, '../public/seeded-view-depth-payload.json');
+
+test.describe('Seeded view depth request survives the async blueprint re-seed', () => {
+  test.beforeAll(() => {
+    const node = (id: string) => ({
+      id, display_name: id, symbol: id,
+      full_path: `/synthetic/${id}.rs`, relative_path: `src/${id}.rs`,
+      file_name: `${id}.rs`, parent_folder: 'src', crate_name: 'synthetic',
+      is_libsignal: false, dependencies: [], dependents: [], kind: 'def',
+    });
+    const nodes = [];
+    const links = [];
+    for (let i = 0; i < 300; i++) {
+      nodes.push(node(`r${i}`));
+      for (let j = 0; j < 2; j++) {
+        const child = `m${i * 2 + j}`;
+        nodes.push(node(child));
+        links.push({ source: `r${i}`, target: child, type: 'inner' });
+        for (let k = 0; k < 5; k++) {
+          const leaf = `l${(i * 2 + j) * 5 + k}`;
+          nodes.push(node(leaf));
+          links.push({ source: child, target: leaf, type: 'inner' });
+        }
+      }
+    }
+    const g = {
+      nodes, links,
+      metadata: { total_nodes: nodes.length, total_edges: links.length, project_root: '/synthetic', generated_at: '2026-01-01' },
+    };
+    fs.writeFileSync(DEPTH_GRAPH_PUBLIC, JSON.stringify(g));
+    const payload: Record<string, unknown> = {};
+    for (const id of ['r0', 'r1', 'r2']) payload[id] = { 'blueprint-label': `label-${id}` };
+    fs.writeFileSync(DEPTH_PAYLOAD_PUBLIC, JSON.stringify(payload));
+  });
+
+  test.afterAll(() => {
+    fs.rmSync(DEPTH_GRAPH_PUBLIC, { force: true });
+    fs.rmSync(DEPTH_PAYLOAD_PUBLIC, { force: true });
+  });
+
+  test('re-seeds at the requested depth once the blueprint payload arrives', async ({ page }) => {
+    await page.goto('/scip-callgraph/?json=./seeded-view-depth-graph.json&depth=3&entrypoints=./seeded-view-depth-payload.json');
+    const stats = page.locator('#stats');
+    // 3 blueprint roots -> 6 children -> 30 leaves, at the requested depth 3
+    // (saturated at 2), not at the provisional sources tier's achieved depth 1
+    await expect(stats).toContainText('Showing 39 of 3,900 nodes (entry points, depth 3)', { timeout: 30000 });
+    await expect(page.locator('#depth-value')).toHaveText('3');
+  });
+});
+
+// ============================================================================
 // Fixture where every seed tier exceeds the budget: 2,100 isolated nodes,
 // so all of them are in-degree-0 seeds (> 2,000 node budget). The viewer must
 // fall back to the "use filters" message, and — regression guard — the depth

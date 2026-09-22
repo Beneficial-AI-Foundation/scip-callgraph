@@ -231,10 +231,12 @@ Notes:
 5. `graph-loader.ts` / `types.ts`: carry `is-public-api` and `attributes`
    through atom conversion; derive `is_entry_point` per language
    (Rust/Verus public API, Aeneas mapping join, Lean blueprint attribute).
-   Before claiming the Aeneas join works, validate it on a real merged
-   fixture extracted with `--with-public-api`: the local
-   `aeneas_curve25519-dalek_4.2.0.json` has `translation-name` mappings
-   but no `is-public-api` fields.
+   The Aeneas join is validated on
+   `probe-aeneas/examples/aeneas_curve25519-dalek_4.2.0.json` (extracted
+   with `--with-public-api`): 146 public-API Rust atoms, 100 with
+   `translation-name`, all 100 resolving to Lean atoms — 246 entry points,
+   whose depth-1 expansion is 526 nodes / 1,837 links through the web
+   loader (pinned as a golden test).
 6. `?entrypoints=` URL param loading a probe-leanblueprint JSON; seeds are
    the `blueprint-label`-carrying Lean atoms (see seed chain), and the
    banner reports matched/unmatched seed counts rather than silently

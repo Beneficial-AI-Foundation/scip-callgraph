@@ -14,7 +14,9 @@ function linkEndpoints(link: D3Link): [string, string] {
 const SOURCE_DEF_KINDS = new Set(['def', 'instance', 'abbrev', 'structure', 'inductive', 'opaque']);
 
 export interface SeedTier {
-  name: 'sources' | 'source-defs';
+  /** 'blueprint-param' is built in main.ts from the ?entrypoints= payload,
+   *  ahead of the tiers computeSeedTiers() derives from the graph itself. */
+  name: 'blueprint-param' | 'entry-points' | 'sources' | 'source-defs';
   seeds: string[];
 }
 
@@ -28,9 +30,13 @@ export interface SeedTier {
  * itself is still a root.
  *
  * Tiers, in preference order:
- *   1. 'sources': all in-degree-0 nodes.
- *   2. 'source-defs': in-degree-0 nodes of definition kinds. Only offered
- *      when it is a strict, non-empty subset of tier 1 (SCIP graphs carry
+ *   1. 'entry-points': nodes flagged is_entry_point by the loader (public
+ *      API, Aeneas mapping join, blueprint attribute). Unlike the fallback
+ *      tiers these need not have in-degree 0: public-API translations and
+ *      blueprint declarations usually have in-project callers.
+ *   2. 'sources': all in-degree-0 nodes.
+ *   3. 'source-defs': in-degree-0 nodes of definition kinds. Only offered
+ *      when it is a strict, non-empty subset of tier 2 (SCIP graphs carry
  *      no kind field, so they never get this tier).
  */
 export function computeSeedTiers(graph: D3Graph): SeedTier[] {
@@ -42,15 +48,18 @@ export function computeSeedTiers(graph: D3Graph): SeedTier[] {
     if (inDegree.has(t)) inDegree.set(t, inDegree.get(t)! + 1);
   }
 
+  const entryPoints: string[] = [];
   const sources: string[] = [];
   const sourceDefs: string[] = [];
   for (const node of graph.nodes) {
+    if (node.is_entry_point) entryPoints.push(node.id);
     if (inDegree.get(node.id) !== 0) continue;
     sources.push(node.id);
     if (node.kind && SOURCE_DEF_KINDS.has(node.kind)) sourceDefs.push(node.id);
   }
 
   const tiers: SeedTier[] = [];
+  if (entryPoints.length > 0) tiers.push({ name: 'entry-points', seeds: entryPoints });
   if (sources.length > 0) tiers.push({ name: 'sources', seeds: sources });
   if (sourceDefs.length > 0 && sourceDefs.length < sources.length) {
     tiers.push({ name: 'source-defs', seeds: sourceDefs });

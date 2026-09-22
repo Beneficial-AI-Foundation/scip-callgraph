@@ -91,6 +91,25 @@ function resolvedExternalDeps(atom: ProbeAtom, knownIds: Set<string>): string[] 
 export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Graph {
   const knownIds = new Set(Object.keys(atoms));
 
+  // Explicit entry points, used as the preferred seed tier for the seeded
+  // initial view on large graphs:
+  // - Rust/Verus atoms marked `is-public-api` (probe-rust/probe-verus).
+  // - Their Lean translation targets (Aeneas mapping join): the public-API
+  //   translations have in-project callers (spec theorems), so in-degree-based
+  //   seeding would hide them.
+  // - Lean atoms carrying the `blueprint` attribute (@[blueprint]).
+  const entryPointIds = new Set<string>();
+  for (const [atomName, atom] of Object.entries(atoms)) {
+    if (atom["is-public-api"] === true) {
+      entryPointIds.add(atomName);
+      const translation = atom["translation-name"];
+      if (translation && knownIds.has(translation)) entryPointIds.add(translation);
+    }
+    if (Array.isArray(atom.attributes) && atom.attributes.includes('blueprint')) {
+      entryPointIds.add(atomName);
+    }
+  }
+
   const dependentsMap = new Map<string, string[]>();
   for (const [atomName, atom] of Object.entries(atoms)) {
     if (!dependentsMap.has(atomName)) {
@@ -144,6 +163,9 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
         : undefined,
       specs: atom.specs?.filter(s => knownIds.has(s)),
       rust_source: atom["rust-source"] ?? undefined,
+      is_public_api: atom["is-public-api"],
+      attributes: atom.attributes,
+      is_entry_point: entryPointIds.has(atomName) || undefined,
     };
   });
 
