@@ -7,9 +7,9 @@ import { CrateMapVisualization, buildCrateGraph } from './crate-map';
 import { computeDerivedStatuses } from './status';
 import { parseAndNormalizeGraph, pickSourceConfig } from './graph-loader';
 
-import { ChatEngine } from './ai/chat-engine';
-import { ChatUI } from './ai/chat-ui';
-import type { ViewerStateAccessor } from './ai/types';
+import { GuidePanel } from './guide/guide-panel';
+import { buildGraphSummary } from './guide/static-analysis';
+import type { GuideActions } from './guide/types';
 
 // ============================================================================
 // JSON Format Conversion (delegated to graph-loader.ts)
@@ -482,16 +482,10 @@ let crateReverseDependencyMap: Map<string, Set<string>> = new Map();
 let deferredComputationsDone = false;
 
 // ============================================================================
-// AI Chat Integration
+// Guide Panel Integration
 // ============================================================================
 
-const viewerStateAccessor: ViewerStateAccessor = {
-  getFullGraph: () => state.fullGraph,
-  getFilteredGraph: () => state.filteredGraph,
-  getFilters: () => ({ ...state.filters }),
-  getSelectedNode: () => state.selectedNode,
-  getProjectLanguage: () => state.projectLanguage,
-  getActiveView: () => activeView,
+const guideActions: GuideActions = {
   setFilters: (updates) => {
     Object.assign(state.filters, updates);
     // Sync UI checkboxes for verification status
@@ -550,33 +544,19 @@ const viewerStateAccessor: ViewerStateAccessor = {
       switchView(view as ActiveView);
     }
   },
-  selectNodeByName: (name) => {
-    if (!state.filteredGraph) return false;
-    const lower = name.toLowerCase();
-    const node = state.filteredGraph.nodes.find(n => n.display_name.toLowerCase() === lower)
-      || state.filteredGraph.nodes.find(n => n.display_name.toLowerCase().includes(lower));
-    if (!node) return false;
-    state.selectedNode = node;
-    updateNodeInfo();
-    return true;
-  },
-  resetFilters: () => resetFilters(),
   applyFiltersAndUpdate: () => applyFiltersAndUpdate(),
 };
 
-const chatEngine = new ChatEngine(viewerStateAccessor);
-let chatUI: ChatUI | null = null;
+let guidePanel: GuidePanel | null = null;
 
-function initAIChat(): void {
-  if (chatUI) return;
-  chatUI = new ChatUI(chatEngine, viewerStateAccessor);
+function initGuidePanel(): void {
+  if (guidePanel) return;
+  guidePanel = new GuidePanel(guideActions);
 }
 
-function refreshAIOnboarding(): void {
-  chatEngine.refreshSummary();
-  const summary = chatEngine.getGraphSummary();
-  if (summary && chatUI) {
-    chatUI.renderStaticOnboarding(summary);
+function refreshGuidePanel(): void {
+  if (state.fullGraph && guidePanel) {
+    guidePanel.renderSummary(buildGraphSummary(state.fullGraph));
   }
 }
 
@@ -702,8 +682,8 @@ function init(): void {
   // Setup VS Code integration if running in webview
   setupVSCodeIntegration();
 
-  // Initialize AI chat panel
-  initAIChat();
+  // Initialize the guide panel
+  initGuidePanel();
 
   // Try to auto-load graph.json if it exists (skipped in VS Code mode)
   if (!isVSCodeEnvironment()) {
@@ -1861,8 +1841,8 @@ function loadGraph(graph: D3Graph, message: string): void {
     statsDiv.insertBefore(successMsg, statsDiv.firstChild);
   }
 
-  // Refresh AI onboarding with new graph data
-  refreshAIOnboarding();
+  // Refresh the guide panel with new graph data
+  refreshGuidePanel();
 }
 
 /**

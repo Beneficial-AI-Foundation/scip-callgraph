@@ -1,8 +1,8 @@
 /**
- * Static graph analysis module -- pure TypeScript, no LLM required.
+ * Static graph analysis module.
  *
  * Produces a GraphSummary with stats, rankings, and suggested queries
- * that can be displayed as onboarding content or fed to an LLM as context.
+ * displayed as onboarding content in the guide panel.
  */
 
 import type { D3Graph, D3Node, ProjectLanguage } from '../types';
@@ -212,7 +212,7 @@ function generateSuggestedQueries(
 }
 
 /**
- * Format a graph summary as human-readable text (used as LLM context and static onboarding).
+ * Format a graph summary as human-readable text for the guide panel.
  */
 export function formatSummaryText(summary: GraphSummary): string {
   const lines: string[] = [];
