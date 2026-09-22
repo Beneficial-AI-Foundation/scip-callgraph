@@ -1,4 +1,4 @@
-import { D3Graph, D3Node, GraphState, FilterOptions, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName } from './types';
+import { D3Graph, D3Node, GraphState, FilterOptions, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName, isSchema2Envelope } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
 import { compileQuery, GraphQuery, NodeMatcher, filterLinksByType, compileSeededDisplayPredicate } from './query';
 import { computeSeedTiers, expandFromSeeds, SeedTier, SeedExpansion } from './graph-utils';
@@ -115,6 +115,22 @@ let isDeferredLoadInProgress = false;
 
 // Focus set URL (from ?focus= URL parameter)
 let focusJsonUrl: string | null = null;
+
+// Entry-points URL (from ?entrypoints= URL parameter): a probe-leanblueprint
+// JSON whose blueprint-label-carrying atoms seed the initial view of a large
+// graph. ?focus= takes precedence when both are present.
+let entrypointsJsonUrl: string | null = null;
+// Parsed ?entrypoints= payload for the current graph: seeds are the
+// blueprint-labeled atom IDs intersected with the graph, labeled is the
+// payload's total (for the matched/unmatched banner). Reset per loadGraph().
+let entrypointsParam: { seeds: string[]; labeled: number } | null = null;
+// Why the ?entrypoints= payload is not seeding (fetch failure, zero matches,
+// ?focus= precedence); surfaced in the seeded-view banner.
+let entrypointsParamNote: string | null = null;
+// Incremented on every loadGraph(). Async fetches (loadEntryPointsSet) capture
+// it and recheck before committing, so a late response can neither apply to a
+// different graph nor overwrite newer query intent.
+let graphLoadGeneration = 0;
 
 // Debounce timer for search inputs
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -292,6 +308,11 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
     focusJsonUrl = params.get('focus')!;
   }
 
+  // Entry-points URL (stored separately, fetched after graph loads)
+  if (params.has('entrypoints')) {
+    entrypointsJsonUrl = params.get('entrypoints')!;
+  }
+
   // Crate boundary selections (module-level, not FilterOptions)
   if (params.has('source-crate')) {
     selectedSourceCrate = params.get('source-crate')!;
@@ -313,7 +334,7 @@ function generateShareableURL(): string {
   // Clear existing filter params (keep json, github, etc.)
   ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec',
    'inner', 'pre', 'post', 'mapping', 'speclinks',
-   'libsignal', 'external', 'hidden', 'focus', 'view',
+   'libsignal', 'external', 'hidden', 'focus', 'entrypoints', 'view',
    'source-crate', 'target-crate'].forEach(k => params.delete(k));
 
   // View param (only set for non-default)
@@ -370,6 +391,11 @@ function generateShareableURL(): string {
   // Focus set URL
   if (focusJsonUrl && state.filters.focusNodeIds.size > 0) {
     params.set('focus', focusJsonUrl);
+  }
+
+  // Entry-points URL (kept even when its fetch failed: the link stays shareable)
+  if (entrypointsJsonUrl) {
+    params.set('entrypoints', entrypointsJsonUrl);
   }
   
   return url.toString();
@@ -1405,6 +1431,33 @@ function clampSeededDepth(depth: number | null): number {
   return Math.min(depth, SEEDED_DEPTH_MAX);
 }
 
+/** Human description of the winning seed tier for the seeded-view banner. */
+function describeSeedTier(info: SeededViewInfo): string {
+  const n = info.seedCount.toLocaleString();
+  switch (info.tierName) {
+    case 'blueprint-param':
+      return `${n} of ${(entrypointsParam?.labeled ?? info.seedCount).toLocaleString()} blueprint declarations (?entrypoints=) matched in this graph`;
+    case 'entry-points':
+      return `${n} explicit entry points (public API / blueprint)`;
+    case 'source-defs':
+      return `${n} root definitions`;
+    default:
+      return `${n} root functions (no callers)`;
+  }
+}
+
+/**
+ * Banner note when a requested ?entrypoints= payload is not the active seed
+ * tier: fetch failure / zero matches / focus precedence (entrypointsParamNote),
+ * or a loaded payload whose seed set broke the render budget.
+ */
+function describeEntrypointsFallback(): string {
+  if (!entrypointsJsonUrl || seededViewInfo?.tierName === 'blueprint-param') return '';
+  if (entrypointsParamNote) return `?entrypoints= ${escapeHtml(entrypointsParamNote)}. `;
+  if (entrypointsParam) return `?entrypoints= seeds exceed the render budget. `;
+  return ''; // fetch still in flight
+}
+
 /**
  * True only while a seeded view is actually displayed. The mode conditions
  * alone are not enough: on a graph where every seed tier exceeds the budget
@@ -1423,14 +1476,19 @@ function isSeededModeActive(): boolean {
  * Try each seed tier in preference order at the requested depth.
  * Tier preference beats depth: the first tier that fits at any depth >= 1
  * wins, even if a later tier would fit at a greater depth.
+ * A loaded ?entrypoints= payload is the most-preferred tier, ahead of the
+ * graph-derived tiers (explicit entry points, then the topological fallbacks).
  */
 function computeSeededExpansion(
   requestedDepth: number,
 ): { tier: SeedTier; expansion: SeedExpansion } | null {
   if (!state.fullGraph) return null;
   seedTiersCache ??= computeSeedTiers(state.fullGraph);
+  const tiers: SeedTier[] = entrypointsParam
+    ? [{ name: 'blueprint-param', seeds: entrypointsParam.seeds }, ...seedTiersCache]
+    : seedTiersCache;
   const budget = { maxNodes: LARGE_GRAPH_NODE_THRESHOLD, maxLinks: LARGE_GRAPH_LINK_THRESHOLD };
-  for (const tier of seedTiersCache) {
+  for (const tier of tiers) {
     const expansion = expandFromSeeds(state.fullGraph, tier.seeds, requestedDepth, budget);
     if (expansion.ok) return { tier, expansion };
   }
@@ -1614,6 +1672,70 @@ async function loadFocusSet(url: string): Promise<void> {
   } catch (error) {
     console.error('Failed to load focus set:', error);
     showError(`Failed to load focus set: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Fetch a probe-leanblueprint JSON (?entrypoints= URL param) and derive the
+ * blueprint seed tier for the seeded initial view.
+ *
+ * The payload is an enriched atom base, not a seed list: seeds are the atoms
+ * carrying `blueprint-label`, intersected with the loaded graph by exact ID.
+ * (Raw atom-ID intersection must not be used — the payload shares its atom
+ * base with the graph, so it matches nearly every node.)
+ *
+ * The fetch races graph reloads and user interactions, so it captures the
+ * graph-load generation and rechecks it before committing; on failure or zero
+ * matches it records a note for the banner and the normal seed chain applies.
+ */
+async function loadEntryPointsSet(url: string): Promise<void> {
+  const generation = graphLoadGeneration;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`fetch failed: ${response.status} ${response.statusText}`);
+    }
+    const raw = await response.json();
+    if (generation !== graphLoadGeneration) return; // a different graph loaded meanwhile
+
+    const atoms = isSchema2Envelope(raw) ? raw.data : raw;
+    if (typeof atoms !== 'object' || atoms === null || Array.isArray(atoms)) {
+      throw new Error('payload is not an atom dict');
+    }
+
+    const labeled: string[] = [];
+    for (const [id, atom] of Object.entries(atoms as Record<string, unknown>)) {
+      if (atom && typeof atom === 'object' && (atom as Record<string, unknown>)['blueprint-label']) {
+        labeled.push(id);
+      }
+    }
+    if (labeled.length === 0) {
+      throw new Error('no atoms carry blueprint-label');
+    }
+
+    const graphIds = new Set(state.fullGraph?.nodes.map(n => n.id) ?? []);
+    const seeds = labeled.filter(id => graphIds.has(id));
+    if (seeds.length === 0) {
+      throw new Error(`none of its ${labeled.length} blueprint declarations match this graph`);
+    }
+
+    entrypointsParam = { seeds, labeled: labeled.length };
+    entrypointsParamNote = null;
+    console.log(`Entry points: ${seeds.length}/${labeled.length} blueprint declarations matched`);
+  } catch (error) {
+    if (generation !== graphLoadGeneration) return;
+    entrypointsParam = null;
+    entrypointsParamNote = error instanceof Error ? error.message : 'unknown error';
+    console.error('Failed to load ?entrypoints= set:', error);
+  }
+
+  // Commit: re-render only when the seeded initial view is what is (or would
+  // be) on screen. Query intent typed while the fetch was in flight wins; the
+  // payload stays cached, so clearing that query returns to the blueprint
+  // seeds via the normal seeded path.
+  if (state.fullGraph && isLargeGraph(state.fullGraph) &&
+      !hasSearchFilters() && activeView === 'callgraph') {
+    applyFiltersAndUpdate();
   }
 }
 
@@ -1867,9 +1989,13 @@ function loadGraph(graph: D3Graph, message: string): void {
     metadata: { ...graph.metadata },
   };
 
-  // Seed tiers belong to the previous graph
+  // Seed tiers and the ?entrypoints= payload belong to the previous graph;
+  // bumping the generation invalidates any of its in-flight fetches
+  graphLoadGeneration++;
   seedTiersCache = null;
   seededViewInfo = null;
+  entrypointsParam = null;
+  entrypointsParamNote = null;
 
   // Deep copy filters - spread only does shallow copy, so Sets would be shared!
   // Preserve focusNodeIds across graph reloads (it's set from URL param, not graph data)
@@ -1959,6 +2085,17 @@ function loadGraph(graph: D3Graph, message: string): void {
   } else if (state.filters.focusNodeIds.size > 0) {
     // Focus set already loaded (preserved from previous graph load) - update indicator
     updateFocusIndicator();
+  }
+
+  // ?entrypoints= seeds the initial view of large graphs; ?focus= takes
+  // precedence over it (a focus set counts as query intent, so seeded mode is
+  // off while it is active anyway).
+  if (entrypointsJsonUrl) {
+    if (focusJsonUrl) {
+      entrypointsParamNote = 'ignored: ?focus= takes precedence';
+    } else {
+      loadEntryPointsSet(entrypointsJsonUrl);
+    }
   }
   
   console.log(message, {
@@ -2226,8 +2363,8 @@ function updateStats(truncatedTo?: number): void {
     <div class="stat-item" style="background: #e8f5e9; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
       <span style="color: #2e7d32; font-weight: bold;">📍 Showing ${seededViewInfo.shownNodes.toLocaleString()} of ${state.fullGraph.nodes.length.toLocaleString()} nodes (entry points, depth ${seededViewInfo.depth})</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
-        Seeded from ${seededViewInfo.seedCount.toLocaleString()} ${seededViewInfo.tierName === 'source-defs' ? 'root definitions' : 'root functions (no callers)'}.
-        ${seededViewInfo.depth < seededViewInfo.requestedDepth ? `Depth limited to ${seededViewInfo.depth}: depth ${seededViewInfo.requestedDepth} would exceed the render budget. ` : ''}
+        Seeded from ${describeSeedTier(seededViewInfo)}.
+        ${describeEntrypointsFallback()}${seededViewInfo.depth < seededViewInfo.requestedDepth ? `Depth limited to ${seededViewInfo.depth}: depth ${seededViewInfo.requestedDepth} would exceed the render budget. ` : ''}
         Use <strong>Source</strong>/<strong>Sink</strong> filters or click a node to explore the full graph.
       </p>
     </div>

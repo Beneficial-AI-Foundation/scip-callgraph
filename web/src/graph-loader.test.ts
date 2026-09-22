@@ -60,6 +60,66 @@ describe('convertAtomDictToD3Graph external dependencies', () => {
   });
 });
 
+describe('convertAtomDictToD3Graph entry points', () => {
+  const atoms: Record<string, ProbeAtom> = {
+    // Public-API Rust atom with a Lean translation: both are entry points
+    'probe:pub_fn': atom({
+      "display-name": 'pub_fn', kind: 'exec', language: 'rust',
+      "is-public-api": true,
+      "translation-name": 'probe:pub_fn_lean',
+    }),
+    'probe:pub_fn_lean': atom({ "display-name": 'pub_fn_lean', kind: 'def' }),
+    // Public-API atom whose translation target is not in the graph
+    'probe:pub_orphan': atom({
+      "display-name": 'pub_orphan', kind: 'exec', language: 'rust',
+      "is-public-api": true,
+      "translation-name": 'probe:missing',
+    }),
+    // Private Rust atom with a translation: neither is an entry point
+    'probe:private_fn': atom({
+      "display-name": 'private_fn', kind: 'exec', language: 'rust',
+      "is-public-api": false,
+      "translation-name": 'probe:private_fn_lean',
+    }),
+    'probe:private_fn_lean': atom({ "display-name": 'private_fn_lean', kind: 'def' }),
+    // @[blueprint] Lean atom
+    'probe:blueprint_thm': atom({
+      "display-name": 'blueprint_thm',
+      attributes: ['simp', 'blueprint'],
+    }),
+    // Other attributes do not qualify
+    'probe:simp_thm': atom({ "display-name": 'simp_thm', attributes: ['simp'] }),
+  };
+  const graph = convertAtomDictToD3Graph(atoms);
+  const byId = new Map(graph.nodes.map(n => [n.id, n]));
+
+  it('flags public-API atoms as entry points', () => {
+    expect(byId.get('probe:pub_fn')!.is_entry_point).toBe(true);
+    expect(byId.get('probe:pub_orphan')!.is_entry_point).toBe(true);
+  });
+
+  it('flags the Lean translation target of a public-API atom (Aeneas join)', () => {
+    expect(byId.get('probe:pub_fn_lean')!.is_entry_point).toBe(true);
+  });
+
+  it('does not flag private atoms or their translations', () => {
+    expect(byId.get('probe:private_fn')!.is_entry_point).toBeUndefined();
+    expect(byId.get('probe:private_fn_lean')!.is_entry_point).toBeUndefined();
+  });
+
+  it('flags blueprint-attributed atoms and only those', () => {
+    expect(byId.get('probe:blueprint_thm')!.is_entry_point).toBe(true);
+    expect(byId.get('probe:simp_thm')!.is_entry_point).toBeUndefined();
+  });
+
+  it('carries is_public_api and attributes through conversion', () => {
+    expect(byId.get('probe:pub_fn')!.is_public_api).toBe(true);
+    expect(byId.get('probe:private_fn')!.is_public_api).toBe(false);
+    expect(byId.get('probe:blueprint_thm')!.attributes).toEqual(['simp', 'blueprint']);
+    expect(byId.get('probe:pub_fn_lean')!.attributes).toBeUndefined();
+  });
+});
+
 describe('pickSourceConfig', () => {
   const configs: SourceConfig[] = [
     {

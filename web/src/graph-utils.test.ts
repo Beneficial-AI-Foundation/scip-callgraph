@@ -102,6 +102,25 @@ describe('computeSeedTiers', () => {
     const tiers = computeSeedTiers(g);
     expect(tiers.map(t => t.name)).toEqual(['sources']);
   });
+
+  it('puts explicit entry points ahead of the topological tiers', () => {
+    // b has in-degree 1: entry points need not be sources (public-API
+    // translations and blueprint declarations usually have callers)
+    const g = createGraph(
+      [['a'], ['b'], ['c']],
+      [['a', 'b'], ['b', 'c']],
+    );
+    g.nodes.find(n => n.id === 'b')!.is_entry_point = true;
+    const tiers = computeSeedTiers(g);
+    expect(tiers.map(t => t.name)).toEqual(['entry-points', 'sources']);
+    expect(tiers[0].seeds).toEqual(['b']);
+    expect(tiers[1].seeds).toEqual(['a']);
+  });
+
+  it('offers no entry-points tier when no node is flagged', () => {
+    const g = createGraph([['a'], ['b']], [['a', 'b']]);
+    expect(computeSeedTiers(g).map(t => t.name)).toEqual(['sources']);
+  });
 });
 
 describe('expandFromSeeds', () => {
@@ -283,5 +302,42 @@ describe.skipIf(!existsSync(SM_IMPORT_PATH))('Golden: sm-import-test merged grap
     expect(r.nodeIds.size).toBe(648);
     expect(r.linkCount).toBe(4514);
     expect(r.depth).toBe(1);
+  });
+});
+
+// ============================================================================
+// Golden fixture: merged Aeneas output extracted with --with-public-api.
+// Validates the Phase 2 entry-point derivation on real data: 146 public-API
+// Rust atoms, 100 of which have translation-name mappings that all resolve to
+// Lean atoms (the Aeneas join), and no blueprint attributes.
+// Numbers measured 2026-09-22; re-pin when the fixture or loader changes.
+// ============================================================================
+
+const AENEAS_PATH = resolve(
+  __dirname,
+  '../../../probe-aeneas/examples/aeneas_curve25519-dalek_4.2.0.json',
+);
+
+describe.skipIf(!existsSync(AENEAS_PATH))('Golden: Aeneas curve25519-dalek 4.2.0 merged graph', () => {
+  it('derives 246 entry points (146 public API + 100 Lean translation targets)', () => {
+    const graph = parseAndNormalizeGraph(JSON.parse(readFileSync(AENEAS_PATH, 'utf8')));
+    expect(graph.nodes.length).toBe(2292);
+
+    const entryPoints = graph.nodes.filter(n => n.is_entry_point);
+    expect(entryPoints.length).toBe(246);
+    expect(entryPoints.filter(n => n.language === 'rust').length).toBe(146);
+    expect(entryPoints.filter(n => n.language === 'lean').length).toBe(100);
+    // The Aeneas join flags Lean atoms that are never public API themselves
+    expect(entryPoints.filter(n => n.language === 'lean' && n.is_public_api).length).toBe(0);
+
+    const tiers = computeSeedTiers(graph);
+    expect(tiers[0].name).toBe('entry-points');
+    expect(tiers[0].seeds.length).toBe(246);
+
+    const r = expandFromSeeds(graph, tiers[0].seeds, 1, { maxNodes: 2000, maxLinks: 10000 });
+    if (!r.ok) throw new Error('expected ok');
+    expect(r.depth).toBe(1);
+    expect(r.nodeIds.size).toBe(526);
+    expect(r.linkCount).toBe(1837);
   });
 });
