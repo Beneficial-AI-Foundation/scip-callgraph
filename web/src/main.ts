@@ -1082,6 +1082,12 @@ function setupUIHandlers(): void {
     applyFiltersAndUpdate();
   });
 
+  document.getElementById('reset-view')?.addEventListener('click', () => {
+    if (visualization instanceof CallGraphVisualization) {
+      visualization.resetView();
+    }
+  });
+
   document.getElementById('show-all-hidden')?.addEventListener('click', () => {
     showAllHiddenNodes();
   });

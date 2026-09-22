@@ -227,6 +227,58 @@ function assignTopologicalPositions(
   return { depths, maxDepth, maxLayerWidth, nodesByDepth };
 }
 
+/** Camera transform produced by the fit-to-view computation. */
+export interface FitTransform {
+  k: number;
+  x: number;
+  y: number;
+}
+
+/**
+ * Compute a zoom transform that fits the given node positions into the
+ * viewport, clamped to [minScale, maxScale] so large graphs stay readable
+ * instead of shrinking to dots. When the true fit scale falls below
+ * minScale, the transform centers on `focus` (if given) at minScale so the
+ * relevant node is in view even though the whole graph is not.
+ * Returns null when there are no positioned nodes or the viewport is empty.
+ *
+ * Exported for testing (the renderer applies the result via d3.zoom).
+ */
+export function computeFitTransform(
+  nodes: Array<{ x?: number; y?: number }>,
+  width: number,
+  height: number,
+  focus?: { x?: number; y?: number } | null,
+  minScale: number = 0.4,
+  maxScale: number = 1,
+  margin: number = 60
+): FitTransform | null {
+  const positioned = nodes.filter(n => n.x !== undefined && n.y !== undefined);
+  if (positioned.length === 0 || width <= 0 || height <= 0) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of positioned) {
+    if (n.x! < minX) minX = n.x!;
+    if (n.x! > maxX) maxX = n.x!;
+    if (n.y! < minY) minY = n.y!;
+    if (n.y! > maxY) maxY = n.y!;
+  }
+
+  const bboxWidth = maxX - minX + 2 * margin;
+  const bboxHeight = maxY - minY + 2 * margin;
+  const fitScale = Math.min(width / bboxWidth, height / bboxHeight);
+  const k = Math.max(minScale, Math.min(maxScale, fitScale));
+
+  let cx = (minX + maxX) / 2;
+  let cy = (minY + maxY) / 2;
+  if (fitScale < minScale && focus && focus.x !== undefined && focus.y !== undefined) {
+    cx = focus.x;
+    cy = focus.y;
+  }
+
+  return { k, x: width / 2 - k * cx, y: height / 2 - k * cy };
+}
+
 export class CallGraphVisualization {
   private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private g: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -239,6 +291,12 @@ export class CallGraphVisualization {
   private linkElements: d3.Selection<SVGPathElement, D3Link, SVGGElement, unknown> | null = null;
   private nodeElements: d3.Selection<SVGCircleElement, D3Node, SVGGElement, unknown> | null = null;
   private textElements: d3.Selection<SVGTextElement, D3Node, SVGGElement, unknown> | null = null;
+
+  private zoom: d3.ZoomBehavior<SVGSVGElement, unknown>;
+  // Node ids of the last render; the camera only auto-fits when this set
+  // changes, so hover/selection re-renders never move the user's view.
+  private renderedNodeIds: Set<string> = new Set();
+  private currentNodes: D3Node[] = [];
 
   constructor(
     container: HTMLElement,
@@ -262,13 +320,13 @@ export class CallGraphVisualization {
       .attr('viewBox', `0 0 ${this.width} ${this.height}`);
 
     // Add zoom behavior
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
+    this.zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 10])
       .on('zoom', (event) => {
         this.g.attr('transform', event.transform);
       });
 
-    this.svg.call(zoom);
+    this.svg.call(this.zoom);
 
     // Create main group for zooming/panning
     this.g = this.svg.append('g');
@@ -481,6 +539,55 @@ export class CallGraphVisualization {
 
     // Reheat simulation
     this.simulation.alpha(1).restart();
+
+    // Auto-fit the camera when the displayed node set changed (new query or
+    // filter result); an unchanged set means a cosmetic re-render and the
+    // user's camera stays put.
+    const nodeIds = new Set(nodes.map(n => n.id));
+    const setChanged =
+      nodeIds.size !== this.renderedNodeIds.size ||
+      [...nodeIds].some(id => !this.renderedNodeIds.has(id));
+    this.renderedNodeIds = nodeIds;
+    this.currentNodes = nodes;
+    if (setChanged) {
+      this.fitToView();
+    }
+  }
+
+  /**
+   * Fit the camera to the current graph, or center on the focus node at the
+   * minimum readable scale when the graph is too large to fit. Also exposed
+   * on the "Reset View" button.
+   */
+  public resetView(): void {
+    this.fitToView();
+  }
+
+  private fitToView(): void {
+    const t = computeFitTransform(
+      this.currentNodes, this.width, this.height, this.findFocusNode()
+    );
+    if (!t) return;
+    this.svg
+      .transition()
+      .duration(400)
+      .call(this.zoom.transform as any, d3.zoomIdentity.translate(t.x, t.y).scale(t.k));
+  }
+
+  /** The node to center on when the whole graph cannot fit: the selected
+   * node if it is displayed, else the first displayed focus-set node. */
+  private findFocusNode(): D3Node | null {
+    const selectedId = this.state.selectedNode?.id;
+    if (selectedId) {
+      const selected = this.currentNodes.find(n => n.id === selectedId);
+      if (selected) return selected;
+    }
+    const focusIds = this.state.filters.focusNodeIds;
+    if (focusIds.size > 0) {
+      const focused = this.currentNodes.find(n => focusIds.has(n.id));
+      if (focused) return focused;
+    }
+    return null;
   }
 
   /**
@@ -629,6 +736,8 @@ export class CallGraphVisualization {
    */
   public clear(): void {
     this.g.selectAll('*').remove();
+    this.renderedNodeIds = new Set();
+    this.currentNodes = [];
     if (this.simulation) {
       this.simulation.stop();
     }
