@@ -105,7 +105,9 @@ export function convertAtomDictToD3Graph(atoms: Record<string, ProbeAtom>): D3Gr
       const translation = atom["translation-name"];
       if (translation && knownIds.has(translation)) entryPointIds.add(translation);
     }
-    if (atom.attributes?.includes('blueprint')) entryPointIds.add(atomName);
+    if (Array.isArray(atom.attributes) && atom.attributes.includes('blueprint')) {
+      entryPointIds.add(atomName);
+    }
   }
 
   const dependentsMap = new Map<string, string[]>();

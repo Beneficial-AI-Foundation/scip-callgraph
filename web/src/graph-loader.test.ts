@@ -112,6 +112,14 @@ describe('convertAtomDictToD3Graph entry points', () => {
     expect(byId.get('probe:simp_thm')!.is_entry_point).toBeUndefined();
   });
 
+  it('tolerates malformed attributes without crashing or flagging', () => {
+    const malformed: Record<string, ProbeAtom> = {
+      'probe:bad': atom({ "display-name": 'bad', attributes: 'blueprint' as unknown as string[] }),
+    };
+    const g = convertAtomDictToD3Graph(malformed);
+    expect(g.nodes[0].is_entry_point).toBeUndefined();
+  });
+
   it('carries is_public_api and attributes through conversion', () => {
     expect(byId.get('probe:pub_fn')!.is_public_api).toBe(true);
     expect(byId.get('probe:private_fn')!.is_public_api).toBe(false);

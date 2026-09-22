@@ -127,6 +127,9 @@ let entrypointsParam: { seeds: string[]; labeled: number } | null = null;
 // Why the ?entrypoints= payload is not seeding (fetch failure, zero matches,
 // ?focus= precedence); surfaced in the seeded-view banner.
 let entrypointsParamNote: string | null = null;
+// Set when ?focus= deferred the ?entrypoints= fetch; clearing the focus set
+// resumes it (resumeDeferredEntrypoints).
+let entrypointsDeferredByFocus = false;
 // Incremented on every loadGraph(). Async fetches (loadEntryPointsSet) capture
 // it and recheck before committing, so a late response can neither apply to a
 // different graph nor overwrite newer query intent.
@@ -563,6 +566,7 @@ const guideActions: GuideActions = {
   },
   setDepth: (depth) => {
     state.filters.maxDepth = depth;
+    seededRequestedDepth = depth !== null ? clampSeededDepth(depth) : null;
     const el = document.getElementById('depth-limit') as HTMLInputElement | null;
     if (el) el.value = depth !== null ? depth.toString() : '0';
     const label = document.getElementById('depth-value');
@@ -1060,6 +1064,9 @@ function setupUIHandlers(): void {
       return;
     }
     state.filters.maxDepth = value > 0 ? value : null;
+    // Keep the seeded depth request in sync: this is what a return to the
+    // seeded view (e.g. after clearing a search) will use.
+    seededRequestedDepth = value > 0 ? clampSeededDepth(value) : null;
     document.getElementById('depth-value')!.textContent =
       state.filters.maxDepth !== null ? state.filters.maxDepth.toString() : 'All';
     applyFiltersAndUpdate();
@@ -1423,6 +1430,13 @@ interface SeededViewInfo {
 let seededViewInfo: SeededViewInfo | null = null;
 // Seed tiers are a property of the loaded graph; reset in loadGraph()
 let seedTiersCache: SeedTier[] | null = null;
+// The depth the user actually asked for (?depth= or slider), kept separate
+// from state.filters.maxDepth: the seeded render commits the *achieved* depth
+// there, and an async re-seed (a late ?entrypoints= payload whose tier fits
+// deeper than the provisional fallback did) must retry the request, not the
+// fallback's achieved value. Captured on first seeded render, updated by any
+// explicit depth interaction, reset in loadGraph().
+let seededRequestedDepth: number | null = null;
 
 const SEEDED_DEPTH_MAX = 10; // matches the depth slider's range
 
@@ -1454,7 +1468,7 @@ function describeSeedTier(info: SeededViewInfo): string {
 function describeEntrypointsFallback(): string {
   if (!entrypointsJsonUrl || seededViewInfo?.tierName === 'blueprint-param') return '';
   if (entrypointsParamNote) return `?entrypoints= ${escapeHtml(entrypointsParamNote)}. `;
-  if (entrypointsParam) return `?entrypoints= seeds exceed the render budget. `;
+  if (entrypointsParam) return `?entrypoints= seed expansion exceeds the render budget. `;
   return ''; // fetch still in flight
 }
 
@@ -1539,6 +1553,9 @@ function syncDepthSliderUI(depth: number | null): void {
 function handleSeededDepthChange(rawValue: number): void {
   const requested = clampSeededDepth(rawValue);
   const current = clampSeededDepth(state.filters.maxDepth);
+  // Record the request whether or not it commits: a refused depth is still
+  // the user's latest intent, retried when a better seed tier arrives.
+  seededRequestedDepth = requested;
   const result = computeSeededExpansion(requested);
 
   if (result && result.expansion.depth === requested) {
@@ -1666,12 +1683,17 @@ async function loadFocusSet(url: string): Promise<void> {
     
     // Update the focus indicator UI
     updateFocusIndicator();
-    
+
     // Re-apply filters with the focus set active
     applyFiltersAndUpdate();
   } catch (error) {
     console.error('Failed to load focus set:', error);
     showError(`Failed to load focus set: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } finally {
+    // ?focus= only outranks ?entrypoints= while a focus set is actually
+    // active; a failed or empty focus load hands over to the deferred fetch
+    // (no-op when the focus set loaded with matches).
+    resumeDeferredEntrypoints();
   }
 }
 
@@ -1692,8 +1714,15 @@ async function loadEntryPointsSet(url: string): Promise<void> {
   const generation = graphLoadGeneration;
   try {
     const response = await fetch(url);
+    if (generation !== graphLoadGeneration) return; // don't parse an obsolete body
     if (!response.ok) {
       throw new Error(`fetch failed: ${response.status} ${response.statusText}`);
+    }
+    // Same loading concern as the graph's own size gate: JSON.parse on large
+    // files freezes the browser, and this payload bypasses autoLoadGraph().
+    const contentLength = parseInt(response.headers.get('Content-Length') || '0');
+    if (contentLength > LARGE_FILE_SIZE_THRESHOLD) {
+      throw new Error(`payload too large (${(contentLength / (1024 * 1024)).toFixed(1)} MB)`);
     }
     const raw = await response.json();
     if (generation !== graphLoadGeneration) return; // a different graph loaded meanwhile
@@ -1705,9 +1734,13 @@ async function loadEntryPointsSet(url: string): Promise<void> {
 
     const labeled: string[] = [];
     for (const [id, atom] of Object.entries(atoms as Record<string, unknown>)) {
-      if (atom && typeof atom === 'object' && (atom as Record<string, unknown>)['blueprint-label']) {
-        labeled.push(id);
-      }
+      if (!atom || typeof atom !== 'object') continue;
+      const rec = atom as Record<string, unknown>;
+      // Skip the synthetic blueprint-layer nodes (language: "blueprint"):
+      // seeds — and the banner's denominator — are the real Lean declarations
+      // carrying blueprint-label, not the tex-graph nodes that bind them.
+      if (rec['language'] === 'blueprint') continue;
+      if (rec['blueprint-label']) labeled.push(id);
     }
     if (labeled.length === 0) {
       throw new Error('no atoms carry blueprint-label');
@@ -1737,6 +1770,20 @@ async function loadEntryPointsSet(url: string): Promise<void> {
       !hasSearchFilters() && activeView === 'callgraph') {
     applyFiltersAndUpdate();
   }
+}
+
+/**
+ * Start a ?entrypoints= fetch that loadGraph() deferred because a focus set
+ * took precedence, once the focus set is gone (cleared, reset, or failed to
+ * load). Without this, clearing the focus would fall back to the topological
+ * tiers with a stale "deferred" note despite a usable blueprint payload.
+ */
+function resumeDeferredEntrypoints(): void {
+  if (!entrypointsDeferredByFocus || !entrypointsJsonUrl) return;
+  if (state.filters.focusNodeIds.size > 0) return; // focus set still active
+  entrypointsDeferredByFocus = false;
+  entrypointsParamNote = null;
+  loadEntryPointsSet(entrypointsJsonUrl);
 }
 
 /**
@@ -1994,8 +2041,10 @@ function loadGraph(graph: D3Graph, message: string): void {
   graphLoadGeneration++;
   seedTiersCache = null;
   seededViewInfo = null;
+  seededRequestedDepth = null;
   entrypointsParam = null;
   entrypointsParamNote = null;
+  entrypointsDeferredByFocus = false;
 
   // Deep copy filters - spread only does shallow copy, so Sets would be shared!
   // Preserve focusNodeIds across graph reloads (it's set from URL param, not graph data)
@@ -2056,7 +2105,20 @@ function loadGraph(graph: D3Graph, message: string): void {
       resolveHiddenNodeNames((urlFilters as any)._hiddenNames);
     }
   }
-  
+
+  // ?entrypoints= seeds the initial view of large graphs; ?focus= takes
+  // precedence while a focus set is active — the fetch is deferred, and
+  // clearing the focus set resumes it (resumeDeferredEntrypoints). Kicked off
+  // before the first render so the deferral note paints with it.
+  if (entrypointsJsonUrl) {
+    if (focusJsonUrl) {
+      entrypointsDeferredByFocus = true;
+      entrypointsParamNote = 'deferred: ?focus= takes precedence';
+    } else {
+      loadEntryPointsSet(entrypointsJsonUrl);
+    }
+  }
+
   applyFiltersAndUpdate();
 
   // Restore crate boundary selection from URL params
@@ -2087,17 +2149,6 @@ function loadGraph(graph: D3Graph, message: string): void {
     updateFocusIndicator();
   }
 
-  // ?entrypoints= seeds the initial view of large graphs; ?focus= takes
-  // precedence over it (a focus set counts as query intent, so seeded mode is
-  // off while it is active anyway).
-  if (entrypointsJsonUrl) {
-    if (focusJsonUrl) {
-      entrypointsParamNote = 'ignored: ?focus= takes precedence';
-    } else {
-      loadEntryPointsSet(entrypointsJsonUrl);
-    }
-  }
-  
   console.log(message, {
     nodes: graph.nodes.length,
     links: graph.links.length,
@@ -2228,7 +2279,12 @@ function applyFiltersAndUpdate(): void {
   // tier fits the render budget, fall back to the empty view with the "use
   // filters" message.
   if (isLargeGraph(state.fullGraph) && !hasSearchFilters() && activeView !== 'crate-map') {
-    const requested = clampSeededDepth(state.filters.maxDepth);
+    // The request is tracked separately from maxDepth, which the commit below
+    // overwrites with the achieved depth: a later re-seed (late ?entrypoints=
+    // payload, tier change) must retry what the user asked for, not what the
+    // provisional tier managed.
+    seededRequestedDepth ??= clampSeededDepth(state.filters.maxDepth);
+    const requested = seededRequestedDepth;
     const result = activeView === 'callgraph' ? computeSeededExpansion(requested) : null;
     if (result) {
       const { tier, expansion } = result;
@@ -2384,7 +2440,7 @@ function updateStats(truncatedTo?: number): void {
     <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
       <span style="color: #e65100; font-weight: bold;">📊 Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
-        Too large to render all at once. Use the <strong>${crateMapLabel(state.projectLanguage)}</strong> for an overview, or enter a <strong>Source</strong>/<strong>Sink</strong> filter to explore specific call paths.
+        ${describeEntrypointsFallback()}Too large to render all at once. Use the <strong>${crateMapLabel(state.projectLanguage)}</strong> for an overview, or enter a <strong>Source</strong>/<strong>Sink</strong> filter to explore specific call paths.
       </p>
     </div>
     ` : ''}
@@ -3261,7 +3317,9 @@ function resetFilters(): void {
   };
   state.selectedNode = null;
   focusJsonUrl = null;  // Clear focus URL on reset
-  
+  seededRequestedDepth = null;  // A reset drops the seeded depth request too
+  resumeDeferredEntrypoints();
+
   // Reset UI controls
   (document.getElementById('show-libsignal') as HTMLInputElement).checked = true;
   (document.getElementById('show-non-libsignal') as HTMLInputElement).checked = true;
@@ -3349,6 +3407,7 @@ function clearFocusSet(): void {
   state.filters.focusNodeIds = new Set();
   focusJsonUrl = null;
   updateFocusIndicator();
+  resumeDeferredEntrypoints();
   applyFiltersAndUpdate();
 }
 
