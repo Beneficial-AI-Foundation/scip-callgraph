@@ -18,6 +18,7 @@ import {
   removeIsolated,
   resolveNodeMatcher,
   compileQuery,
+  compileSeededDisplayPredicate,
   TraversalPredicates,
 } from './query';
 import { D3Graph, D3Node, D3Link, FilterOptions } from './types';
@@ -666,5 +667,66 @@ describe('TraversalResult depth threading', () => {
     // B and C both at depth 1
     expect(result.calleeDepths!.get('b')).toBe(1);
     expect(result.calleeDepths!.get('c')).toBe(1);
+  });
+});
+
+// ============================================================================
+// compileSeededDisplayPredicate (display-only filters for the seeded view)
+// ============================================================================
+
+describe('compileSeededDisplayPredicate', () => {
+  const mkNode = (over: Partial<D3Node> = {}): D3Node => ({
+    ...createNode({ id: 'n', display_name: 'func_n' }),
+    ...over,
+  });
+
+  it('passes a plain node with default filters', () => {
+    const pass = compileSeededDisplayPredicate(createFilters());
+    expect(pass(mkNode())).toBe(true);
+  });
+
+  it('drops hidden nodes', () => {
+    const pass = compileSeededDisplayPredicate(createFilters({ hiddenNodes: new Set(['n']) }));
+    expect(pass(mkNode())).toBe(false);
+  });
+
+  it('honors kind flags', () => {
+    const pass = compileSeededDisplayPredicate(
+      createFilters({ showProofFunctions: false }), 'verus',
+    );
+    expect(pass(mkNode({ kind: 'proof' }))).toBe(false);
+    expect(pass(mkNode({ kind: 'exec' }))).toBe(true);
+  });
+
+  it('honors libsignal origin toggles', () => {
+    const noLib = compileSeededDisplayPredicate(createFilters({ showLibsignal: false }));
+    expect(noLib(mkNode({ is_libsignal: true }))).toBe(false);
+    expect(noLib(mkNode({ is_libsignal: false }))).toBe(true);
+    const noExt = compileSeededDisplayPredicate(createFilters({ showNonLibsignal: false }));
+    expect(noExt(mkNode({ is_libsignal: false }))).toBe(false);
+  });
+
+  it('honors exclude name and path patterns', () => {
+    const byName = compileSeededDisplayPredicate(createFilters({ excludeNamePatterns: 'func_*' }));
+    expect(byName(mkNode())).toBe(false);
+    const byPath = compileSeededDisplayPredicate(createFilters({ excludePathPatterns: '*specs*' }));
+    expect(byPath(mkNode({ id: 'probe:foo/specs/n' }))).toBe(false);
+    expect(byPath(mkNode({ id: 'probe:foo/src/n' }))).toBe(true);
+  });
+
+  it('always drops build-artifact nodes', () => {
+    const pass = compileSeededDisplayPredicate(createFilters());
+    expect(pass(mkNode({ relative_path: 'target/debug/gen.rs' }))).toBe(false);
+    expect(pass(mkNode({ relative_path: 'crate/build/gen.rs' }))).toBe(false);
+  });
+
+  it('honors verification-status flags, treating missing status as unverified', () => {
+    const noVerified = compileSeededDisplayPredicate(createFilters({ showVerifiedNodes: false }));
+    expect(noVerified(mkNode({ verification_status: 'verified' }))).toBe(false);
+    expect(noVerified(mkNode({ verification_status: 'trusted' }))).toBe(false);
+    expect(noVerified(mkNode())).toBe(true);
+    const noUnverified = compileSeededDisplayPredicate(createFilters({ showUnverifiedNodes: false }));
+    expect(noUnverified(mkNode())).toBe(false);
+    expect(noUnverified(mkNode({ verification_status: 'failed' }))).toBe(true);
   });
 });

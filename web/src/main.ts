@@ -1,6 +1,7 @@
 import { D3Graph, D3Node, GraphState, FilterOptions, ProjectLanguage, detectProjectLanguage, getKindSetsForLanguage, extractCrateName } from './types';
 import { applyFilters, getCallers, getCallees, SelectedNodeOptions } from './filters';
-import { compileQuery, GraphQuery, NodeMatcher } from './query';
+import { compileQuery, GraphQuery, NodeMatcher, filterLinksByType, compileSeededDisplayPredicate } from './query';
+import { computeSeedTiers, expandFromSeeds, SeedTier, SeedExpansion } from './graph-utils';
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
 import { CrateMapVisualization, buildCrateGraph } from './crate-map';
@@ -100,9 +101,11 @@ let githubPathPrefix: string = import.meta.env.VITE_GITHUB_PATH_PREFIX || '';
 const LARGE_GRAPH_LINK_THRESHOLD = 10000;
 const LARGE_GRAPH_NODE_THRESHOLD = 2000;
 
-// File size threshold (in bytes) - files larger than this won't auto-load
-// 5MB is roughly the size where JSON.parse starts to noticeably freeze the browser
-const LARGE_FILE_SIZE_THRESHOLD = 5 * 1024 * 1024;
+// File size threshold (in bytes) - files larger than this won't auto-load.
+// This gate is about loading, not rendering: JSON.parse on large files freezes
+// the browser. The seeded initial view bounds rendering, so auto-load is safe
+// up to this cap; anything bigger stays behind the explicit "Load & Search" path.
+const LARGE_FILE_SIZE_THRESHOLD = 10 * 1024 * 1024;
 
 // Track if we're deferring load due to large file
 let deferredGraphUrl: string | null = null;
@@ -1025,8 +1028,13 @@ function setupUIHandlers(): void {
 
   document.getElementById('depth-limit')?.addEventListener('input', (e) => {
     const value = parseInt((e.target as HTMLInputElement).value);
+    if (isSeededModeActive()) {
+      // Seeded mode: validate the candidate view before mutating any state
+      handleSeededDepthChange(value);
+      return;
+    }
     state.filters.maxDepth = value > 0 ? value : null;
-    document.getElementById('depth-value')!.textContent = 
+    document.getElementById('depth-value')!.textContent =
       state.filters.maxDepth !== null ? state.filters.maxDepth.toString() : 'All';
     applyFiltersAndUpdate();
   });
@@ -1114,9 +1122,16 @@ async function autoLoadGraph(): Promise<void> {
       }
 
       const text = await response.text();
+
+      // Yield to browser before heavy synchronous work so the UI stays responsive
+      await new Promise(r => setTimeout(r, 0));
+
       const rawData = JSON.parse(text);
       const graph = parseAndNormalizeGraph(rawData);
-      
+
+      // Yield again before loadGraph (deep copy + initialization)
+      await new Promise(r => setTimeout(r, 0));
+
       const source = jsonUrlParam ? 'URL parameter' : 'configured default';
       loadGraph(graph, `Loaded from ${source}: ${jsonUrl}`);
       return;
@@ -1350,15 +1365,141 @@ function runDeferredComputations(): void {
 }
 
 /**
- * Check if user has specified meaningful filters (source, sink, or include files)
+ * Check if user has specified meaningful filters (source, sink, include files,
+ * focus set, language toggle, or node selection). Node selection counts: it
+ * compiles to a depthFromSelected query, and without it a click on a
+ * seeded-view node would exit seeded mode into an empty large-graph view.
  */
 function hasSearchFilters(): boolean {
   return state.filters.sourceQuery.trim() !== '' ||
          state.filters.sinkQuery.trim() !== '' ||
          state.filters.includeFiles.trim() !== '' ||
          state.filters.focusNodeIds.size > 0 ||
+         state.filters.selectedNodes.size > 0 ||
          state.filters.showRustNodes === false ||
          state.filters.showLeanNodes === false;
+}
+
+// ============================================================================
+// Seeded initial view for large graphs
+// ============================================================================
+
+interface SeededViewInfo {
+  tierName: SeedTier['name'];
+  seedCount: number;
+  shownNodes: number;
+  shownLinks: number;
+  depth: number;
+  requestedDepth: number;
+}
+
+// Set while the current view is the entry-point-seeded initial view
+let seededViewInfo: SeededViewInfo | null = null;
+// Seed tiers are a property of the loaded graph; reset in loadGraph()
+let seedTiersCache: SeedTier[] | null = null;
+
+const SEEDED_DEPTH_MAX = 10; // matches the depth slider's range
+
+function clampSeededDepth(depth: number | null): number {
+  if (depth === null || !Number.isFinite(depth) || depth < 1) return 1;
+  return Math.min(depth, SEEDED_DEPTH_MAX);
+}
+
+/**
+ * True only while a seeded view is actually displayed. The mode conditions
+ * alone are not enough: on a graph where every seed tier exceeds the budget
+ * (seededViewInfo === null), the slider must keep its normal behavior of
+ * pre-setting maxDepth for a later query.
+ */
+function isSeededModeActive(): boolean {
+  return seededViewInfo !== null &&
+         state.fullGraph !== null &&
+         isLargeGraph(state.fullGraph) &&
+         !hasSearchFilters() &&
+         activeView === 'callgraph';
+}
+
+/**
+ * Try each seed tier in preference order at the requested depth.
+ * Tier preference beats depth: the first tier that fits at any depth >= 1
+ * wins, even if a later tier would fit at a greater depth.
+ */
+function computeSeededExpansion(
+  requestedDepth: number,
+): { tier: SeedTier; expansion: SeedExpansion } | null {
+  if (!state.fullGraph) return null;
+  seedTiersCache ??= computeSeedTiers(state.fullGraph);
+  const budget = { maxNodes: LARGE_GRAPH_NODE_THRESHOLD, maxLinks: LARGE_GRAPH_LINK_THRESHOLD };
+  for (const tier of seedTiersCache) {
+    const expansion = expandFromSeeds(state.fullGraph, tier.seeds, requestedDepth, budget);
+    if (expansion.ok) return { tier, expansion };
+  }
+  return null;
+}
+
+/**
+ * Build the renderable seeded view: the induced subgraph of the expansion,
+ * with display-only filters (hidden nodes, kind, verification status, link
+ * types) applied on top without reseeding. Carries the BFS nodeDepths so the
+ * renderer never falls back to computeTopologicalDepth(), which does not
+ * terminate on cyclic subgraphs.
+ */
+function buildSeededGraph(expansion: SeedExpansion): D3Graph {
+  const full = state.fullGraph!;
+  const passesDisplay = compileSeededDisplayPredicate(state.filters, state.projectLanguage);
+  const nodes = full.nodes.filter(n => expansion.nodeIds.has(n.id) && passesDisplay(n));
+
+  const keptIds = new Set(nodes.map(n => n.id));
+  let links = full.links.filter(l => {
+    const s = typeof l.source === 'string' ? l.source : l.source.id;
+    const t = typeof l.target === 'string' ? l.target : l.target.id;
+    return keptIds.has(s) && keptIds.has(t);
+  });
+  links = filterLinksByType(links, state.filters);
+
+  const nodeDepths = new Map<string, number>();
+  for (const id of keptIds) {
+    nodeDepths.set(id, expansion.nodeDepths.get(id) ?? 0);
+  }
+
+  return { nodes, links, metadata: full.metadata, nodeDepths };
+}
+
+function syncDepthSliderUI(depth: number | null): void {
+  const slider = document.getElementById('depth-limit') as HTMLInputElement | null;
+  if (slider) slider.value = depth !== null ? depth.toString() : '0';
+  const label = document.getElementById('depth-value');
+  if (label) label.textContent = depth !== null ? depth.toString() : 'All';
+}
+
+/**
+ * Transactional depth change for the seeded view: compute the candidate view,
+ * validate it against the budget, and only then commit state, slider, label,
+ * URL, and banner together. On refusal, keep the current view and name the
+ * budget that failed.
+ */
+function handleSeededDepthChange(rawValue: number): void {
+  const requested = clampSeededDepth(rawValue);
+  const current = clampSeededDepth(state.filters.maxDepth);
+  const result = computeSeededExpansion(requested);
+
+  if (result && result.expansion.depth === requested) {
+    state.filters.maxDepth = requested;
+    syncDepthSliderUI(requested);
+    applyFiltersAndUpdate();
+    return;
+  }
+
+  const refusal = result?.expansion.refusal;
+  if (refusal) {
+    const limit = refusal.failedBudget === 'nodes'
+      ? `${refusal.nodes.toLocaleString()} nodes (limit ${LARGE_GRAPH_NODE_THRESHOLD.toLocaleString()})`
+      : `${refusal.links.toLocaleString()} links (limit ${LARGE_GRAPH_LINK_THRESHOLD.toLocaleString()})`;
+    showError(`Depth ${requested} would need ${limit}. Keeping depth ${current}.`, 'seeded-depth-refusal');
+  } else {
+    showError(`Depth ${requested} exceeds the render budget. Keeping depth ${current}.`, 'seeded-depth-refusal');
+  }
+  syncDepthSliderUI(current);
 }
 
 /**
@@ -1726,6 +1867,10 @@ function loadGraph(graph: D3Graph, message: string): void {
     metadata: { ...graph.metadata },
   };
 
+  // Seed tiers belong to the previous graph
+  seedTiersCache = null;
+  seededViewInfo = null;
+
   // Deep copy filters - spread only does shallow copy, so Sets would be shared!
   // Preserve focusNodeIds across graph reloads (it's set from URL param, not graph data)
   const preservedFocusNodes = state.filters.focusNodeIds;
@@ -1827,8 +1972,8 @@ function loadGraph(graph: D3Graph, message: string): void {
   if (statsDiv && graph.nodes.length > 0) {
     const successMsg = document.createElement('div');
     
-    if (isLarge && !hasSearchFilters()) {
-      // Show warning for large graphs
+    if (isLarge && !hasSearchFilters() && !seededViewInfo) {
+      // Show warning for large graphs where no seeded view fit the budget
       successMsg.style.cssText = 'background: #ff9800; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
       successMsg.innerHTML = `⚠️ Large graph (${graph.nodes.length.toLocaleString()} nodes, ${graph.links.length.toLocaleString()} links). Use <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filters to search.`;
     } else {
@@ -1846,16 +1991,22 @@ function loadGraph(graph: D3Graph, message: string): void {
 }
 
 /**
- * Show error message
+ * Show error message.
+ * A dedupeKey replaces any previous message with the same key instead of
+ * stacking (e.g. one refusal per slider-drag step would pile up otherwise).
  */
-function showError(message: string): void {
+function showError(message: string, dedupeKey?: string): void {
   const statsDiv = document.getElementById('stats');
   if (statsDiv) {
+    if (dedupeKey) {
+      statsDiv.querySelector(`[data-error-key="${dedupeKey}"]`)?.remove();
+    }
     const errorMsg = document.createElement('div');
+    if (dedupeKey) errorMsg.setAttribute('data-error-key', dedupeKey);
     errorMsg.style.cssText = 'background: #f44336; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
     errorMsg.textContent = `❌ ${message}`;
     statsDiv.insertBefore(errorMsg, statsDiv.firstChild);
-    
+
     // Remove message after 8 seconds
     setTimeout(() => errorMsg.remove(), 8000);
   }
@@ -1931,10 +2082,49 @@ function updateQueryLabel(q: GraphQuery): void {
 function applyFiltersAndUpdate(): void {
   if (!state.fullGraph) return;
 
-  // For large graphs, require a search filter to render anything —
-  // except in Crate Map view, which aggregates to a compact crate-level graph.
+  // For large graphs with no query intent, render a bounded seeded initial
+  // view (entry-point seeds + their depth-limited neighborhood) instead of a
+  // blank page. Crate Map is exempt: it aggregates to a compact crate-level
+  // graph. Blueprint is also exempt (keeps the empty view): its dagre layout
+  // is only sized for MAX_RENDERED_NODES-scale inputs, and its border/fill
+  // colors need the deferred status computation this branch skips. If no seed
+  // tier fits the render budget, fall back to the empty view with the "use
+  // filters" message.
   if (isLargeGraph(state.fullGraph) && !hasSearchFilters() && activeView !== 'crate-map') {
-    state.filteredGraph = { nodes: [], links: [], metadata: state.fullGraph.metadata };
+    const requested = clampSeededDepth(state.filters.maxDepth);
+    const result = activeView === 'callgraph' ? computeSeededExpansion(requested) : null;
+    if (result) {
+      const { tier, expansion } = result;
+      // Commit the achieved depth (may be < requested when ?depth=N was over
+      // budget on initial load) to state, slider, and label together.
+      if (state.filters.maxDepth !== expansion.depth) {
+        state.filters.maxDepth = expansion.depth;
+        syncDepthSliderUI(expansion.depth);
+      }
+      state.filteredGraph = buildSeededGraph(expansion);
+      seededViewInfo = {
+        tierName: tier.name,
+        seedCount: tier.seeds.length,
+        shownNodes: state.filteredGraph.nodes.length,
+        shownLinks: state.filteredGraph.links.length,
+        depth: expansion.depth,
+        requestedDepth: requested,
+      };
+    } else {
+      seededViewInfo = null;
+      state.filteredGraph = { nodes: [], links: [], metadata: state.fullGraph.metadata };
+    }
+    // The normal pipeline never runs here, so keep the query label in sync:
+    // name the seeded view, or hide a stale label from a cleared query.
+    const queryLabel = document.getElementById('query-label');
+    if (queryLabel) {
+      if (seededViewInfo) {
+        queryLabel.innerHTML = `<span class="query-dim">query:</span> <span class="query-type">entry points</span> depth=${seededViewInfo.depth}`;
+        queryLabel.style.display = '';
+      } else {
+        queryLabel.style.display = 'none';
+      }
+    }
     visualization?.update(state.filteredGraph);
     updateStats();
     updateNodeInfo();
@@ -1942,6 +2132,7 @@ function applyFiltersAndUpdate(): void {
     updateURLWithFilters();
     return;
   }
+  seededViewInfo = null;
   
   // Run deferred computations on first real filter application.
   // Crate Map only needs the crate graph, not the full set of deferred work.
@@ -2028,8 +2219,19 @@ function updateStats(truncatedTo?: number): void {
 
   const filtered = state.filteredGraph || state.fullGraph;
   const isLarge = isLargeGraph(state.fullGraph);
-  const needsFilter = isLarge && !hasSearchFilters() && activeView !== 'crate-map';
+  const needsFilter = isLarge && !hasSearchFilters() && activeView !== 'crate-map' && !seededViewInfo;
   const wasTruncated = truncatedTo !== undefined;
+
+  const seededBanner = seededViewInfo ? `
+    <div class="stat-item" style="background: #e8f5e9; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+      <span style="color: #2e7d32; font-weight: bold;">📍 Showing ${seededViewInfo.shownNodes.toLocaleString()} of ${state.fullGraph.nodes.length.toLocaleString()} nodes (entry points, depth ${seededViewInfo.depth})</span>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
+        Seeded from ${seededViewInfo.seedCount.toLocaleString()} ${seededViewInfo.tierName === 'source-defs' ? 'root definitions' : 'root functions (no callers)'}.
+        ${seededViewInfo.depth < seededViewInfo.requestedDepth ? `Depth limited to ${seededViewInfo.depth}: depth ${seededViewInfo.requestedDepth} would exceed the render budget. ` : ''}
+        Use <strong>Source</strong>/<strong>Sink</strong> filters or click a node to explore the full graph.
+      </p>
+    </div>
+  ` : '';
   
   // Count verification statuses
   const verifiedCount = filtered.nodes.filter(n => n.verification_status === 'verified').length;
@@ -2040,6 +2242,7 @@ function updateStats(truncatedTo?: number): void {
   const unknownCount = filtered.nodes.filter(n => !n.verification_status).length;
 
   statsDiv.innerHTML = `
+    ${seededBanner}
     ${needsFilter ? `
     <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
       <span style="color: #e65100; font-weight: bold;">📊 Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>

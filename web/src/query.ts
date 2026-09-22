@@ -521,6 +521,39 @@ function buildMatcher(queryStr: string): NodeMatcher {
 }
 
 /**
+ * Node predicate for the seeded initial view: every display-affecting filter
+ * that is not query intent (hidden nodes, kind flags, exclude patterns, build
+ * artifacts, libsignal origin, verification status). Lives here so it shares
+ * the pipeline's helpers and cannot drift from them.
+ */
+export function compileSeededDisplayPredicate(
+  filters: FilterOptions,
+  projectLanguage: ProjectLanguage = 'unknown',
+): (node: D3Node) => boolean {
+  const { proofKinds, specKinds } = getKindSetsForLanguage(projectLanguage);
+  const excludeName = parseExcludePatterns(filters.excludeNamePatterns);
+  const excludePath = parseExcludePatterns(filters.excludePathPatterns);
+  return (node: D3Node) => {
+    if (filters.hiddenNodes.has(node.id)) return false;
+    const kind = node.kind || 'exec';
+    if (proofKinds.has(kind) && !filters.showProofFunctions) return false;
+    if (specKinds.has(kind) && !filters.showSpecFunctions) return false;
+    if (!proofKinds.has(kind) && !specKinds.has(kind) && !filters.showExecFunctions) return false;
+    if (nodeMatchesExcludeNamePattern(node, excludeName)) return false;
+    if (nodeMatchesExcludePathPattern(node, excludePath)) return false;
+    if (nodeIsFromBuildArtifact(node)) return false;
+    if (node.is_libsignal && !filters.showLibsignal) return false;
+    if (!node.is_libsignal && !filters.showNonLibsignal) return false;
+    const vs = node.verification_status;
+    const isVerifiedLike = vs === 'verified' || vs === 'transitively-verified' || vs === 'trusted';
+    if (isVerifiedLike && !filters.showVerifiedNodes) return false;
+    if (vs === 'failed' && !filters.showFailedNodes) return false;
+    if ((vs === 'unverified' || !vs) && !filters.showUnverifiedNodes) return false;
+    return true;
+  };
+}
+
+/**
  * Compile FilterOptions (+ optional nodeOptions) into a CompiledQuery.
  * Pure function -- no graph access.
  */
