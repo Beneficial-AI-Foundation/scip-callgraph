@@ -104,23 +104,57 @@ export function detectProjectLanguage(graph: D3Graph): ProjectLanguage {
 }
 
 /**
- * Get the proof-category and spec-category kind sets for a given language.
- * Everything not in either set is treated as exec/definitions.
+ * Get the kind sets for a given language. Everything not in any set is
+ * treated as exec/definitions. Axioms are their own bucket (not spec):
+ * they are part of the trusted base and shown by default, while Verus
+ * spec functions stay hidden by default. Types (structure/inductive/class),
+ * projections (auto-generated field accessors) and instances only occur in
+ * Lean graphs, so the sets are language-independent.
  */
 export function getKindSetsForLanguage(lang: ProjectLanguage): {
   proofKinds: Set<string>;
   specKinds: Set<string>;
+  axiomKinds: Set<string>;
+  typeKinds: Set<string>;
+  projectionKinds: Set<string>;
+  instanceKinds: Set<string>;
 } {
-  switch (lang) {
-    case 'verus':
-      return { proofKinds: new Set(['proof']), specKinds: new Set(['spec']) };
-    case 'lean':
-      return { proofKinds: new Set(['theorem']), specKinds: new Set(['axiom']) };
-    case 'mixed':
-      return { proofKinds: new Set(['proof', 'theorem']), specKinds: new Set(['spec', 'axiom']) };
-    default:
-      return { proofKinds: new Set(['proof', 'theorem']), specKinds: new Set(['spec', 'axiom']) };
-  }
+  const proofKinds = lang === 'verus' ? new Set(['proof'])
+    : lang === 'lean' ? new Set(['theorem'])
+    : new Set(['proof', 'theorem']);
+  return {
+    proofKinds,
+    specKinds: new Set(['spec']),
+    axiomKinds: new Set(['axiom']),
+    typeKinds: new Set(['structure', 'inductive', 'class']),
+    projectionKinds: new Set(['projection']),
+    instanceKinds: new Set(['instance']),
+  };
+}
+
+/**
+ * Compile a kind predicate from the filter flags: returns whether a node of
+ * the given kind should be visible. Single source of truth for the kind
+ * bucket -> filter flag mapping (used by both the traversal predicates and
+ * the seeded-view display predicate).
+ */
+export function compileKindPredicate(
+  filters: Pick<FilterOptions,
+    'showExecFunctions' | 'showProofFunctions' | 'showSpecFunctions'
+    | 'showAxioms' | 'showTypes' | 'showProjections' | 'showInstances'>,
+  lang: ProjectLanguage,
+): (kind: string) => boolean {
+  const { proofKinds, specKinds, axiomKinds, typeKinds, projectionKinds, instanceKinds } =
+    getKindSetsForLanguage(lang);
+  return (kind: string) => {
+    if (proofKinds.has(kind)) return filters.showProofFunctions;
+    if (specKinds.has(kind)) return filters.showSpecFunctions;
+    if (axiomKinds.has(kind)) return filters.showAxioms;
+    if (typeKinds.has(kind)) return filters.showTypes;
+    if (projectionKinds.has(kind)) return filters.showProjections;
+    if (instanceKinds.has(kind)) return filters.showInstances;
+    return filters.showExecFunctions;
+  };
 }
 
 /** Verification status from Verus or probe-lean verification results */
@@ -230,9 +264,13 @@ export interface FilterOptions {
   showMappingLinks: boolean;       // Show cross-language mapping edges (default: true)
   showSpecLinks: boolean;          // Show spec theorem edges (default: true)
   // Declaration kind filters
-  showExecFunctions: boolean;      // Show exec/def/class/structure/... (default: true)
+  showExecFunctions: boolean;      // Show exec/def/abbrev/opaque/... (default: true)
   showProofFunctions: boolean;     // Show proof/theorem (default: true)
-  showSpecFunctions: boolean;      // Show spec/axiom (default: false)
+  showSpecFunctions: boolean;      // Show Verus spec functions (default: false)
+  showAxioms: boolean;             // Show axioms - part of the trusted base (default: true)
+  showTypes: boolean;              // Show structure/inductive/class nodes (default: false)
+  showProjections: boolean;        // Show auto-generated projections (default: false)
+  showInstances: boolean;          // Show typeclass instances (default: false)
   // Language filters (for multi-language projects)
   showRustNodes: boolean;          // Show Rust/Verus nodes (default: true)
   showLeanNodes: boolean;          // Show Lean nodes (default: true)

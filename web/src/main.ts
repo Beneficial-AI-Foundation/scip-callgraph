@@ -273,6 +273,14 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (exec !== undefined) filters.showExecFunctions = exec;
   if (proof !== undefined) filters.showProofFunctions = proof;
   if (spec !== undefined) filters.showSpecFunctions = spec;
+  const axioms = parseBool('axioms');
+  const types = parseBool('types');
+  const proj = parseBool('proj');
+  const inst = parseBool('inst');
+  if (axioms !== undefined) filters.showAxioms = axioms;
+  if (types !== undefined) filters.showTypes = types;
+  if (proj !== undefined) filters.showProjections = proj;
+  if (inst !== undefined) filters.showInstances = inst;
   const mapping = parseBool('mapping');
   const specLinks = parseBool('speclinks');
 
@@ -336,6 +344,7 @@ function generateShareableURL(): string {
   
   // Clear existing filter params (keep json, github, etc.)
   ['source', 'sink', 'exclude', 'files', 'depth', 'exec', 'proof', 'spec',
+   'axioms', 'types', 'proj', 'inst',
    'inner', 'pre', 'post', 'mapping', 'speclinks',
    'libsignal', 'external', 'hidden', 'focus', 'entrypoints', 'view',
    'source-crate', 'target-crate'].forEach(k => params.delete(k));
@@ -358,6 +367,10 @@ function generateShareableURL(): string {
   if (!state.filters.showExecFunctions) params.set('exec', '0');
   if (!state.filters.showProofFunctions) params.set('proof', '0');
   if (state.filters.showSpecFunctions) params.set('spec', '1');
+  if (!state.filters.showAxioms) params.set('axioms', '0');
+  if (state.filters.showTypes) params.set('types', '1');
+  if (state.filters.showProjections) params.set('proj', '1');
+  if (state.filters.showInstances) params.set('inst', '1');
   if (state.projectLanguage !== 'lean') {
     if (!state.filters.showInnerCalls) params.set('inner', '0');
     if (state.filters.showPreconditionCalls) params.set('pre', '1');
@@ -440,6 +453,10 @@ function applyURLFiltersToState(urlFilters: Partial<FilterOptions>): void {
   setCheckbox('show-exec-functions', state.filters.showExecFunctions);
   setCheckbox('show-proof-functions', state.filters.showProofFunctions);
   setCheckbox('show-spec-functions', state.filters.showSpecFunctions);
+  setCheckbox('show-axioms', state.filters.showAxioms);
+  setCheckbox('show-types', state.filters.showTypes);
+  setCheckbox('show-projections', state.filters.showProjections);
+  setCheckbox('show-instances', state.filters.showInstances);
   setCheckbox('show-inner-calls', state.filters.showInnerCalls);
   setCheckbox('show-precondition-calls', state.filters.showPreconditionCalls);
   setCheckbox('show-postcondition-calls', state.filters.showPostconditionCalls);
@@ -476,7 +493,11 @@ const initialFilters: FilterOptions = {
   showSpecLinks: true,            // Show spec theorem edges by default
   showExecFunctions: true,        // Show exec functions by default
   showProofFunctions: true,       // Show proof functions by default
-  showSpecFunctions: false,       // Hide spec functions by default
+  showSpecFunctions: false,       // Hide Verus spec functions by default
+  showAxioms: true,               // Show axioms by default (trusted base)
+  showTypes: false,               // Hide structure/inductive/class nodes by default
+  showProjections: false,         // Hide auto-generated projections by default
+  showInstances: false,           // Hide typeclass instances by default
   showRustNodes: true,            // Show Rust/Verus nodes by default
   showLeanNodes: true,            // Show Lean nodes by default
   showVerifiedNodes: true,        // Show verified nodes by default
@@ -544,6 +565,22 @@ const guideActions: GuideActions = {
     if ('showSpecFunctions' in updates) {
       const el = document.getElementById('show-spec-functions') as HTMLInputElement | null;
       if (el) el.checked = !!updates.showSpecFunctions;
+    }
+    if ('showAxioms' in updates) {
+      const el = document.getElementById('show-axioms') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showAxioms;
+    }
+    if ('showTypes' in updates) {
+      const el = document.getElementById('show-types') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showTypes;
+    }
+    if ('showProjections' in updates) {
+      const el = document.getElementById('show-projections') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showProjections;
+    }
+    if ('showInstances' in updates) {
+      const el = document.getElementById('show-instances') as HTMLInputElement | null;
+      if (el) el.checked = !!updates.showInstances;
     }
     if ('excludeNamePatterns' in updates) {
       const el = document.getElementById('exclude-name-patterns') as HTMLInputElement | null;
@@ -675,6 +712,16 @@ function syncInputsToState(): void {
   state.filters.showExecFunctions = (document.getElementById('show-exec-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showProofFunctions = (document.getElementById('show-proof-functions') as HTMLInputElement)?.checked ?? true;
   state.filters.showSpecFunctions = (document.getElementById('show-spec-functions') as HTMLInputElement)?.checked ?? false;
+  // Kind checkboxes that only exist when the graph contains the kind:
+  // leave the filter untouched when absent so URL-parsed values survive.
+  const axiomsEl = document.getElementById('show-axioms') as HTMLInputElement | null;
+  const typesEl = document.getElementById('show-types') as HTMLInputElement | null;
+  const projectionsEl = document.getElementById('show-projections') as HTMLInputElement | null;
+  const instancesEl = document.getElementById('show-instances') as HTMLInputElement | null;
+  if (axiomsEl) state.filters.showAxioms = axiomsEl.checked;
+  if (typesEl) state.filters.showTypes = typesEl.checked;
+  if (projectionsEl) state.filters.showProjections = projectionsEl.checked;
+  if (instancesEl) state.filters.showInstances = instancesEl.checked;
   state.filters.showVerifiedNodes = (document.getElementById('show-verified-nodes') as HTMLInputElement)?.checked ?? true;
   state.filters.showFailedNodes = (document.getElementById('show-failed-nodes') as HTMLInputElement)?.checked ?? true;
   state.filters.showUnverifiedNodes = (document.getElementById('show-unverified-nodes') as HTMLInputElement)?.checked ?? true;
@@ -1850,6 +1897,13 @@ function renderKindFilters(lang: ProjectLanguage): void {
   const container = document.getElementById('kind-filters-container');
   if (!container) return;
 
+  const kindsPresent = new Set<string>();
+  for (const node of state.fullGraph?.nodes ?? []) {
+    kindsPresent.add(node.kind || 'exec');
+  }
+  const { axiomKinds, typeKinds, projectionKinds, instanceKinds } = getKindSetsForLanguage(lang);
+  const hasKind = (kinds: Set<string>) => [...kinds].some(k => kindsPresent.has(k));
+
   let html = '<h3>Declaration Kind</h3>';
 
   if (lang === 'verus') {
@@ -1866,52 +1920,72 @@ function renderKindFilters(lang: ProjectLanguage): void {
         <input type="checkbox" id="show-spec-functions" />
         <span class="spec-badge">Spec</span>
       </label>`;
-  } else if (lang === 'lean') {
-    html += `
-      <label class="checkbox-label">
-        <input type="checkbox" id="show-exec-functions" checked />
-        <span class="exec-badge">Definitions</span>
-        <small style="color:#888;margin-left:4px">def, abbrev, class, ...</small>
-      </label>
-      <label class="checkbox-label">
-        <input type="checkbox" id="show-proof-functions" checked />
-        <span class="proof-badge">Theorems</span>
-      </label>
-      <label class="checkbox-label">
-        <input type="checkbox" id="show-spec-functions" />
-        <span class="spec-badge">Axioms</span>
-      </label>`;
   } else {
     html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-exec-functions" checked />
         <span class="exec-badge">Definitions</span>
+        <small style="color:#888;margin-left:4px">def, abbrev, ...</small>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="show-proof-functions" checked />
         <span class="proof-badge">Theorems</span>
-      </label>
+      </label>`;
+    // Only render checkboxes for kinds the graph actually contains.
+    if (hasKind(axiomKinds)) {
+      html += `
       <label class="checkbox-label">
-        <input type="checkbox" id="show-spec-functions" />
+        <input type="checkbox" id="show-axioms" checked />
         <span class="spec-badge">Axioms</span>
       </label>`;
+    }
+    if (lang === 'mixed' && kindsPresent.has('spec')) {
+      html += `
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-spec-functions" />
+        <span class="spec-badge">Spec</span>
+      </label>`;
+    }
+    if (hasKind(typeKinds)) {
+      html += `
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-types" />
+        <span class="exec-badge">Types</span>
+        <small style="color:#888;margin-left:4px">structure, inductive, class</small>
+      </label>`;
+    }
+    if (hasKind(projectionKinds)) {
+      html += `
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-projections" />
+        <span class="exec-badge">Projections</span>
+      </label>`;
+    }
+    if (hasKind(instanceKinds)) {
+      html += `
+      <label class="checkbox-label">
+        <input type="checkbox" id="show-instances" />
+        <span class="exec-badge">Instances</span>
+      </label>`;
+    }
   }
 
   container.innerHTML = html;
 
   // Re-attach event listeners
-  document.getElementById('show-exec-functions')?.addEventListener('change', (e) => {
-    state.filters.showExecFunctions = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
-  document.getElementById('show-proof-functions')?.addEventListener('change', (e) => {
-    state.filters.showProofFunctions = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
-  document.getElementById('show-spec-functions')?.addEventListener('change', (e) => {
-    state.filters.showSpecFunctions = (e.target as HTMLInputElement).checked;
-    applyFiltersAndUpdate();
-  });
+  const wireCheckbox = (id: string, apply: (checked: boolean) => void) => {
+    document.getElementById(id)?.addEventListener('change', (e) => {
+      apply((e.target as HTMLInputElement).checked);
+      applyFiltersAndUpdate();
+    });
+  };
+  wireCheckbox('show-exec-functions', c => { state.filters.showExecFunctions = c; });
+  wireCheckbox('show-proof-functions', c => { state.filters.showProofFunctions = c; });
+  wireCheckbox('show-spec-functions', c => { state.filters.showSpecFunctions = c; });
+  wireCheckbox('show-axioms', c => { state.filters.showAxioms = c; });
+  wireCheckbox('show-types', c => { state.filters.showTypes = c; });
+  wireCheckbox('show-projections', c => { state.filters.showProjections = c; });
+  wireCheckbox('show-instances', c => { state.filters.showInstances = c; });
 
   // Sync checkbox state with current filter values
   const setCheckbox = (id: string, checked: boolean) => {
@@ -1921,6 +1995,10 @@ function renderKindFilters(lang: ProjectLanguage): void {
   setCheckbox('show-exec-functions', state.filters.showExecFunctions);
   setCheckbox('show-proof-functions', state.filters.showProofFunctions);
   setCheckbox('show-spec-functions', state.filters.showSpecFunctions);
+  setCheckbox('show-axioms', state.filters.showAxioms);
+  setCheckbox('show-types', state.filters.showTypes);
+  setCheckbox('show-projections', state.filters.showProjections);
+  setCheckbox('show-instances', state.filters.showInstances);
 }
 
 /**
@@ -2562,10 +2640,10 @@ function updateNodeInfo(): void {
 
   const getKindBadge = (kind: string | undefined): string => {
     if (!kind) return '';
-    const { proofKinds, specKinds } = getKindSetsForLanguage(state.projectLanguage);
+    const { proofKinds, specKinds, axiomKinds } = getKindSetsForLanguage(state.projectLanguage);
     let badgeClass = 'exec-badge';
     if (proofKinds.has(kind)) badgeClass = 'proof-badge';
-    else if (specKinds.has(kind)) badgeClass = 'spec-badge';
+    else if (specKinds.has(kind) || axiomKinds.has(kind)) badgeClass = 'spec-badge';
     return `<span class="${badgeClass}" style="font-size: 0.75rem;">${kind}</span>`;
   };
 
@@ -3335,9 +3413,18 @@ function resetFilters(): void {
   if (innerCallsEl) innerCallsEl.checked = true;
   if (preCallsEl) preCallsEl.checked = false;
   if (postCallsEl) postCallsEl.checked = false;
-  (document.getElementById('show-exec-functions') as HTMLInputElement).checked = true;
-  (document.getElementById('show-proof-functions') as HTMLInputElement).checked = true;
-  (document.getElementById('show-spec-functions') as HTMLInputElement).checked = false;
+  // Kind checkboxes are rendered per-language/per-graph, so any of them may be absent.
+  const resetKindCheckbox = (id: string, checked: boolean) => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el) el.checked = checked;
+  };
+  resetKindCheckbox('show-exec-functions', initialFilters.showExecFunctions);
+  resetKindCheckbox('show-proof-functions', initialFilters.showProofFunctions);
+  resetKindCheckbox('show-spec-functions', initialFilters.showSpecFunctions);
+  resetKindCheckbox('show-axioms', initialFilters.showAxioms);
+  resetKindCheckbox('show-types', initialFilters.showTypes);
+  resetKindCheckbox('show-projections', initialFilters.showProjections);
+  resetKindCheckbox('show-instances', initialFilters.showInstances);
   const rustNodesEl = document.getElementById('show-rust-nodes') as HTMLInputElement | null;
   const leanNodesEl = document.getElementById('show-lean-nodes') as HTMLInputElement | null;
   if (rustNodesEl) rustNodesEl.checked = true;

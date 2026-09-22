@@ -80,6 +80,10 @@ function createFilters(overrides: Partial<FilterOptions> = {}): FilterOptions {
     showExecFunctions: true,
     showProofFunctions: true,
     showSpecFunctions: true,
+    showAxioms: true,
+    showTypes: true,
+    showProjections: true,
+    showInstances: true,
     showRustNodes: true,
     showLeanNodes: true,
     showVerifiedNodes: true,
@@ -696,6 +700,43 @@ describe('compileSeededDisplayPredicate', () => {
     );
     expect(pass(mkNode({ kind: 'proof' }))).toBe(false);
     expect(pass(mkNode({ kind: 'exec' }))).toBe(true);
+  });
+
+  it('filters axioms via showAxioms, independent of the Verus spec flag', () => {
+    const noAxioms = compileSeededDisplayPredicate(
+      createFilters({ showAxioms: false, showSpecFunctions: true }), 'lean',
+    );
+    expect(noAxioms(mkNode({ kind: 'axiom' }))).toBe(false);
+    const axiomsOn = compileSeededDisplayPredicate(
+      createFilters({ showAxioms: true, showSpecFunctions: false }), 'lean',
+    );
+    expect(axiomsOn(mkNode({ kind: 'axiom' }))).toBe(true);
+    // Verus spec functions still follow showSpecFunctions, not showAxioms
+    const noSpec = compileSeededDisplayPredicate(
+      createFilters({ showSpecFunctions: false, showAxioms: true }), 'verus',
+    );
+    expect(noSpec(mkNode({ kind: 'spec' }))).toBe(false);
+  });
+
+  it('filters types, projections and instances via their own flags', () => {
+    const hideAll = compileSeededDisplayPredicate(
+      createFilters({ showTypes: false, showProjections: false, showInstances: false }), 'lean',
+    );
+    expect(hideAll(mkNode({ kind: 'structure' }))).toBe(false);
+    expect(hideAll(mkNode({ kind: 'inductive' }))).toBe(false);
+    expect(hideAll(mkNode({ kind: 'class' }))).toBe(false);
+    expect(hideAll(mkNode({ kind: 'projection' }))).toBe(false);
+    expect(hideAll(mkNode({ kind: 'instance' }))).toBe(false);
+    // These stay in the definitions bucket
+    expect(hideAll(mkNode({ kind: 'def' }))).toBe(true);
+    expect(hideAll(mkNode({ kind: 'abbrev' }))).toBe(true);
+    expect(hideAll(mkNode({ kind: 'opaque' }))).toBe(true);
+    const showAll = compileSeededDisplayPredicate(
+      createFilters({ showTypes: true, showProjections: true, showInstances: true }), 'lean',
+    );
+    expect(showAll(mkNode({ kind: 'structure' }))).toBe(true);
+    expect(showAll(mkNode({ kind: 'projection' }))).toBe(true);
+    expect(showAll(mkNode({ kind: 'instance' }))).toBe(true);
   });
 
   it('honors libsignal origin toggles', () => {
