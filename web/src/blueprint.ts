@@ -331,9 +331,10 @@ export class BlueprintVisualization {
       .attr('transform', d => `translate(${d.x},${d.y})`)
       .style('cursor', 'pointer');
 
-    // Append shape based on language-aware kind categories
-    const { proofKinds, specKinds } = getKindSetsForLanguage(this.state.projectLanguage);
-    appendShape(this.nodeSel, proofKinds, specKinds, nodeWidths);
+    // Append shape based on language-aware kind categories.
+    // Axioms keep the spec diamond shape even though they filter separately.
+    const { proofKinds, specKinds, axiomKinds } = getKindSetsForLanguage(this.state.projectLanguage);
+    appendShape(this.nodeSel, proofKinds, new Set([...specKinds, ...axiomKinds]), nodeWidths);
 
     // Style shapes with dual-channel colors
     this.nodeSel.selectAll<SVGElement, D3Node>('.bp-shape')

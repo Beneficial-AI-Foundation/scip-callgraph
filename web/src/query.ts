@@ -12,7 +12,7 @@
 
 import {
   D3Graph, D3Node, D3Link, FilterOptions, ProjectLanguage,
-  getKindSetsForLanguage,
+  compileKindPredicate,
 } from './types';
 import {
   globToRegex, asSubstringGlob, matchesQuery,
@@ -530,15 +530,12 @@ export function compileSeededDisplayPredicate(
   filters: FilterOptions,
   projectLanguage: ProjectLanguage = 'unknown',
 ): (node: D3Node) => boolean {
-  const { proofKinds, specKinds } = getKindSetsForLanguage(projectLanguage);
+  const passesKind = compileKindPredicate(filters, projectLanguage);
   const excludeName = parseExcludePatterns(filters.excludeNamePatterns);
   const excludePath = parseExcludePatterns(filters.excludePathPatterns);
   return (node: D3Node) => {
     if (filters.hiddenNodes.has(node.id)) return false;
-    const kind = node.kind || 'exec';
-    if (proofKinds.has(kind) && !filters.showProofFunctions) return false;
-    if (specKinds.has(kind) && !filters.showSpecFunctions) return false;
-    if (!proofKinds.has(kind) && !specKinds.has(kind) && !filters.showExecFunctions) return false;
+    if (!passesKind(node.kind || 'exec')) return false;
     if (nodeMatchesExcludeNamePattern(node, excludeName)) return false;
     if (nodeMatchesExcludePathPattern(node, excludePath)) return false;
     if (nodeIsFromBuildArtifact(node)) return false;
@@ -561,7 +558,7 @@ export function compileQuery(
   filters: FilterOptions,
   projectLanguage: ProjectLanguage = 'unknown',
 ): CompiledQuery {
-  const { proofKinds, specKinds } = getKindSetsForLanguage(projectLanguage);
+  const passesKind = compileKindPredicate(filters, projectLanguage);
 
   const parsedFilePatterns = parseIncludeFilePatterns(filters.includeFiles);
 
@@ -611,13 +608,7 @@ export function compileQuery(
 
   // -- Traversal predicates --
   const traversalPredicates: TraversalPredicates = {
-    kindFilter: (node: D3Node) => {
-      const kind = node.kind || 'exec';
-      if (proofKinds.has(kind) && !filters.showProofFunctions) return false;
-      if (specKinds.has(kind) && !filters.showSpecFunctions) return false;
-      if (!proofKinds.has(kind) && !specKinds.has(kind) && !filters.showExecFunctions) return false;
-      return true;
-    },
+    kindFilter: (node: D3Node) => passesKind(node.kind || 'exec'),
     excludeNamePatterns: parseExcludePatterns(filters.excludeNamePatterns),
     excludePathPatterns: parseExcludePatterns(filters.excludePathPatterns),
     includeFilePatterns: useFileAsResultFilter ? [] : parsedFilePatterns,
