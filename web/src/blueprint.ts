@@ -3,15 +3,16 @@ import dagreModule from '@dagrejs/dagre';
 const dagre = dagreModule as any;
 import { D3Graph, D3Node, D3Link, GraphState, BorderStatus, FillStatus, DeclKind, getKindSetsForLanguage } from './types';
 import { transitiveReduction } from './graph-utils';
+import { STATUS_COLORS, edgeTypeColor, groupColors, SELECTION_COLOR } from './theme';
 
 // --- Color palettes ---
 
 const BORDER_COLORS: Record<BorderStatus, string> = {
-  verified:  '#22c55e',
-  ready:     '#3b82f6',
-  blocked:   '#ef4444',
+  verified:  STATUS_COLORS['verified'],
+  ready:     STATUS_COLORS['unknown'],
+  blocked:   STATUS_COLORS['failed'],
   not_ready: '#f59e0b',
-  unknown:   '#9ca3af',
+  unknown:   STATUS_COLORS['unverified'],
 };
 
 const FILL_COLORS: Record<FillStatus, string> = {
@@ -23,27 +24,8 @@ const FILL_COLORS: Record<FillStatus, string> = {
 
 // --- File group background palette (soft pastels) ---
 
-const FILE_GROUP_COLORS = [
-  'rgba(66,133,244,0.10)',
-  'rgba(234,67,53,0.10)',
-  'rgba(52,168,83,0.10)',
-  'rgba(251,188,4,0.10)',
-  'rgba(171,71,188,0.10)',
-  'rgba(0,172,193,0.10)',
-  'rgba(255,112,67,0.10)',
-  'rgba(124,179,66,0.10)',
-];
-
-const FILE_GROUP_STROKE_COLORS = [
-  'rgba(66,133,244,0.30)',
-  'rgba(234,67,53,0.30)',
-  'rgba(52,168,83,0.30)',
-  'rgba(251,188,4,0.30)',
-  'rgba(171,71,188,0.30)',
-  'rgba(0,172,193,0.30)',
-  'rgba(255,112,67,0.30)',
-  'rgba(124,179,66,0.30)',
-];
+const FILE_GROUP_COLORS = groupColors(0.10);
+const FILE_GROUP_STROKE_COLORS = groupColors(0.30);
 
 // --- Node shape constants ---
 
@@ -292,14 +274,7 @@ export class BlueprintVisualization {
       .append('path')
       .attr('class', 'bp-link')
       .attr('fill', 'none')
-      .attr('stroke', d => {
-        const t = d.type || 'inner';
-        if (t === 'precondition') return '#e65100';
-        if (t === 'postcondition') return '#c2185b';
-        if (t === 'mapping') return '#7c3aed';
-        if (t === 'spec') return '#0891b2';
-        return '#888';
-      })
+      .attr('stroke', d => edgeTypeColor(d.type, '#888'))
       .attr('stroke-opacity', 0.55)
       .attr('stroke-width', 1.5)
       .attr('stroke-dasharray', d => {
@@ -433,20 +408,20 @@ export class BlueprintVisualization {
         </div>
         ${(lang === 'verus' || lang === 'mixed') ? `
         <div class="bp-legend-item">
-          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#e65100" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
+          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="${edgeTypeColor('precondition')}" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
           <span>Requires</span>
         </div>
         <div class="bp-legend-item">
-          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#c2185b" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
+          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="${edgeTypeColor('postcondition')}" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
           <span>Ensures</span>
         </div>` : ''}
         ${lang === 'mixed' ? `
         <div class="bp-legend-item">
-          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="2,4"/></svg>
+          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="${edgeTypeColor('mapping')}" stroke-width="1.5" stroke-dasharray="2,4"/></svg>
           <span>Mapping</span>
         </div>
         <div class="bp-legend-item">
-          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="3,3"/></svg>
+          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="${edgeTypeColor('spec')}" stroke-width="1.5" stroke-dasharray="3,3"/></svg>
           <span>Specification</span>
         </div>` : ''}
       </div>
@@ -489,7 +464,7 @@ export class BlueprintVisualization {
     // Highlight selected
     this.nodeSel?.selectAll<SVGElement, D3Node>('.bp-shape')
       .attr('stroke-width', d => d.id === node.id ? 4 : 2.5)
-      .attr('stroke', d => d.id === node.id ? '#ff6b6b' : borderColor(d));
+      .attr('stroke', d => d.id === node.id ? SELECTION_COLOR : borderColor(d));
   }
 
   private handleHover(node: D3Node): void {

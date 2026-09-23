@@ -6,37 +6,19 @@ import {
   HierarchyTree, HierarchyGroup, CutMember,
   buildHierarchyTree, computeCut, pruneExpanded, descendantGroupIds,
 } from './hierarchy';
+import { STATUS_COLORS as THEME_STATUS, edgeTypeColor, groupColors } from './theme';
 
 // --- Color palette (matches the Crate Map look) ---
 
-const GROUP_FILL_COLORS = [
-  'rgba(66,133,244,0.12)',
-  'rgba(234,67,53,0.12)',
-  'rgba(52,168,83,0.12)',
-  'rgba(251,188,4,0.12)',
-  'rgba(171,71,188,0.12)',
-  'rgba(0,172,193,0.12)',
-  'rgba(255,112,67,0.12)',
-  'rgba(124,179,66,0.12)',
-];
-
-const GROUP_STROKE_COLORS = [
-  'rgba(66,133,244,0.50)',
-  'rgba(234,67,53,0.50)',
-  'rgba(52,168,83,0.50)',
-  'rgba(251,188,4,0.50)',
-  'rgba(171,71,188,0.50)',
-  'rgba(0,172,193,0.50)',
-  'rgba(255,112,67,0.50)',
-  'rgba(124,179,66,0.50)',
-];
+const GROUP_FILL_COLORS = groupColors(0.12);
+const GROUP_STROKE_COLORS = groupColors(0.50);
 
 const STATUS_COLORS: Record<string, string> = {
-  'verified': '#22c55e',
-  'transitively-verified': '#22c55e',
-  'trusted': '#22c55e',
-  'failed': '#ef4444',
-  'unverified': '#9ca3af',
+  'verified': THEME_STATUS['verified'],
+  'transitively-verified': THEME_STATUS['verified'],
+  'trusted': THEME_STATUS['verified'],
+  'failed': THEME_STATUS['failed'],
+  'unverified': THEME_STATUS['unverified'],
 };
 
 const GROUP_H = 56;
@@ -358,12 +340,7 @@ export class HierarchyMapVisualization {
     // Single fn→fn calls keep the per-type styling; aggregates are grey with
     // width scaled by call count.
     const single = edge.callCount === 1 ? edge.calls[0] : null;
-    const edgeColor = !single ? '#888'
-      : single.type === 'precondition' ? '#e65100'
-      : single.type === 'postcondition' ? '#c2185b'
-      : single.type === 'mapping' ? '#7c3aed'
-      : single.type === 'spec' ? '#0891b2'
-      : '#666';
+    const edgeColor = !single ? '#888' : edgeTypeColor(single.type, '#666');
     const dashArray = single && (single.type === 'precondition' || single.type === 'postcondition') ? '6,3'
       : single?.type === 'mapping' ? '2,4'
       : single?.type === 'spec' ? '3,3'
@@ -453,7 +430,7 @@ export class HierarchyMapVisualization {
         .attr('width', barW * frac)
         .attr('height', 4)
         .attr('rx', 2)
-        .attr('fill', '#22c55e')
+        .attr('fill', THEME_STATUS['verified'])
         .attr('pointer-events', 'none');
     }
 
@@ -468,7 +445,7 @@ export class HierarchyMapVisualization {
 
   private renderFnBox(member: CutMember, pos: { x: number; y: number }, w: number): void {
     const node = member.node!;
-    const stroke = STATUS_COLORS[node.verification_status || ''] || '#3b82f6';
+    const stroke = STATUS_COLORS[node.verification_status || ''] || THEME_STATUS['unknown'];
 
     const box = this.g.append('g')
       .datum(member)
@@ -531,18 +508,18 @@ export class HierarchyMapVisualization {
           <span>Collapsed group</span>
         </div>
         <div class="hm-legend-item">
-          <svg width="24" height="16"><rect x="1" y="1" width="22" height="14" rx="4" fill="#fff" stroke="#22c55e" stroke-width="1.5"/></svg>
+          <svg width="24" height="16"><rect x="1" y="1" width="22" height="14" rx="4" fill="#fff" stroke="${THEME_STATUS['verified']}" stroke-width="1.5"/></svg>
           <span>Function (border = status)</span>
         </div>
         <div class="hm-legend-item">
-          <svg width="24" height="10"><rect x="1" y="3" width="22" height="4" rx="2" fill="#22c55e"/></svg>
+          <svg width="24" height="10"><rect x="1" y="3" width="22" height="4" rx="2" fill="${THEME_STATUS['verified']}"/></svg>
           <span>Verified fraction</span>
         </div>
         <div class="hm-legend-section"><strong>Interactions</strong></div>
-        <div class="hm-legend-item"><span style="font-size:0.75rem; color:#666;">Click group: expand in place</span></div>
-        <div class="hm-legend-item"><span style="font-size:0.75rem; color:#666;">Click container border: collapse</span></div>
-        <div class="hm-legend-item"><span style="font-size:0.75rem; color:#666;">Click function: details panel</span></div>
-        <div class="hm-legend-item"><span style="font-size:0.75rem; color:#666;">Esc: collapse all</span></div>
+        <div class="hm-legend-item"><span style="font-size:0.75rem; color:var(--pg-text-muted);">Click group: expand in place</span></div>
+        <div class="hm-legend-item"><span style="font-size:0.75rem; color:var(--pg-text-muted);">Click container border: collapse</span></div>
+        <div class="hm-legend-item"><span style="font-size:0.75rem; color:var(--pg-text-muted);">Click function: details panel</span></div>
+        <div class="hm-legend-item"><span style="font-size:0.75rem; color:var(--pg-text-muted);">Esc: collapse all</span></div>
       </div>
     `;
     this.container.appendChild(legend);

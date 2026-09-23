@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>probegraph viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -75,17 +78,17 @@
             <h3>Verification Status</h3>
             <label class="checkbox-label">
               <input type="checkbox" id="show-verified-nodes" checked />
-              <span class="legend-dot" style="background: #4ade80; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;"></span>
+              <span class="legend-dot status-verified"></span>
               <span>Verified / Trusted</span>
             </label>
             <label class="checkbox-label">
               <input type="checkbox" id="show-failed-nodes" checked />
-              <span class="legend-dot" style="background: #ef4444; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;"></span>
+              <span class="legend-dot status-failed"></span>
               <span>Failed</span>
             </label>
             <label class="checkbox-label">
               <input type="checkbox" id="show-unverified-nodes" checked />
-              <span class="legend-dot" style="background: #9ca3af; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px;"></span>
+              <span class="legend-dot status-unverified"></span>
               <span>Unverified / Unknown</span>
             </label>
           </div>
@@ -100,7 +103,7 @@
                 class="search-input"
               />
             </label>
-            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+            <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
               💡 Matches function names. <code>*_comm*</code> excludes <code>lemma_commutativity</code>
             </small>
           </div>
@@ -123,7 +126,7 @@
                 class="search-input"
               />
             </label>
-            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+            <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
               💡 Matches node paths. <code>*/specs/*</code> excludes all spec functions
             </small>
           </div>
@@ -143,7 +146,7 @@
                 <!-- Populated dynamically when ambiguous filename is detected -->
               </div>
             </div>
-            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+            <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
               💡 Empty = all files. Use path like <code>ifma/edwards.rs</code> to disambiguate
             </small>
             <details class="file-list-details">
@@ -174,7 +177,7 @@
                 class="search-input"
               />
             </label>
-            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.5rem;">
+            <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.5rem;">
               💡 <strong>Source only:</strong> what it calls<br>
               💡 <strong>Sink only:</strong> who calls it<br>
               💡 <strong>Both:</strong> paths between them<br>
@@ -197,7 +200,7 @@
                 <option value="">--</option>
               </select>
             </label>
-            <small id="crate-boundary-hint" style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.5rem;">
+            <small id="crate-boundary-hint" style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.5rem;">
               💡 Select two crates to see the <strong>boundary</strong>: functions in the source crate called by the target crate.<br>
               💡 In Crate Map: click a crate to set source, click another to set target.
             </small>
@@ -240,7 +243,7 @@
             <button id="show-all-hidden" class="btn btn-secondary" style="margin-top: 0.5rem;">
               👁️ Show All
             </button>
-            <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+            <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
               💡 Shift+click to hide nodes
             </small>
           </div>
@@ -250,7 +253,7 @@
           <h2>📈 Statistics</h2>
           <div id="stats" class="stats-container">
             <p>No graph loaded.</p>
-            <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+            <p style="font-size: 0.85rem; color: var(--pg-text-muted); margin-top: 0.5rem;">
               💡 You can also load via URL:<br>
               <code style="font-size: 0.75rem;">?json=https://url-to-graph.json</code>
             </p>
@@ -261,27 +264,27 @@
           <h2>🎨 Verification Legend</h2>
           <div class="legend-container">
             <div class="legend-item">
-              <span class="legend-dot" style="background: #4ade80;"></span>
+              <span class="legend-dot status-verified"></span>
               <span>Verified</span>
             </div>
             <div class="legend-item">
-              <span class="legend-dot" style="background: #15803d;"></span>
+              <span class="legend-dot status-transitively-verified"></span>
               <span>Transitively verified</span>
             </div>
             <div class="legend-item">
-              <span class="legend-dot" style="background: #a855f7;"></span>
+              <span class="legend-dot status-trusted"></span>
               <span>Trusted</span>
             </div>
             <div class="legend-item">
-              <span class="legend-dot" style="background: #ef4444;"></span>
+              <span class="legend-dot status-failed"></span>
               <span>Failed</span>
             </div>
             <div class="legend-item">
-              <span class="legend-dot" style="background: #9ca3af;"></span>
+              <span class="legend-dot status-unverified"></span>
               <span>Unverified</span>
             </div>
             <div class="legend-item">
-              <span class="legend-dot" style="background: #3b82f6;"></span>
+              <span class="legend-dot status-unknown"></span>
               <span>Unknown</span>
             </div>
           </div>
