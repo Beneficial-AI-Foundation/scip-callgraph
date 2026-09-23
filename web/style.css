@@ -11,6 +11,7 @@
   --pg-bg: #f6f8fa;
   --pg-surface: #ffffff;
   --pg-surface-muted: #fafafc;
+  --pg-canvas: #f2f7fd;
   --pg-border: #d6dce0;
   --pg-border-soft: #eaeef2;
   --pg-text: #24292f;
@@ -716,7 +717,7 @@ select.search-input {
   display: flex;
   flex-direction: column;
   position: relative;
-  background: var(--pg-surface);
+  background: var(--pg-canvas);
 }
 
 .query-label {
