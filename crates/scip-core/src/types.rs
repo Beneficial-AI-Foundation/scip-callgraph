@@ -12,44 +12,61 @@ use std::collections::HashSet;
 // =============================================================================
 // SCIP Index Types (from SCIP JSON format)
 // =============================================================================
+//
+// These structs must tolerate missing fields: `scip print --json` uses proto3
+// JSON serialization, which omits any field holding its default value (0,
+// empty string, empty list, unset message). Every field that can legally be
+// a protobuf default therefore carries #[serde(default)].
 
 /// Root structure of a SCIP JSON index file
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ScipIndex {
     pub metadata: Metadata,
+    #[serde(default)]
     pub documents: Vec<Document>,
 }
 
 /// SCIP metadata about the indexed project
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Metadata {
+    #[serde(default)]
     pub tool_info: ToolInfo,
+    #[serde(default)]
     pub project_root: String,
+    #[serde(default)]
     pub text_document_encoding: i32,
 }
 
 /// Information about the tool that generated the SCIP index
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ToolInfo {
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub version: String,
 }
 
 /// A document (source file) in the SCIP index
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Document {
+    #[serde(default)]
     pub language: String,
+    #[serde(default)]
     pub relative_path: String,
+    #[serde(default)]
     pub occurrences: Vec<Occurrence>,
     #[serde(default)]
     pub symbols: Vec<Symbol>,
+    #[serde(default)]
     pub position_encoding: i32,
 }
 
 /// An occurrence of a symbol in the source code
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Occurrence {
+    #[serde(default)]
     pub range: Vec<i32>,
+    #[serde(default)]
     pub symbol: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub symbol_roles: Option<i32>,
@@ -58,21 +75,27 @@ pub struct Occurrence {
 /// A symbol definition in the SCIP index
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Symbol {
+    #[serde(default)]
     pub symbol: String,
+    #[serde(default)]
     pub kind: i32,
     pub display_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub documentation: Option<Vec<String>>,
+    #[serde(default)]
     pub signature_documentation: SignatureDocumentation,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enclosing_symbol: Option<String>,
 }
 
 /// Signature documentation for a symbol
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct SignatureDocumentation {
+    #[serde(default)]
     pub language: String,
+    #[serde(default)]
     pub text: String,
+    #[serde(default)]
     pub position_encoding: i32,
 }
 
@@ -266,6 +289,60 @@ mod tests {
         assert_eq!(exec, DeclKind::Exec);
         assert_eq!(proof, DeclKind::Proof);
         assert_eq!(spec, DeclKind::Spec);
+    }
+
+    // ==========================================================================
+    // SCIP proto3 JSON tests — fields at their protobuf default are omitted
+    // ==========================================================================
+
+    // Shape emitted by scip CLI >= v0.9: signature_documentation without
+    // position_encoding, symbols without kind/display_name, plus unknown
+    // TypedRange keys (regression test for the downstream pipeline break).
+    #[test]
+    fn test_scip_index_parses_proto3_json_with_omitted_defaults() {
+        let json = r#"{
+            "metadata": {
+                "tool_info": {"name": "rust-analyzer", "version": "0.3.2593-standalone"},
+                "project_root": "file:///tmp/project"
+            },
+            "documents": [{
+                "language": "rust",
+                "relative_path": "src/lib.rs",
+                "occurrences": [
+                    {"range": [3, 7, 16], "TypedRange": null, "symbol": "rust-analyzer cargo quicksort 0.1.0 quicksort().", "symbol_roles": 1, "TypedEnclosingRange": null}
+                ],
+                "symbols": [
+                    {"symbol": "rust-analyzer cargo quicksort 0.1.0 crate/", "signature_documentation": {"language": "rust", "text": "extern crate quicksort"}}
+                ],
+                "position_encoding": 1
+            }]
+        }"#;
+
+        let index: ScipIndex = serde_json::from_str(json).unwrap();
+
+        assert_eq!(index.metadata.text_document_encoding, 0);
+        assert_eq!(index.documents.len(), 1);
+        let doc = &index.documents[0];
+        assert_eq!(doc.occurrences.len(), 1);
+        let sym = &doc.symbols[0];
+        assert_eq!(sym.kind, 0);
+        assert_eq!(sym.display_name, None);
+        assert_eq!(sym.signature_documentation.position_encoding, 0);
+    }
+
+    #[test]
+    fn test_scip_index_parses_minimal_document() {
+        // A document with no occurrences/symbols/position_encoding at all.
+        let json = r#"{
+            "metadata": {"tool_info": {"name": "x", "version": "1"}, "project_root": "file:///p", "text_document_encoding": 1},
+            "documents": [{"language": "rust", "relative_path": "src/empty.rs"}]
+        }"#;
+
+        let index: ScipIndex = serde_json::from_str(json).unwrap();
+        let doc = &index.documents[0];
+        assert!(doc.occurrences.is_empty());
+        assert!(doc.symbols.is_empty());
+        assert_eq!(doc.position_encoding, 0);
     }
 
     // ==========================================================================
