@@ -88,7 +88,7 @@ on:
         default: ''
         type: string
       rust_version:
-        description: 'Rust toolchain version (must be compatible with the Verus version). Defaults to 1.84.0.'
+        description: 'Rust toolchain version (must be compatible with the Verus version). Defaults to 1.91.0.'
         required: false
         default: '1.91.0'
         type: string

@@ -1,129 +1,77 @@
-# Interactive Call Graph Viewer - Architecture
+# Interactive Graph Viewer - Architecture
 
 ## System Overview
 
 The viewer consumes JSON produced by **language-specific probes** — standalone
-tools that extract call graphs and verification metadata from formally verified
-codebases.  Two probes are currently supported:
+tools that extract dependency graphs and verification metadata from formally
+verified codebases:
 
 | Probe | Language | Repository |
 |-------|----------|------------|
 | **probe-verus** | Verus / Rust | [Beneficial-AI-Foundation/probe-verus](https://github.com/Beneficial-AI-Foundation/probe-verus) |
+| **probe-rust** | Rust | [Beneficial-AI-Foundation/probe-rust](https://github.com/Beneficial-AI-Foundation/probe-rust) |
 | **probe-lean** | Lean 4 | [Beneficial-AI-Foundation/probe-lean](https://github.com/Beneficial-AI-Foundation/probe-lean) |
+| **probe-aeneas** | Rust → Lean translation | [Beneficial-AI-Foundation/probe-aeneas](https://github.com/Beneficial-AI-Foundation/probe-aeneas) |
+
+Single-probe output is an **atom dict** (see Input Formats). `probe merge`
+combines outputs from several probes into one mixed-language graph; the loader
+resolves cross-project dependencies and synthesizes Rust↔Lean mapping edges
+from the Aeneas translation metadata.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   LANGUAGE-SPECIFIC PROBES                  │
-│                                                             │
-│  ┌───────────────┐          ┌──────────────┐                │
-│  │  probe-verus  │          │  probe-lean  │                │
-│  │ (Rust / Verus)│          │  (Lean 4)    │                │
-│  └──────┬────────┘          └──────┬───────┘                │
-│         │                          │                        │
-│         │  SCIP index → atoms      │  Lean env → atoms      │
-│         ▼                          ▼                        │
-│  ┌────────────────────────────────────────┐                 │
-│  │          Probe Atom Dict JSON          │                 │
-│  │  (or Schema 2.0 envelope with atoms)   │                 │
-│  │                                        │                 │
-│  │  { "probe:fn_name": {                  │                 │
-│  │      "display-name": "fn_name",        │                 │
-│  │      "dependencies": [...],            │                 │
-│  │      "code-path": "src/lib.rs",        │                 │
-│  │      "code-text": { lines-start, … },  │                 │
-│  │      "kind": "exec" | "theorem" | …,   │                 │
-│  │      "verification-status": "verified" │                 │
-│  │    }, …                                │                 │
-│  │  }                                     │                 │
-│  └──────────────────┬─────────────────────┘                 │
-│                     │ graph.json                            │
-└─────────────────────┼───────────────────────────────────────┘
-                      │
-          OR  ────────┼──── probe-verus Rust pipeline
-                      │     also emits D3 format directly
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│              TYPESCRIPT + D3.JS FRONTEND                    │
-│                                                             │
-│  ┌──────────────┐                                           │
-│  │ Graph Loader │──→ Normalize probe output to D3Graph      │
-│  │              │    - Atom dict → convertAtomDictToD3Graph │
-│  │              │    - Schema 2.0 envelope → unwrap + recurse│
-│  │              │    - D3Graph → pass-through               │
-│  └──────┬───────┘    - URL parameter / file upload          │
-│         │            - Large file detection                 │
-│         ▼                                                   │
-│  ┌──────────────┐   ┌───────────────┐                       │
-│  │    Query     │◄──│  UI Controls  │                       │
-│  │   Pipeline   │   └───────────────┘                       │
-│  └──────┬───────┘    - Source/sink queries                  │
-│         │            - Function mode toggles                │
-│         │            - Call type toggles                    │
-│         │            - Exclude/include patterns             │
-│         │            - Depth slider                         │
-│         ▼                                                   │
-│  ┌──────────────┐                                           │
-│  │  View Layer  │──→ Three visualization modes              │
-│  │              │    - Call Graph (D3 force-directed)       │
-│  │              │    - File Map (Dagre, grouped by file)    │
-│  │              │    - Crate Map (Dagre, crate-level)       │
-│  └──────┬───────┘    - Zoom/pan controls                    │
-│         │            - Interactive highlighting             │
-│         ▼                                                   │
-│  ┌──────────────┐                                           │
-│  │  SVG Canvas  │──→ Rendered graph                         │
-│  └──────────────┘                                           │
-│                                                             │
-│  ┌──────────────┐                                           │
-│  │  VS Code     │──→ Optional webview integration           │
-│  │  Integration │    - Bidirectional messaging              │
-│  └──────────────┘    - Navigate to source files             │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+  probe-verus / probe-rust        probe-lean          probe-aeneas
+  (SCIP index → atoms)        (Lean env → atoms)   (translation map)
+          └──────────────┬──────────┴──────────────────┘
+                         ▼
+              atom dict JSON, usually wrapped
+              in a schema envelope with provenance
+                         │  graph.json
+                         ▼
+              ┌─────────────────────┐
+              │     Graph Loader    │  normalize to D3Graph
+              └──────────┬──────────┘
+                         ▼
+              ┌─────────────────────┐   ┌──────────────┐
+              │    Query Pipeline   │◄──│ UI Controls  │
+              └──────────┬──────────┘   └──────────────┘
+                         ▼
+              ┌─────────────────────┐
+              │      View Layer     │  Call Graph / File Map /
+              └──────────┬──────────┘  Crate Map (Lean: Namespace Map)
+                         ▼
+                    SVG canvas         + Guide panel, VS Code webview
 ```
 
 ## Data Flow
 
-### 1. Probe Phase (Language-Specific)
+**Verus / Rust path**: `verus-analyzer scip` (or `rust-analyzer scip`) →
+`index.scip` → `scip print --json` → probe pipeline (parse, build call graph,
+convert to atoms) → atom dict or D3 JSON. The Rust side of this pipeline lives
+in `crates/scip-core`; see `docs/technical/scip-core-architecture.md`.
 
-Each probe extracts a call graph from its target language and writes a JSON file.
+**Lean path**: `probe-lean extract` reads the Lean environment and writes the
+atom dict directly. No Rust processing.
 
-**Verus / Rust path** (probe-verus):
-```
-Source .rs → verus-analyzer scip → index.scip → scip print --json → index.scip.json
-                                                                          ↓
-                                              probe-verus (Rust library)
-                                              parse_scip_json → build_call_graph
-                                              → convert_to_atoms → atoms_to_d3_graph
-                                                                          ↓
-                                                                    graph.json (D3 format)
-```
+**Merged path**: `probe merge` joins several probe outputs; atoms keep
+`*-dependencies-external` entries that the loader resolves against the merged
+atom set, plus `translation-*` fields from Aeneas that become mapping edges.
 
-**Lean path** (probe-lean):
-```
-Source .lean → probe-lean extract → graph.json (atom dict or Schema 2.0 envelope)
-```
-
-Both paths produce a JSON file consumed by the web viewer.
-
-### 2. Visualization Phase (TypeScript)
+In the browser:
 
 ```
-Load JSON → Normalize → Initial State → User Interaction → Filter → View Dispatch → Render
-    ↓           ↓            ↓                ↓               ↓           ↓            ↓
-graph.json  Detect       Full Graph      Source/Sink     Path Finding  Call Graph   New SVG
-            format:      + crate_name    Depth Slider    BFS/DFS      File Map     Layout
-            atom dict    backfill        Crate Boundary  Boundary      Crate Map
-            / D3 / 2.0                   Hide Node
+Load JSON → Normalize (graph-loader) → Full graph + crate_name backfill
+          → User interaction → Query pipeline (compile → execute)
+          → View dispatch → Render
 ```
 
 ## Input Formats
 
-The web viewer accepts three JSON formats, all auto-detected by the graph loader:
+The loader (`parseAndNormalizeGraph` in `src/graph-loader.ts`) auto-detects
+four formats:
 
-### 1. Probe Atom Dict (primary input from probes)
+### 1. Probe atom dict (primary)
 
-The native output of probe-verus and probe-lean. A flat object keyed by atom ID:
+A flat object keyed by atom ID:
 
 ```json
 {
@@ -132,9 +80,9 @@ The native output of probe-verus and probe-lean. A flat object keyed by atom ID:
     "dependencies": ["probe:other_fn"],
     "code-path": "src/lib.rs",
     "code-text": { "lines-start": 10, "lines-end": 25 },
-    "code-module": "my_crate::module",
     "kind": "exec",
     "verification-status": "verified",
+    "language": "rust",
     "dependencies-with-locations": [
       { "code-name": "probe:other_fn", "location": "inner", "line": 15 }
     ]
@@ -142,397 +90,160 @@ The native output of probe-verus and probe-lean. A flat object keyed by atom ID:
 }
 ```
 
-### 2. Schema 2.0 Envelope (probe output with metadata)
+Atoms may also carry `is-public-api`, `attributes`, `specs`,
+`translation-name` / `translation-path` / `translation-text`, `rust-source`,
+and `type-/term-dependencies-external`. The full field list is the
+`ProbeAtom` interface in `src/types.ts`.
 
-Wraps an atom dict with provenance metadata. The loader unwraps and recurses:
+### 2. Schema envelope
+
+Wraps an atom dict with provenance. Current probe output is
+`"schema-version": "3.0"`; the loader accepts any version that has
+`schema-version` and a `data` payload (`isSchema2Envelope` in `types.ts`).
+Merged graphs carry an `inputs[]` array with one `source` per probe run
+instead of a single `source`:
 
 ```json
 {
-  "schema": "probe-output",
-  "schema-version": "2.0",
-  "tool": { "name": "probe-lean", "version": "0.3.0", "command": "extract" },
-  "source": { "repo": "...", "commit": "...", "language": "lean", ... },
-  "timestamp": "2026-03-10T...",
+  "schema": "probe-lean/extract",
+  "schema-version": "3.0",
+  "tool": { "name": "probe-lean", "version": "0.14.0", "command": "extract" },
+  "source": { "repo": "...", "commit": "...", "language": "lean", "package": "Spqr" },
   "data": { /* atom dict */ }
 }
 ```
 
-### 3. D3Graph (legacy / direct Rust pipeline output)
+The loader extracts per-language GitHub source configs from `source` /
+`inputs[]` (repo, commit as git ref, package as path prefix for Rust
+workspace crates) so the viewer can link nodes to source across a
+multi-repo merge (`pickSourceConfig`).
 
-The Verus Rust pipeline (`atoms_to_d3_graph`) can emit this format directly:
+### 3. D3Graph
 
-```json
-{
-  "nodes": [{ "id": "...", "display_name": "...", ... }],
-  "links": [{ "source": "...", "target": "...", "type": "inner" }],
-  "metadata": { "total_nodes": 42, "total_edges": 60, ... }
-}
-```
+`{ nodes, links, metadata }` — the viewer's internal format, accepted
+directly (emitted by the Rust pipeline's `atoms_to_d3_graph` and by
+`export_call_graph_d3`).
 
-## Component Breakdown
+### 4. Simplified format
 
-### Rust Components (probe-verus pipeline)
+An array of nodes with `identifier` / `deps` fields
+(`convertSimplifiedToD3Graph`). Legacy.
 
-The Rust backend is used only on the **Verus path**. probe-lean writes its JSON
-directly; no Rust processing is needed.
+## Graph Loader
 
-#### 1. **Data Structures** (`crates/scip-core/src/scip_to_call_graph_json.rs`)
-```rust
-/// Verus function modes
-enum FunctionMode {
-    Exec,   // Executable code (default)
-    Proof,  // Proof functions (lemmas)
-    Spec,   // Specification functions
-}
+`convertAtomDictToD3Graph()` does more than field mapping:
 
-struct D3Node {
-    id: String,
-    display_name: String,
-    symbol: String,
-    full_path: String,
-    relative_path: String,
-    file_name: String,
-    parent_folder: String,
-    start_line: Option<usize>,   // Line range for source navigation
-    end_line: Option<usize>,
-    is_libsignal: bool,
-    dependencies: Vec<String>,   // Outgoing edges (what I call)
-    dependents: Vec<String>,     // Incoming edges (who calls me)
-    mode: FunctionMode,          // Verus function mode
-    verification_status: Option<String>,  // verified/failed/unverified
-    similar_lemmas: Option<Vec<SimilarLemma>>,
-}
+- **Entry points** (`is_entry_point`): set for atoms marked `is-public-api`,
+  for their Lean translation targets (the Aeneas mapping join — these have
+  in-project callers, so degree-based seeding would hide them), and for Lean
+  atoms with the `blueprint` attribute. Used as the preferred seed tier for
+  the seeded initial view on large graphs.
+- **Link synthesis**: `dependencies-with-locations` become typed edges
+  (`inner` / `precondition` / `postcondition`); edges between atoms of
+  different languages become `mapping` edges; `translation-name` adds an
+  explicit Rust→Lean `mapping` edge; `specs` entries add spec-theorem →
+  definition `spec` edges.
+- **Merge resolution**: `*-dependencies-external` names that resolve in the
+  loaded atom set (after `probe merge`) become ordinary edges.
+- **`crate_name` backfill** happens at load time via `extractCrateName()`
+  (`types.ts`): first path segment of the SCIP/probe ID for Rust, first two
+  path segments of `relative_path` for Lean, per-node in mixed graphs. The
+  Crate Map partitions on this value.
 
-struct D3Link {
-    source: String,        // Node ID
-    target: String,        // Node ID
-    type: String,          // "inner" | "precondition" | "postcondition"
-}
+## TypeScript Components
 
-struct D3Graph {
-    nodes: Vec<D3Node>,
-    links: Vec<D3Link>,
-    metadata: D3GraphMetadata,
-}
-```
+| Module | Role |
+|--------|------|
+| `src/types.ts` | All shared types (`D3Node`, `FilterOptions`, `GraphState`, kind sets, verification statuses). The type definitions there are authoritative; they are not duplicated here. |
+| `src/graph-loader.ts` | Format detection and normalization (above) |
+| `src/query.ts`, `src/filters.ts` | Compile → execute query pipeline. See `QUERY_PIPELINE.md`. |
+| `src/graph.ts` | Call Graph view (layered force layout, auto-fit camera) |
+| `src/blueprint.ts` | File Map view (dagre compound layout, dual-channel coloring) |
+| `src/crate-map.ts` | Crate Map / Namespace Map view (quotient graph, 3 drill-down modes) |
+| `src/graph-utils.ts` | Seed tiers and budgeted expansion for the seeded initial view, transitive reduction |
+| `src/guide/` | Static-analysis Guide panel (graph summary, suggested queries — no LLM) |
+| `src/main.ts` | State, URL handling, view dispatch, VS Code messaging |
 
-#### 2. **Export Function**
-```rust
-pub fn atoms_to_d3_graph(
-    atoms: &HashMap<String, AtomWithLines>,
-    call_graph: &HashMap<String, FunctionNode>,
-    project_root: &str,
-    github_url: Option<String>,
-) -> D3Graph
-```
+Per-view layout and encoding algorithms are specified in
+[`docs/technical/`](docs/technical/README.md).
 
-**Responsibilities:**
-- Convert probe-verus atoms to D3 format
-- Detect Verus function modes (exec/proof/spec)
-- Pre-compute dependencies and dependents for O(1) browser lookups
-- Classify call locations (body, requires, ensures)
-- Add metadata (timestamps, totals, GitHub URL)
+The third view is labeled **Crate Map** for Rust graphs and **Namespace Map**
+for Lean graphs (`main.ts`, `crate-map.ts`); the partitioning is the
+`extractCrateName` value either way.
 
-### TypeScript Components
+## URL Integration
 
-#### 1. **Type System** (`src/types.ts`)
-```typescript
-type FunctionMode = 'exec' | 'proof' | 'spec';
-type VerificationStatus = 'verified' | 'failed' | 'unverified';
-type LinkType = 'inner' | 'precondition' | 'postcondition';
+Graph sources: `?json=` (alias `?url=`) loads from a URL, `?github=` sets the
+source-link base, `?github_prefix=` / `?prefix=` set the path prefix;
+`VITE_GRAPH_JSON_URL`, `VITE_GITHUB_URL`, `VITE_GITHUB_BRANCH`,
+`VITE_GITHUB_PATH_PREFIX` are the build-time equivalents. Filter state,
+view selection, crate boundary, `?focus=` and `?entrypoints=` payload URLs
+are all shareable; the full parameter table is in `QUERY_PIPELINE.md` §7.
 
-interface D3Node {
-  id: string;
-  display_name: string;
-  symbol: string;
-  full_path: string;
-  relative_path: string;
-  file_name: string;
-  parent_folder: string;
-  start_line?: number;
-  end_line?: number;
-  is_libsignal: boolean;
-  dependencies: string[];    // Pre-computed for O(1) lookup
-  dependents: string[];
-  mode: FunctionMode;
-  verification_status?: VerificationStatus;
-  similar_lemmas?: SimilarLemma[];
-  // D3-specific properties (added during simulation):
-  x?: number;
-  y?: number;
-  vx?: number;
-  vy?: number;
-  fx?: number | null;
-  fy?: number | null;
-}
+## Performance
 
-interface FilterOptions {
-  // Source type filters
-  showLibsignal: boolean;
-  showNonLibsignal: boolean;
-  // Call type filters
-  showInnerCalls: boolean;         // Body calls (default: true)
-  showPreconditionCalls: boolean;  // requires clauses (default: false)
-  showPostconditionCalls: boolean; // ensures clauses (default: false)
-  // Function mode filters (Verus)
-  showExecFunctions: boolean;      // Executable functions (default: true)
-  showProofFunctions: boolean;     // Proof/lemma functions (default: true)
-  showSpecFunctions: boolean;      // Spec functions (default: false)
-  // Pattern-based exclusion
-  excludeNamePatterns: string;     // Glob patterns for function names
-  excludePathPatterns: string;     // Glob patterns for file paths
-  includeFiles: string;            // Only show functions from these files
-  // Graph traversal
-  maxDepth: number | null;
-  sourceQuery: string;             // Source nodes (shows callees)
-  sinkQuery: string;               // Sink nodes (shows callers)
-  // Selection state
-  selectedNodes: Set<string>;
-  expandedNodes: Set<string>;
-  hiddenNodes: Set<string>;        // User-hidden nodes (Shift+click)
-}
-```
-
-#### 2. **Crate-Level Types** (`src/types.ts`)
-
-In addition to `D3Node` and `D3Link`, the type system includes crate-level aggregation types:
-
-```typescript
-interface CrateNode {
-  name: string;
-  functionCount: number;
-  fileCount: number;
-  nodeIds: string[];
-  isExternal: boolean;
-}
-
-interface CrateEdge {
-  source: string;          // Source crate name
-  target: string;          // Target crate name
-  callCount: number;
-  calls: Array<{ sourceId: string; targetId: string; type: string }>;
-}
-
-interface CrateGraph {
-  nodes: CrateNode[];
-  edges: CrateEdge[];
-}
-```
-
-Each `D3Node` also carries a `crate_name` field, backfilled on load via `extractCrateName()` which parses the crate name from the node's SCIP/probe ID prefix.
-
-#### 3. **Query Pipeline** (`src/query.ts`)
-
-The filter/traversal system is a composable pipeline following a compile → execute pattern:
-
-```
-FilterOptions → compileQuery() → CompiledQuery → executeQuery() → D3Graph
-```
-
-- **Compiler** (`compileQuery`): Pure function that translates `FilterOptions` into a `CompiledQuery` containing a `GraphQuery` AST (7 discriminated-union variants), traversal predicates, display predicates, focus config, and link-type filter. No graph access.
-- **Executor** (`executeQuery`): 7-step pipeline that evaluates the compiled query against a full graph:
-  1. Build traversable subgraph (traversal predicates)
-  2. Resolve node matchers (patterns → concrete IDs)
-  3. Dispatch traversal (BFS/DFS/boundary scan)
-  4. Assemble result nodes
-  5. Apply display predicates
-  6. Filter links (endpoint, depth-tree, link-type)
-  7. Remove isolated nodes, build depth metadata
-- **9 operators**: Pure functions (`selectNodes`, `traverseForward`, `traverseBackward`, `traverseBidirectional`, `findPaths`, `crateBoundary`, `filterLinksByType`, `depthFilterLinks`, `removeIsolated`).
-
-The public entry point is `applyFilters()` in `filters.ts`, which calls `compileQuery` then `executeQuery`. See `QUERY_PIPELINE.md` for full details.
-
-#### 3a. **Pattern Utilities** (`src/filters.ts`)
-
-Provides query-matching functions used by the pipeline's resolver:
-
-- `matchesQuery()`: Substring, glob, path-qualified (`edwards::decompress`), and crate-qualified (`crate:name`) matching
-- `globToRegex()`: Convert glob patterns to anchored regexes
-- `pathPatternToRegex()`: Convert path patterns with `**` / `*` / `?` to regexes
-
-Also exports `getCallers()` and `getCallees()` for immediate (non-recursive) neighbor lookup.
-
-#### 3b. **Graph Loader** (`src/graph-loader.ts`)
-
-The central adapter that normalizes probe output into a unified `D3Graph`.
-`parseAndNormalizeGraph()` auto-detects the input format and dispatches:
-
-- **Probe atom dict** → `convertAtomDictToD3Graph()` (primary path for probe-verus / probe-lean)
-- **Schema 2.0 envelope** → unwrap `data` payload, recurse
-- **D3Graph format** → direct pass-through (legacy Rust pipeline output)
-- **Simplified format** → `convertSimplifiedToD3Graph()` (array of nodes with `deps`)
-
-#### 4. **D3 Visualization** (`src/graph.ts`)
-
-**Topological Layout:**
-The graph uses a layered layout based on call depth:
-1. Compute topological depth for each node (roots at depth 0)
-2. Use `forceX` to keep nodes at their depth layer
-3. Use `forceY` for vertical spread within layers
-4. Standard collision and charge forces for spacing
-
-**Node Coloring (by verification status):**
-- ✓ Verified: Green (#22c55e)
-- ✗ Failed: Red (#ef4444)
-- ○ Unverified: Grey (#9ca3af)
-- ? Unknown: Blue (#3b82f6)
-
-**Link Styling (by call type):**
-- Inner (body): Solid grey line
-- Precondition (requires): Dashed orange line
-- Postcondition (ensures): Dashed pink line
-
-#### 4b. **File Map View** (`src/blueprint.ts`)
-
-Dagre-based hierarchical layout that groups functions by file using compound graph nodes. Each file becomes a box containing its function nodes, with cross-file edges drawn between them. Uses the same node coloring as Call Graph but provides a cleaner file-level view.
-
-#### 4c. **Crate Map View** (`src/crate-map.ts`)
-
-Aggregates the function-level graph into a crate-level overview:
-
-- `buildCrateGraph()`: Transforms `D3Graph` into `CrateGraph` by grouping nodes by `crate_name` and counting cross-crate edges.
-- **Collapsed mode**: Renders crates as boxes with function/file counts, edges weighted by call count.
-- **Edge expansion**: Clicking a cross-crate edge expands both crates inline to show the individual function calls, using Dagre compound layout.
-- **Crate boundary**: Selecting two crates (by click or dropdown) renders an inline view of all functions at their interface, with a "View in Call Graph" navigation button.
-- **Dependency-aware dropdowns**: Bidirectional filtering — when a source crate is selected, the target dropdown is filtered to only crates the source actually calls into; conversely, when a target crate is selected, the source dropdown is filtered to only crates that call into the target (both derived from `CrateGraph` edges).
-
-#### 5. **Main Application** (`src/main.ts`)
-
-**State Management:**
-```typescript
-let state: GraphState = {
-  fullGraph: D3Graph | null,      // Original unfiltered data
-  filteredGraph: D3Graph | null,  // After all filters applied
-  filters: FilterOptions,         // Current filter state
-  selectedNode: D3Node | null,    // For details panel
-  hoveredNode: D3Node | null,     // For highlighting
-}
-
-// View management
-let activeView: 'callgraph' | 'blueprint' | 'crate-map';
-let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVisualization;
-let crateDependencyMap: Map<string, Set<string>>;         // source crate → set of target crates
-let crateReverseDependencyMap: Map<string, Set<string>>;  // target crate → set of source crates
-```
-
-**URL Integration:**
-- Shareable URLs with filter state encoded
-- `?json=URL` to load graph from external URL
-- `?github=URL` to set GitHub base for source links
-- `?view=crate-map` or `?view=blueprint` to set the active view
-- `?source=query&sink=query&depth=N` for filter presets
-- `?source-crate=A&target-crate=B` for crate boundary selection
-
-#### 5. **VS Code Integration** (`src/main.ts`)
-
-When running as a VS Code webview:
-- Receives graph data via `postMessage`
-- Sends navigation requests back to extension
-- Supports exact node ID matching for precise function selection
-- Hides file upload UI (data comes from extension)
-
-## Key Algorithms
-
-### 1. Source → Sink Path Finding
-**Complexity:** O(N + E) with DFS
-
-```typescript
-1. Build forward adjacency (caller → callees)
-2. For each source, run DFS:
-   a. Track current path
-   b. When sink reached, mark all path nodes
-   c. Backtrack and continue exploration
-3. Return all nodes on any valid path
-```
-
-### 2. Query Pipeline (7 Steps)
-**Complexity:** O(N + E) per step
-
-```
-1. selectNodes        — traversal predicates → traversable subgraph
-2. resolveNodeMatcher — patterns → concrete IDs (full graph, then intersect traversable)
-3. dispatch traversal — BFS / DFS / boundary scan depending on GraphQuery type
-4. assemble nodes     — filter fullGraph.nodes to traversal result
-5. display predicates — libsignal toggle, re-apply kind & hidden filters
-6. filter links       — endpoint, depth-tree, link-type passes
-7. cleanup            — remove isolated nodes, build nodeDepths metadata
-```
-
-### 3. Topological Depth Computation
-**Complexity:** O(N + E)
-
-```typescript
-1. Find root nodes (no incoming edges)
-2. BFS from roots, assigning increasing depth
-3. Handle cycles by using lowest in-degree as root
-4. Return Map<nodeId, depth>
-```
-
-## Performance Considerations
-
-### Large Graph Handling
-- **Deferred loading:** Files > 5MB prompt user before loading
-- **Result limiting:** Maximum 200 nodes rendered to prevent freeze
-- **Debounced search:** 300ms delay on keystroke for large graphs
-- **Link threshold:** Graphs > 10K links require filter before rendering
-
-### Optimizations
-- Pre-computed `dependencies` and `dependents` arrays (O(1) lookup)
-- Path-based link filtering (only show edges "on the path")
-- Deep copy of nodes/links prevents D3 mutation of original data
+- **Deferred loading**: files over 10 MiB (`LARGE_FILE_SIZE_THRESHOLD`)
+  prompt before loading.
+- **Large-graph gate**: graphs over 2 000 nodes or 10 000 links
+  (`LARGE_GRAPH_*_THRESHOLD`) don't render fully. Instead the viewer
+  auto-seeds an initial view from entry points (`computeSeedTiers` /
+  `expandFromSeeds` in `graph-utils.ts`) within a render budget, with a
+  banner showing what is displayed. Only if no seed tier fits does it fall
+  back to the empty "use filters" view.
+- **Result limiting**: at most 200 rendered nodes (`MAX_RENDERED_NODES`).
+- **Debounced search**: 300 ms.
+- Pre-computed `dependencies` / `dependents` arrays; nodes and links are
+  cloned before D3 mutates them.
 
 ## VS Code Integration
 
-The viewer can run as a VS Code webview panel:
+The viewer runs as a webview (`vite.config.vscode.js` builds it with relative
+paths). Messaging:
 
 ```typescript
-// Extension sends graph data
+// Extension → webview
 webview.postMessage({
   type: 'loadGraph',
   graph: graphData,
-  selectedNodeId: 'scip:...#function()',  // Exact match
+  selectedNodeId: 'scip:...#function()',   // exact-match node selection
   initialQuery: { source: 'function_name', depth: 2 }
 });
 
-// Webview requests navigation
+// Webview → extension
 vscode.postMessage({
   type: 'navigate',
-  relativePath: 'src/lib.rs',
-  startLine: 42,
-  endLine: 50
+  relativePath: 'src/lib.rs', startLine: 42, endLine: 50
 });
 ```
 
+Exact node IDs bypass pattern matching (see `QUERY_PIPELINE.md` §6.4). In
+webview mode the file-upload UI is hidden and auto-load is skipped. Full
+protocol: `docs/guides/vscode-extension.md`.
+
 ## Extension Points
 
-### Adding New Filters
-1. Add property to `FilterOptions` interface in `types.ts`
-2. Add the predicate to `TraversalPredicates` or `DisplayPredicates` in `query.ts`
-3. Wire it in `compileQuery()` (compiler) and apply it in `executeQuery()` (executor)
-4. Add UI control in `index.html`
-5. Add event handler in `main.ts`
-6. Update URL generation/parsing for shareable links
+### Adding a new filter
+1. Add the property to `FilterOptions` (`types.ts`)
+2. Add the predicate to `TraversalPredicates` or `DisplayPredicates` (`query.ts`)
+3. Wire it in `compileQuery()` and apply it in `executeQuery()`
+4. Add the UI control (`index.html`) and handler (`main.ts`)
+5. Update URL generation/parsing for shareable links
 
-### Adding New Node Metadata
-1. Add field to Rust `D3Node` struct (Verus path) or `ProbeAtom` interface (all probes)
-2. Export data in converter function (`atoms_to_d3_graph` / `convertAtomDictToD3Graph`)
-3. Add field to TypeScript `D3Node` interface
-4. Use in visualization (node info panel, coloring, etc.)
+### Adding new node metadata
+1. Add the field to `ProbeAtom` in `types.ts` (and, for the Rust pipeline,
+   to `D3Node` in `crates/scip-core/src/types.rs`)
+2. Map it in `convertAtomDictToD3Graph()` (`graph-loader.ts`)
+3. Add the field to the TypeScript `D3Node` interface
+4. Use it in the visualization (details panel, coloring, …)
 
-### Supporting a New Probe
-1. Have the probe emit **atom dict JSON** (or a Schema 2.0 envelope wrapping one)
+### Supporting a new probe
+1. Emit atom dict JSON (or a schema envelope wrapping one)
 2. Add any new fields to `ProbeAtom` in `types.ts`
-3. Map the new fields to `D3Node` in `convertAtomDictToD3Graph()` (`graph-loader.ts`)
-4. Add a CI workflow (see `generate-lean-callgraph.yml` as a template)
+3. Map them in `convertAtomDictToD3Graph()`
+4. Add a CI workflow (see `.github/workflows/generate-lean-callgraph.yml`)
 
-### Custom Visualizations
-Three views exist — Call Graph (`graph.ts`), File Map (`blueprint.ts`), and Crate Map (`crate-map.ts`) — each implementing `update()`, `destroy()`, `resize()`, `clear()`, and `highlightNodes()`. To add a new view:
-1. Create a new class following the same interface pattern
-2. Add a button in `index.html` and a case in `createVisualization()` in `main.ts`
-3. Register the view name in the `ActiveView` type and URL parameter handling
-
----
-
-**Architecture designed for:** Extensibility, Performance, Type Safety, Developer Experience
-
-**Last updated:** March 2026
+### Custom visualizations
+Each view implements `update()`, `destroy()`, `resize()`, `clear()`, and
+`highlightNodes()`. To add one: create a class with that interface, add a
+button in `index.html` and a case in `createVisualization()` (`main.ts`),
+and register the name in the `ActiveView` type and URL handling.

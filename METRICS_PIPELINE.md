@@ -17,8 +17,8 @@ SCIP Index → Atoms JSON → Spec Metrics → Proof Metrics → Enriched CSV
 
 ### Generate RCA JSONs (one-time)
 ```bash
-# From rust-code-analysis repo
-./target/debug/rust-code-analysis-cli -m -p /path/to/vanilla/curve25519-dalek/ -O json -o /path/to/output/
+# From rust-code-analysis repo; run on the vanilla (non-Verus) source
+./target/debug/rust-code-analysis-cli -m -p /path/to/vanilla/project/ -O json -o /path/to/output/
 ```
 
 ---
@@ -36,8 +36,8 @@ cargo run -p metrics-cli --bin write_atoms -- <input_scip_json> <output_atoms_js
 **Example:**
 ```bash
 cargo run -p metrics-cli --bin write_atoms -- \
-  curve_dalek_index_scip_26_nov.json \
-  curve_dalek_atoms.json
+  index_scip.json \
+  atoms.json
 ```
 
 **Output:** JSON with entries like:
@@ -64,8 +64,8 @@ cargo run -p metrics-cli --bin compute_metrics -- <input_atoms_json> <output_met
 **Example:**
 ```bash
 cargo run -p metrics-cli --bin compute_metrics -- \
-  curve_dalek_atoms.json \
-  curve_dalek_atoms_with_metrics.json
+  atoms.json \
+  atoms_with_metrics.json
 ```
 
 **Adds:**
@@ -73,6 +73,12 @@ cargo run -p metrics-cli --bin compute_metrics -- \
 - `ensures_count`, `ensures_lengths`, `ensures_specs` (Halstead for each)
 - `decreases_count`, `decreases_specs` (Halstead for each)
 - `body_length`, `operators` (count by type)
+
+Clauses that are natural-language documentation rather than specifications
+are excluded: `is_prose()` in `crates/verus-metrics/src/spec_halstead.rs`
+flags clauses with prose patterns and no comparison operators. On
+curve25519-dalek this filtered 54 of 526 raw clauses, so spec counts are
+lower than raw clause counts by design.
 
 ---
 
@@ -87,8 +93,8 @@ cargo run -p metrics-cli --bin compute_proof_metrics -- <input_metrics_json> <ou
 **Example:**
 ```bash
 cargo run -p metrics-cli --bin compute_proof_metrics -- \
-  curve_dalek_atoms_with_metrics.json \
-  curve_dalek_atoms_complete.json
+  atoms_with_metrics.json \
+  atoms_complete.json
 ```
 
 **Adds:**
@@ -114,8 +120,8 @@ cargo run -p metrics-cli --bin enrich_csv_with_metrics -- \
 ```bash
 cargo run -p metrics-cli --bin enrich_csv_with_metrics -- \
   functions_to_track.csv \
-  curve25519-dalek/curve25519-dalek/ \
-  functions_to_track_enriched.csv
+  rca_jsons/ \
+  functions_enriched.csv
 ```
 
 **Adds columns:**
@@ -141,9 +147,9 @@ cargo run -p metrics-cli --bin enrich_csv_complete -- \
 **Example:**
 ```bash
 cargo run -p metrics-cli --bin enrich_csv_complete -- \
-  curve_dalek_atoms_complete.json \
-  functions_to_track_enriched.csv \
-  functions_to_track_COMPLETE.csv
+  atoms_complete.json \
+  functions_enriched.csv \
+  functions_COMPLETE.csv
 ```
 
 **Adds columns:**
@@ -164,45 +170,38 @@ cd /path/to/probegraph
 
 # Step 1: Generate atoms from SCIP
 cargo run -p metrics-cli --bin write_atoms -- \
-  data/scip/curve_dalek_index_scip_26_nov.json \
-  data/atoms/curve_dalek_atoms.json
+  index_scip.json atoms.json
 
 # Step 2: Compute spec metrics
 cargo run -p metrics-cli --bin compute_metrics -- \
-  data/atoms/curve_dalek_atoms.json \
-  data/atoms/curve_dalek_atoms_with_metrics.json
+  atoms.json atoms_with_metrics.json
 
 # Step 3: Compute proof metrics
 cargo run -p metrics-cli --bin compute_proof_metrics -- \
-  data/atoms/curve_dalek_atoms_with_metrics.json \
-  data/atoms/curve_dalek_atoms_complete.json
+  atoms_with_metrics.json atoms_complete.json
 
 # Step 4: Enrich CSV with code metrics (from RCA)
 cargo run -p metrics-cli --bin enrich_csv_with_metrics -- \
-  data/csv/functions_to_track.csv \
-  curve25519-dalek/curve25519-dalek/ \
-  data/csv/functions_to_track_enriched.csv
+  functions_to_track.csv rca_jsons/ functions_enriched.csv
 
 # Step 5: Enrich CSV with spec + proof metrics
 cargo run -p metrics-cli --bin enrich_csv_complete -- \
-  data/atoms/curve_dalek_atoms_complete.json \
-  data/csv/functions_to_track_enriched.csv \
-  data/csv/functions_to_track_COMPLETE.csv
+  atoms_complete.json functions_enriched.csv functions_COMPLETE.csv
 ```
 
 ---
 
-## 🚀 Automated Pipeline Runner
+## Automated Pipeline Runner
 
-Run the **entire pipeline with a single command** using `run_full_pipeline`:
+`run_full_pipeline` runs all five steps with a single command:
 
 ```bash
 cargo run -p metrics-cli --bin run_full_pipeline -- \
-  --scip data/scip/curve_dalek_index_scip_26_nov.json \
-  --csv data/csv/functions_to_track.csv \
-  --rca-dir curve25519-dalek/curve25519-dalek/ \
-  --proof-csv data/csv/curve25519_functions_with_trivial.csv \
-  --output-dir data/pipeline_output
+  --scip index_scip.json \
+  --csv functions_to_track.csv \
+  --rca-dir rca_jsons/ \
+  --proof-csv functions_with_trivial.csv \
+  --output-dir out/
 ```
 
 ### Arguments
@@ -218,32 +217,17 @@ cargo run -p metrics-cli --bin run_full_pipeline -- \
 ### Output Structure
 
 ```
-data/pipeline_output/
-├── step1_atoms.json          # 995 functions from SCIP
+<output-dir>/
+├── step1_atoms.json          # functions extracted from SCIP
 ├── step2_with_specs.json     # + spec Halstead metrics
-├── step3_with_proofs.json    # + proof Halstead metrics  
+├── step3_with_proofs.json    # + proof Halstead metrics
 ├── step4_with_code.csv       # + RCA code metrics
-└── FINAL.csv                 # Complete: 212 rows × 25 columns
+└── FINAL.csv                 # tracked functions × all metric columns
 ```
 
-### Performance
-
-| Step | Time |
-|------|------|
-| 1. Generate atoms | ~3s |
-| 2. Spec metrics | ~0.6s |
-| 3. Proof metrics | ~13s |
-| 4. RCA enrichment | ~0.05s |
-| 5. Final enrichment | ~0.7s |
-| **Total** | **~17s** |
-
-### Features
-
-- ✅ Creates output directory automatically
-- ✅ Runs all 5 steps in sequence
-- ✅ Shows progress and statistics at each step
-- ✅ Reports final CSV dimensions
-- ✅ Produces intermediate files for debugging
+The runner creates the output directory, prints per-step statistics, and
+keeps the intermediate files for debugging. On a mid-size crate the whole
+run takes seconds to tens of seconds; proof metrics dominate.
 
 ---
 
@@ -251,11 +235,11 @@ data/pipeline_output/
 
 | File | Description |
 |------|-------------|
-| `curve_dalek_atoms.json` | Raw atoms (functions, bodies, deps) |
-| `curve_dalek_atoms_with_metrics.json` | + spec Halstead metrics |
-| `curve_dalek_atoms_complete.json` | + proof Halstead metrics |
-| `functions_to_track_enriched.csv` | CSV + code metrics (RCA) |
-| `functions_to_track_COMPLETE.csv` | CSV + code + spec + proof metrics |
+| `atoms.json` | Raw atoms (functions, bodies, deps) |
+| `atoms_with_metrics.json` | + spec Halstead metrics |
+| `atoms_complete.json` | + proof Halstead metrics |
+| `functions_enriched.csv` | CSV + code metrics (RCA) |
+| `functions_COMPLETE.csv` | CSV + code + spec + proof metrics |
 
 ---
 
@@ -264,7 +248,7 @@ data/pipeline_output/
 ### Pipeline Runner
 | Script | Purpose |
 |--------|---------|
-| `run_full_pipeline` | **Runs entire pipeline with one command** (~17s) |
+| `run_full_pipeline` | Runs the entire pipeline with one command |
 
 ### Metrics Computation
 | Script | Input | Output | Purpose |
@@ -287,6 +271,40 @@ data/pipeline_output/
 | `verify_rca_coverage` | Regression test: RCA functions in atoms |
 | `categorize_verified_functions` | Classify by verification type |
 | `find_untracked_verified` | Find verified functions not in CSV |
+
+---
+
+## Verification Categories
+
+`categorize_verified_functions` classifies each verified function into one of
+three categories (also used by `enrich_csv_with_verification_category` and the
+`trivial_proof` columns):
+
+- **Trivially verified** — passes verification with no `proof { }` block; the
+  SMT solver proves it from the spec alone. On curve25519-dalek this was the
+  majority of verified functions (243 of 349).
+- **Verified with proof blocks** — requires manual proof code.
+- **Incomplete** — contains `assume(false)`; a placeholder, not a proof.
+
+When comparing against external dashboards, note that "fully verified" counts
+elsewhere may exclude the incomplete category.
+
+---
+
+## Known Match-Rate Gaps
+
+`enrich_csv_with_metrics` matches tracked functions against RCA output by
+name; a match rate below 100% is expected. Recurring causes, measured on
+curve25519-dalek (47/212 unmatched):
+
+- `build.rs` functions — RCA does not analyze build scripts
+- Verus-only modules (e.g. the lizard module) absent from the vanilla source
+  that RCA runs on
+- Macro-generated functions (`add_assign`, `mul_assign`, ...) — expanded at
+  compile time, not visible to RCA
+- Trait method declarations with no body
+
+Use `verify_rca_coverage` to check which functions matched.
 
 ---
 

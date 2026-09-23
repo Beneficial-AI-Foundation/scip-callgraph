@@ -7,11 +7,11 @@ A directed graph $G = (V, E)$ where:
 - $V$ is a set of nodes, each with attributes:
   - $\text{name}(v) \in \Sigma^*$ — display name (string)
   - $\text{file}(v) \in \Sigma^*$ — file path
-  - $\text{kind}(v) \in \{\text{exec}, \text{proof}, \text{spec}\}$ — declaration kind
+  - $\text{kind}(v) \in \Sigma^*$ — declaration kind, an open set: `exec` / `proof` / `spec` for Verus, `def` / `theorem` / `axiom` / `structure` / … for Lean
   - $\text{border}(v) \in \{\text{verified}, \text{ready}, \text{blocked}, \text{not-ready}, \text{unknown}\}$
   - $\text{fill}(v) \in \{\text{fully-verified}, \text{verified}, \text{ready}, \text{none}\}$
 
-- $E \subseteq V \times V \times T$ where $T = \{\text{inner}, \text{pre}, \text{post}\}$ — typed directed edges
+- $E \subseteq V \times V \times T$ where $T = \{\text{inner}, \text{pre}, \text{post}, \text{mapping}, \text{spec}\}$ — typed directed edges
 
 ## Output
 
@@ -96,15 +96,20 @@ If the compound layout fails (throws), fall back to a flat layout: solve the sam
 
 Define three mapping functions from data attributes to visual properties.
 
-**Shape function** $\sigma: \{\text{exec}, \text{proof}, \text{spec}\} \to \{\text{rounded-rect}, \text{ellipse}, \text{diamond}\}$:
+**Shape function** $\sigma: \text{Kind} \to \{\text{rounded-rect}, \text{ellipse}, \text{diamond}\}$, defined over language-aware kind *sets* (`getKindSetsForLanguage` in `types.ts`, applied in `appendShape` in `blueprint.ts`):
 
 $$
 \sigma(k) = \begin{cases}
-\text{rounded-rect} & \text{if } k = \text{exec} \\
-\text{ellipse} & \text{if } k = \text{proof} \\
-\text{diamond} & \text{if } k = \text{spec}
+\text{ellipse} & \text{if } k \in \text{proofKinds} \; (\text{Verus: proof; Lean: theorem}) \\
+\text{diamond} & \text{if } k \in \text{specKinds} \cup \text{axiomKinds} \\
+\text{rounded-rect} & \text{otherwise (the default, exec/definition bucket)}
 \end{cases}
 $$
+
+Axioms deliberately reuse the spec diamond even though they filter
+separately. The legend labels flip with the project language: "Exec function
+/ Proof / lemma / Spec function" for Verus, "Definition / Theorem / Axiom"
+for Lean.
 
 **Border color function** $\beta: \text{BorderStatus} \to \text{Color}$:
 
