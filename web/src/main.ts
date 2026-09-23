@@ -5,6 +5,7 @@ import { computeSeedTiers, expandFromSeeds, SeedTier, SeedExpansion } from './gr
 import { CallGraphVisualization } from './graph';
 import { BlueprintVisualization } from './blueprint';
 import { CrateMapVisualization, buildCrateGraph } from './crate-map';
+import { HierarchyMapVisualization } from './hierarchy-map';
 import { computeDerivedStatuses } from './status';
 import { parseAndNormalizeGraph, pickSourceConfig } from './graph-loader';
 
@@ -331,6 +332,11 @@ function parseFiltersFromURL(): Partial<FilterOptions> {
   if (params.has('target-crate')) {
     selectedTargetCrate = params.get('target-crate')!;
   }
+
+  // Hierarchy view expansion state (module-level, not FilterOptions)
+  if (params.has('expanded')) {
+    hierarchyExpanded = params.get('expanded')!.split(',').map(s => s.trim()).filter(s => s);
+  }
   
   return filters;
 }
@@ -347,15 +353,21 @@ function generateShareableURL(): string {
    'axioms', 'types', 'proj', 'inst',
    'inner', 'pre', 'post', 'mapping', 'speclinks',
    'libsignal', 'external', 'hidden', 'focus', 'entrypoints', 'view',
-   'source-crate', 'target-crate'].forEach(k => params.delete(k));
+   'source-crate', 'target-crate', 'expanded'].forEach(k => params.delete(k));
 
   // View param (only set for non-default)
   if (activeView === 'blueprint') params.set('view', 'blueprint');
   if (activeView === 'crate-map') params.set('view', 'crate-map');
+  if (activeView === 'hierarchy') params.set('view', 'hierarchy');
 
   // Crate boundary params
   if (selectedSourceCrate) params.set('source-crate', selectedSourceCrate);
   if (selectedTargetCrate) params.set('target-crate', selectedTargetCrate);
+
+  // Hierarchy expansion state
+  if (activeView === 'hierarchy' && hierarchyExpanded.length > 0) {
+    params.set('expanded', hierarchyExpanded.join(','));
+  }
   
   // Add current filter state
   if (state.filters.sourceQuery) params.set('source', state.filters.sourceQuery);
@@ -524,10 +536,16 @@ let state: GraphState = {
   projectLanguage: 'unknown',
 };
 
-type ActiveView = 'callgraph' | 'blueprint' | 'crate-map';
+type ActiveView = 'callgraph' | 'blueprint' | 'crate-map' | 'hierarchy';
 let activeView: ActiveView = 'callgraph';
-let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVisualization | null = null;
+let visualization: CallGraphVisualization | BlueprintVisualization | CrateMapVisualization | HierarchyMapVisualization | null = null;
 
+/** Views that aggregate the whole graph and so bypass the large-graph guards. */
+function isAggregatedView(view: ActiveView): boolean {
+  return view === 'crate-map' || view === 'hierarchy';
+}
+
+let hierarchyExpanded: string[] = [];
 let selectedSourceCrate: string = '';
 let selectedTargetCrate: string = '';
 let crateDependencyMap: Map<string, Set<string>> = new Map();
@@ -610,7 +628,7 @@ const guideActions: GuideActions = {
     if (label) label.textContent = depth !== null ? depth.toString() : 'All';
   },
   switchView: (view) => {
-    if (view === 'callgraph' || view === 'blueprint' || view === 'crate-map') {
+    if (view === 'callgraph' || view === 'blueprint' || view === 'crate-map' || view === 'hierarchy') {
       switchView(view as ActiveView);
     }
   },
@@ -744,6 +762,8 @@ function init(): void {
     activeView = 'blueprint';
   } else if (viewParam === 'crate-map') {
     activeView = 'crate-map';
+  } else if (viewParam === 'hierarchy') {
+    activeView = 'hierarchy';
   }
 
   // Initialize visualization for the active view
@@ -778,7 +798,7 @@ function createVisualization(container: HTMLElement): void {
   // Destroy existing visualization
   if (visualization) {
     if ('destroy' in visualization) {
-      (visualization as BlueprintVisualization | CrateMapVisualization).destroy();
+      (visualization as BlueprintVisualization | CrateMapVisualization | HierarchyMapVisualization).destroy();
     } else {
       visualization.clear();
       container.querySelector('svg')?.remove();
@@ -789,14 +809,20 @@ function createVisualization(container: HTMLElement): void {
   // Remove any leftover view legends
   container.querySelector('.bp-legend')?.remove();
   container.querySelector('.cm-legend')?.remove();
+  container.querySelector('.hm-legend')?.remove();
 
   // Update button states
   document.getElementById('view-callgraph')?.classList.toggle('active', activeView === 'callgraph');
   document.getElementById('view-blueprint')?.classList.toggle('active', activeView === 'blueprint');
   document.getElementById('view-crate-map')?.classList.toggle('active', activeView === 'crate-map');
+  document.getElementById('view-hierarchy')?.classList.toggle('active', activeView === 'hierarchy');
 
   if (activeView === 'crate-map') {
     visualization = new CrateMapVisualization(container, state, handleStateChange);
+  } else if (activeView === 'hierarchy') {
+    const viz = new HierarchyMapVisualization(container, state, handleStateChange);
+    if (hierarchyExpanded.length > 0) viz.setExpanded(hierarchyExpanded);
+    visualization = viz;
   } else if (activeView === 'blueprint') {
     visualization = new BlueprintVisualization(container, state, handleStateChange);
   } else {
@@ -836,6 +862,13 @@ function setupUIHandlers(): void {
   document.getElementById('view-callgraph')?.addEventListener('click', () => switchView('callgraph'));
   document.getElementById('view-blueprint')?.addEventListener('click', () => switchView('blueprint'));
   document.getElementById('view-crate-map')?.addEventListener('click', () => switchView('crate-map'));
+  document.getElementById('view-hierarchy')?.addEventListener('click', () => switchView('hierarchy'));
+
+  // Keep the ?expanded= URL parameter in sync with the Hierarchy view
+  window.addEventListener('hierarchy-expanded-changed', ((event: CustomEvent) => {
+    hierarchyExpanded = event.detail.expanded ?? [];
+    updateURLWithFilters();
+  }) as EventListener);
 
   // Listen for crate-map navigation events (double-click crate or "View in Call Graph")
   window.addEventListener('crate-map-switch-view', ((event: CustomEvent) => {
@@ -1236,7 +1269,7 @@ async function autoLoadGraph(): Promise<void> {
     
     console.log(`graph.json size: ${(contentLength / 1024 / 1024).toFixed(1)} MB`);
     
-    if (contentLength > LARGE_FILE_SIZE_THRESHOLD && activeView !== 'crate-map') {
+    if (contentLength > LARGE_FILE_SIZE_THRESHOLD && !isAggregatedView(activeView)) {
       console.log(`Large file detected, deferring load until user searches`);
       deferredGraphUrl = './graph.json';
       showLargeGraphPrompt(contentLength);
@@ -2205,6 +2238,12 @@ function loadGraph(graph: D3Graph, message: string): void {
 
   applyFiltersAndUpdate();
 
+  // Restore hierarchy expansion state from the URL (parsed above, after the
+  // visualization was created)
+  if (hierarchyExpanded.length > 0 && visualization instanceof HierarchyMapVisualization) {
+    visualization.setExpanded(hierarchyExpanded);
+  }
+
   // Restore crate boundary selection from URL params
   if (selectedSourceCrate || selectedTargetCrate) {
     populateCrateDropdowns();
@@ -2356,13 +2395,13 @@ function applyFiltersAndUpdate(): void {
 
   // For large graphs with no query intent, render a bounded seeded initial
   // view (entry-point seeds + their depth-limited neighborhood) instead of a
-  // blank page. Crate Map is exempt: it aggregates to a compact crate-level
-  // graph. Blueprint is also exempt (keeps the empty view): its dagre layout
-  // is only sized for MAX_RENDERED_NODES-scale inputs, and its border/fill
-  // colors need the deferred status computation this branch skips. If no seed
-  // tier fits the render budget, fall back to the empty view with the "use
-  // filters" message.
-  if (isLargeGraph(state.fullGraph) && !hasSearchFilters() && activeView !== 'crate-map') {
+  // blank page. Crate Map and Hierarchy are exempt: they aggregate to a
+  // compact group-level graph. Blueprint is also exempt (keeps the empty
+  // view): its dagre layout is only sized for MAX_RENDERED_NODES-scale
+  // inputs, and its border/fill colors need the deferred status computation
+  // this branch skips. If no seed tier fits the render budget, fall back to
+  // the empty view with the "use filters" message.
+  if (isLargeGraph(state.fullGraph) && !hasSearchFilters() && !isAggregatedView(activeView)) {
     // The request is tracked separately from maxDepth, which the commit below
     // overwrites with the achieved depth: a later re-seed (late ?entrypoints=
     // payload, tier change) must retry what the user asked for, not what the
@@ -2412,8 +2451,9 @@ function applyFiltersAndUpdate(): void {
   seededViewInfo = null;
   
   // Run deferred computations on first real filter application.
-  // Crate Map only needs the crate graph, not the full set of deferred work.
-  if (activeView === 'crate-map') {
+  // Crate Map and Hierarchy only need the crate graph, not the full set of
+  // deferred work.
+  if (isAggregatedView(activeView)) {
     ensureCrateGraphBuilt();
   } else {
     runDeferredComputations();
@@ -2426,9 +2466,10 @@ function applyFiltersAndUpdate(): void {
   let filtered = applyFilters(state.fullGraph, state.filters, nodeOptions, state.projectLanguage);
 
   // Limit rendered nodes for large results to prevent D3 freeze
-  // Crate Map aggregates to crate-level boxes, so truncation would distort results
+  // Crate Map and Hierarchy aggregate into group boxes, so truncation would
+  // distort their results
   let wasTruncated = false;
-  if (activeView !== 'crate-map' && filtered.nodes.length > MAX_RENDERED_NODES) {
+  if (!isAggregatedView(activeView) && filtered.nodes.length > MAX_RENDERED_NODES) {
     wasTruncated = true;
     
     // Keep nodes with highest connectivity (most relevant)
@@ -2496,7 +2537,7 @@ function updateStats(truncatedTo?: number): void {
 
   const filtered = state.filteredGraph || state.fullGraph;
   const isLarge = isLargeGraph(state.fullGraph);
-  const needsFilter = isLarge && !hasSearchFilters() && activeView !== 'crate-map' && !seededViewInfo;
+  const needsFilter = isLarge && !hasSearchFilters() && !isAggregatedView(activeView) && !seededViewInfo;
   const wasTruncated = truncatedTo !== undefined;
 
   const seededBanner = seededViewInfo ? `

@@ -36,7 +36,7 @@ from the Aeneas translation metadata.
               └──────────┬──────────┘   └──────────────┘
                          ▼
               ┌─────────────────────┐
-              │      View Layer     │  Call Graph / File Map /
+              │      View Layer     │  Call Graph / File Map / Hierarchy /
               └──────────┬──────────┘  Crate Map (Lean: Namespace Map)
                          ▼
                     SVG canvas         + Guide panel, VS Code webview
@@ -160,6 +160,7 @@ An array of nodes with `identifier` / `deps` fields
 | `src/graph.ts` | Call Graph view (layered force layout, auto-fit camera) |
 | `src/blueprint.ts` | File Map view (dagre compound layout, dual-channel coloring) |
 | `src/crate-map.ts` | Crate Map / Namespace Map view (quotient graph, 3 drill-down modes) |
+| `src/hierarchy.ts`, `src/hierarchy-map.ts` | Hierarchy view: cut through the crate → directory → file → function tree, expand/collapse in place, aggregated edges |
 | `src/graph-utils.ts` | Seed tiers and budgeted expansion for the seeded initial view, transitive reduction |
 | `src/guide/` | Static-analysis Guide panel (graph summary, suggested queries — no LLM) |
 | `src/main.ts` | State, URL handling, view dispatch, VS Code messaging |
@@ -170,6 +171,14 @@ Per-view layout and encoding algorithms are specified in
 The third view is labeled **Crate Map** for Rust graphs and **Namespace Map**
 for Lean graphs (`main.ts`, `crate-map.ts`); the partitioning is the
 `extractCrateName` value either way.
+
+The **Hierarchy** view renders a *cut* through the crate → directory → file →
+function tree: every function belongs to exactly one visible member (itself
+when its file is expanded, otherwise its nearest collapsed ancestor group),
+and edges are aggregated between members with call counts. Collapsed groups
+show rollup stats and a verified-fraction bar; expansion state round-trips
+through `?view=hierarchy&expanded=...`. Like the Crate Map, it aggregates the
+whole graph, so it bypasses the large-graph gate and result limiting.
 
 ## URL Integration
 
