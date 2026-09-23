@@ -228,74 +228,66 @@ body {
   margin-right: 0.35rem;
 }
 
+/* Category chips: verilib-style tinted outline — hue comes from each class's
+   text color, background/border derive from it. */
 .libsignal-badge, .other-badge, .inner-badge, .precondition-badge, .postcondition-badge,
 .mapping-badge, .spec-link-badge, .lang-badge-rust, .lang-badge-lean,
 .exec-badge, .proof-badge, .spec-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--pg-radius-sm);
-  font-size: 0.85rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--pg-radius-md);
+  font-size: 0.8rem;
   font-weight: 500;
+  background: color-mix(in srgb, currentColor 6%, white);
+  border: 1px solid color-mix(in srgb, currentColor 35%, white);
 }
 
 .libsignal-badge {
-  background: var(--pg-accent-soft);
   color: var(--pg-accent);
 }
 
 .other-badge {
-  background: #ecfae8;
   color: #217a0b;
 }
 
 /* Call type badges */
 .inner-badge {
-  background: #e8eaf6;
   color: #3949ab;
 }
 
 .precondition-badge {
-  background: #fff3e0;
   color: var(--pg-edge-precondition);
 }
 
 .postcondition-badge {
-  background: #fce4ec;
   color: var(--pg-edge-postcondition);
 }
 
 .mapping-badge {
-  background: #ede9fe;
   color: var(--pg-edge-mapping);
 }
 
 .spec-link-badge {
-  background: #ecfeff;
   color: var(--pg-edge-spec);
 }
 
 .lang-badge-rust {
-  background: #fef3c7;
   color: #92400e;
 }
 
 .lang-badge-lean {
-  background: #dbeafe;
   color: #1e40af;
 }
 
 /* Declaration kind badges */
 .exec-badge {
-  background: var(--pg-accent-soft);
   color: var(--pg-accent);
 }
 
 .proof-badge {
-  background: #f3e5f5;
   color: #7b1fa2;
 }
 
 .spec-badge {
-  background: #fff8e1;
   color: #f57c00;
 }
 
@@ -850,46 +842,41 @@ select.search-input {
 
 .node-badge {
   display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--pg-radius-sm);
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--pg-radius-md);
   font-size: 0.75rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  background: color-mix(in srgb, currentColor 6%, white);
+  border: 1px solid color-mix(in srgb, currentColor 35%, white);
 }
 
 .badge-libsignal {
-  background: var(--pg-accent-soft);
   color: var(--pg-accent);
 }
 
 .badge-other {
-  background: #ecfae8;
   color: #217a0b;
 }
 
 /* Verification status badges */
 .badge-verified {
-  background: #ecfae8;
   color: var(--pg-status-transitively-verified);
 }
 
 .badge-trusted {
-  background: #f3e8ff;
   color: var(--pg-status-trusted);
 }
 
 .badge-failed {
-  background: #fae8e8;
   color: var(--pg-status-failed);
 }
 
 .badge-unverified {
-  background: #f3f4f6;
   color: var(--pg-text-muted);
 }
 
 .badge-unknown {
-  background: var(--pg-accent-soft);
   color: var(--pg-accent);
 }
 
