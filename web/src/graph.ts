@@ -1,5 +1,6 @@
 import * as d3 from 'd3';
 import { D3Graph, D3Node, D3Link, GraphState } from './types';
+import { statusColor, edgeTypeColor, SELECTION_COLOR, TEXT_COLOR } from './theme';
 
 /**
  * Compute topological depth for each node in the graph.
@@ -450,14 +451,7 @@ export class CallGraphVisualization {
       .append('path')
       .attr('class', 'link')
       .attr('fill', 'none')
-      .attr('stroke', (d) => {
-        const linkType = d.type || 'inner';
-        if (linkType === 'precondition') return '#e65100';
-        if (linkType === 'postcondition') return '#c2185b';
-        if (linkType === 'mapping') return '#7c3aed';
-        if (linkType === 'spec') return '#0891b2';
-        return '#999';
-      })
+      .attr('stroke', (d) => edgeTypeColor(d.type))
       .attr('stroke-opacity', 0.6)
       .attr('stroke-width', 1.5)
       .attr('stroke-dasharray', (d) => {
@@ -511,7 +505,7 @@ export class CallGraphVisualization {
       .attr('dy', -20)
       .attr('font-size', '10px')
       .attr('font-family', 'sans-serif')
-      .attr('fill', '#333')
+      .attr('fill', TEXT_COLOR)
       .attr('pointer-events', 'none')
       .text((d) => d.display_name);
 
@@ -590,30 +584,9 @@ export class CallGraphVisualization {
     return null;
   }
 
-  /**
-   * Get node color based on verification status
-   * - verified: light green (#4ade80)
-   * - transitively-verified: dark green (#15803d)
-   * - trusted: purple (#a855f7)
-   * - failed: red (#ef4444)
-   * - unverified: grey (#9ca3af)
-   * - unknown (no status): blue (#3b82f6)
-   */
+  /** Get node color based on verification status (palette in theme.ts). */
   private getNodeColor(node: D3Node): string {
-    switch (node.verification_status) {
-      case 'verified':
-        return '#4ade80';  // Light green
-      case 'transitively-verified':
-        return '#15803d';  // Dark green
-      case 'trusted':
-        return '#a855f7';  // Purple
-      case 'failed':
-        return '#ef4444';  // Red
-      case 'unverified':
-        return '#9ca3af';  // Grey
-      default:
-        return '#3b82f6';  // Blue (unknown/no verification status)
-    }
+    return statusColor(node.verification_status);
   }
 
   /**
@@ -727,7 +700,7 @@ export class CallGraphVisualization {
    */
   private highlightNode(node: D3Node): void {
     this.nodeElements
-      ?.attr('stroke', (d) => (d.id === node.id ? '#ff6b6b' : '#fff'))
+      ?.attr('stroke', (d) => (d.id === node.id ? SELECTION_COLOR : '#fff'))
       .attr('stroke-width', (d) => (d.id === node.id ? 4 : 2));
   }
 

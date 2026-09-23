@@ -166,11 +166,11 @@ function showLargeGraphPrompt(fileSize: number): void {
     const sizeMB = (fileSize / (1024 * 1024)).toFixed(1);
     statsDiv.innerHTML = `
       <div style="background: #fff3e0; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
-        <div style="color: #e65100; font-weight: bold; margin-bottom: 8px;">📊 Large Graph Detected (${sizeMB} MB)</div>
-        <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: #333;">
+        <div style="color: #e65100; font-weight: bold; margin-bottom: 8px;">Large Graph Detected (${sizeMB} MB)</div>
+        <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: var(--pg-text);">
           Enter a <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filter, then press <strong>Enter</strong> or click <strong>Load & Search</strong>.
         </p>
-        <button id="load-graph-btn" style="background: #1976d2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+        <button id="load-graph-btn" style="background: var(--pg-accent); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
           Load & Search
         </button>
       </div>
@@ -668,7 +668,7 @@ function updateLanguageLabels(lang: ProjectLanguage): void {
   if (crateMapBtn) crateMapBtn.textContent = mapLabel;
 
   const title = document.getElementById('crate-boundary-title');
-  if (title) title.textContent = `🔗 ${Noun} Boundary`;
+  if (title) title.textContent = `${Noun} Boundary`;
 
   const srcLabel = document.getElementById('source-crate-label');
   if (srcLabel) srcLabel.textContent = `Source ${Noun} (called):`;
@@ -679,8 +679,8 @@ function updateLanguageLabels(lang: ProjectLanguage): void {
   const hint = document.getElementById('crate-boundary-hint');
   if (hint) {
     hint.innerHTML =
-      `💡 Select two ${noun}s to see the <strong>boundary</strong>: functions in the source ${noun} called by the target ${noun}.<br>` +
-      `💡 In ${mapLabel}: click a ${noun} to set source, click another to set target.`;
+      `Select two ${noun}s to see the <strong>boundary</strong>: functions in the source ${noun} called by the target ${noun}.<br>` +
+      `In ${mapLabel}: click a ${noun} to set source, click another to set target.`;
   }
 }
 
@@ -1180,7 +1180,7 @@ function setupUIHandlers(): void {
       const btn = document.getElementById('copy-link') as HTMLButtonElement;
       const originalText = btn.textContent;
       btn.textContent = '✓ Copied!';
-      btn.style.background = '#4caf50';
+      btn.style.background = 'var(--pg-status-verified)';
       setTimeout(() => {
         btn.textContent = originalText;
         btn.style.background = '';
@@ -1328,7 +1328,7 @@ async function loadDeferredGraph(): Promise<void> {
     statsDiv.innerHTML = `
       <div style="padding: 1rem; text-align: center;">
         <div style="margin-bottom: 0.5rem;">⏳ Loading and filtering graph...</div>
-        <div style="font-size: 0.8rem; color: #666;">This may take a few seconds...</div>
+        <div style="font-size: 0.8rem; color: var(--pg-text-muted);">This may take a few seconds...</div>
       </div>
     `;
   }
@@ -1379,7 +1379,7 @@ async function loadDeferredGraphWithDisambiguation(): Promise<void> {
     statsDiv.innerHTML = `
       <div style="padding: 1rem; text-align: center;">
         <div style="margin-bottom: 0.5rem;">⏳ Loading graph...</div>
-        <div style="font-size: 0.8rem; color: #666;">This may take a few seconds...</div>
+        <div style="font-size: 0.8rem; color: var(--pg-text-muted);">This may take a few seconds...</div>
       </div>
     `;
   }
@@ -1428,8 +1428,8 @@ async function loadDeferredGraphWithDisambiguation(): Promise<void> {
       if (statsDiv) {
         statsDiv.innerHTML = `
           <div style="padding: 1rem; text-align: center;">
-            <div style="margin-bottom: 0.5rem;">📊 Graph loaded (${graph.nodes.length.toLocaleString()} nodes)</div>
-            <div style="font-size: 0.8rem; color: #666;">Select files from the dropdown above...</div>
+            <div style="margin-bottom: 0.5rem;">Graph loaded (${graph.nodes.length.toLocaleString()} nodes)</div>
+            <div style="font-size: 0.8rem; color: var(--pg-text-muted);">Select files from the dropdown above...</div>
           </div>
         `;
       }
@@ -1873,6 +1873,20 @@ function resumeDeferredEntrypoints(): void {
 }
 
 /**
+ * Show the Source Type (Libsignal / External) filter only when the graph
+ * actually mixes both kinds; for any non-Signal project every node has
+ * is_libsignal=false and the filter is meaningless.
+ */
+function updateSourceTypeFilterVisibility(): void {
+  const container = document.getElementById('source-type-container');
+  if (!container) return;
+  const nodes = state.fullGraph?.nodes ?? [];
+  const hasLibsignal = nodes.some(n => n.is_libsignal);
+  const hasExternal = nodes.some(n => !n.is_libsignal);
+  container.style.display = hasLibsignal && hasExternal ? '' : 'none';
+}
+
+/**
  * Render Language filter checkboxes when the graph contains multiple languages.
  * Only shown when both Rust and Lean nodes are present.
  */
@@ -1899,11 +1913,11 @@ function renderLanguageFilters(): void {
     <h3>Language</h3>
     <label class="checkbox-label">
       <input type="checkbox" id="show-rust-nodes" checked />
-      <span class="exec-badge">${rustLabel}</span>
+      <span>${rustLabel}</span>
     </label>
     <label class="checkbox-label">
       <input type="checkbox" id="show-lean-nodes" checked />
-      <span class="proof-badge">Lean</span>
+      <span>Lean</span>
     </label>`;
 
   document.getElementById('show-rust-nodes')?.addEventListener('change', (e) => {
@@ -1943,62 +1957,62 @@ function renderKindFilters(lang: ProjectLanguage): void {
     html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-exec-functions" checked />
-        <span class="exec-badge">Exec</span>
+        <span>Exec</span>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="show-proof-functions" checked />
-        <span class="proof-badge">Proof</span>
+        <span>Proof</span>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="show-spec-functions" />
-        <span class="spec-badge">Spec</span>
+        <span>Spec</span>
       </label>`;
   } else {
     html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-exec-functions" checked />
-        <span class="exec-badge">Definitions</span>
-        <small style="color:#888;margin-left:4px">def, abbrev, ...</small>
+        <span>Definitions</span>
+        <small style="color:var(--pg-text-faint);margin-left:4px">def, abbrev, ...</small>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="show-proof-functions" checked />
-        <span class="proof-badge">Theorems</span>
+        <span>Theorems</span>
       </label>`;
     // Only render checkboxes for kinds the graph actually contains.
     if (hasKind(axiomKinds)) {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-axioms" checked />
-        <span class="spec-badge">Axioms</span>
+        <span>Axioms</span>
       </label>`;
     }
     if (lang === 'mixed' && kindsPresent.has('spec')) {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-spec-functions" />
-        <span class="spec-badge">Spec</span>
+        <span>Spec</span>
       </label>`;
     }
     if (hasKind(typeKinds)) {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-types" />
-        <span class="exec-badge">Types</span>
-        <small style="color:#888;margin-left:4px">structure, inductive, class</small>
+        <span>Types</span>
+        <small style="color:var(--pg-text-faint);margin-left:4px">structure, inductive, class</small>
       </label>`;
     }
     if (hasKind(projectionKinds)) {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-projections" />
-        <span class="exec-badge">Projections</span>
+        <span>Projections</span>
       </label>`;
     }
     if (hasKind(instanceKinds)) {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-instances" />
-        <span class="exec-badge">Instances</span>
+        <span>Instances</span>
       </label>`;
     }
   }
@@ -2102,7 +2116,7 @@ function renderCallTypeFilters(lang: ProjectLanguage): void {
 
   if (isVerus && !hasMappingLinks && !hasSpecLinks) {
     html += `
-    <small style="color: #666; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+    <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
       Requires/Ensures edges typically connect to Spec functions
     </small>`;
   }
@@ -2176,6 +2190,7 @@ function loadGraph(graph: D3Graph, message: string): void {
   
   // Detect project language and update UI accordingly
   state.projectLanguage = detectProjectLanguage(state.fullGraph);
+  updateSourceTypeFilterVisibility();
   renderLanguageFilters();
   renderKindFilters(state.projectLanguage);
   renderCallTypeFilters(state.projectLanguage);
@@ -2288,7 +2303,7 @@ function loadGraph(graph: D3Graph, message: string): void {
       successMsg.style.cssText = 'background: #ff9800; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
       successMsg.innerHTML = `⚠️ Large graph (${graph.nodes.length.toLocaleString()} nodes, ${graph.links.length.toLocaleString()} links). Use <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filters to search.`;
     } else {
-      successMsg.style.cssText = 'background: #4caf50; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
+      successMsg.style.cssText = 'background: var(--pg-status-verified); color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
       successMsg.textContent = `✓ ${message}`;
       // Remove success message after 5 seconds (but keep warning visible)
       setTimeout(() => successMsg.remove(), 5000);
@@ -2314,8 +2329,8 @@ function showError(message: string, dedupeKey?: string): void {
     }
     const errorMsg = document.createElement('div');
     if (dedupeKey) errorMsg.setAttribute('data-error-key', dedupeKey);
-    errorMsg.style.cssText = 'background: #f44336; color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
-    errorMsg.textContent = `❌ ${message}`;
+    errorMsg.style.cssText = 'background: var(--pg-status-failed); color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
+    errorMsg.textContent = message;
     statsDiv.insertBefore(errorMsg, statsDiv.firstChild);
 
     // Remove message after 8 seconds
@@ -2541,9 +2556,9 @@ function updateStats(truncatedTo?: number): void {
   const wasTruncated = truncatedTo !== undefined;
 
   const seededBanner = seededViewInfo ? `
-    <div class="stat-item" style="background: #e8f5e9; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-      <span style="color: #2e7d32; font-weight: bold;">📍 Showing ${seededViewInfo.shownNodes.toLocaleString()} of ${state.fullGraph.nodes.length.toLocaleString()} nodes (entry points, depth ${seededViewInfo.depth})</span>
-      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
+    <div class="stat-item" style="background: #ecfae8; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+      <span style="color: var(--pg-status-transitively-verified); font-weight: bold;">Showing ${seededViewInfo.shownNodes.toLocaleString()} of ${state.fullGraph.nodes.length.toLocaleString()} nodes (entry points, depth ${seededViewInfo.depth})</span>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--pg-text-muted);">
         Seeded from ${describeSeedTier(seededViewInfo)}.
         ${describeEntrypointsFallback()}${seededViewInfo.depth < seededViewInfo.requestedDepth ? `Depth limited to ${seededViewInfo.depth}: depth ${seededViewInfo.requestedDepth} would exceed the render budget. ` : ''}
         Use <strong>Source</strong>/<strong>Sink</strong> filters or click a node to explore the full graph.
@@ -2563,16 +2578,16 @@ function updateStats(truncatedTo?: number): void {
     ${seededBanner}
     ${needsFilter ? `
     <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-      <span style="color: #e65100; font-weight: bold;">📊 Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>
-      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
+      <span style="color: #e65100; font-weight: bold;">Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--pg-text-muted);">
         ${describeEntrypointsFallback()}Too large to render all at once. Use the <strong>${crateMapLabel(state.projectLanguage)}</strong> for an overview, or enter a <strong>Source</strong>/<strong>Sink</strong> filter to explore specific call paths.
       </p>
     </div>
     ` : ''}
     ${wasTruncated ? `
-    <div class="stat-item" style="background: #e3f2fd; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-      <span style="color: #1565c0; font-weight: bold;">✂️ Results Limited</span>
-      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #666;">
+    <div class="stat-item" style="background: var(--pg-accent-soft); padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+      <span style="color: var(--pg-accent); font-weight: bold;">Results Limited</span>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--pg-text-muted);">
         Showing top ${truncatedTo} nodes by connectivity. Use a more specific query or reduce <strong>Depth</strong> to narrow results.
       </p>
     </div>
@@ -2589,27 +2604,27 @@ function updateStats(truncatedTo?: number): void {
     </div>
     <div class="stat-item">
       <span class="stat-label">Verified:</span>
-      <span class="stat-value" style="color: #4ade80;">${verifiedCount}</span>
+      <span class="stat-value" style="color: var(--pg-status-verified);">${verifiedCount}</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Transitively verified:</span>
-      <span class="stat-value" style="color: #15803d;">${transitivelyVerifiedCount}</span>
+      <span class="stat-value" style="color: var(--pg-status-transitively-verified);">${transitivelyVerifiedCount}</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Trusted:</span>
-      <span class="stat-value" style="color: #a855f7;">${trustedCount}</span>
+      <span class="stat-value" style="color: var(--pg-status-trusted);">${trustedCount}</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Failed:</span>
-      <span class="stat-value" style="color: #ef4444;">${failedCount}</span>
+      <span class="stat-value" style="color: var(--pg-status-failed);">${failedCount}</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Unverified:</span>
-      <span class="stat-value" style="color: #9ca3af;">${unverifiedCount}</span>
+      <span class="stat-value" style="color: var(--pg-status-unverified);">${unverifiedCount}</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Unknown:</span>
-      <span class="stat-value" style="color: #3b82f6;">${unknownCount}</span>
+      <span class="stat-value" style="color: var(--pg-status-unknown);">${unknownCount}</span>
     </div>
     <div class="stat-item">
       <span class="stat-label">Project:</span>
@@ -2707,8 +2722,8 @@ function updateNodeInfo(): void {
       <div class="node-detail">
         <strong>Lean Translation:</strong>
         <ul class="node-list">
-          <li><a href="#" class="navigate-to-node" data-node-id="${escapeHtml(node.mapping_id)}" style="cursor:pointer; text-decoration:underline; color:#7c3aed;">${escapeHtml(mappingName)}</a>
-          <span style="color: #888; font-size: 0.85rem;">${node.mapping_path || ''}${mappingLineInfo}</span></li>
+          <li><a href="#" class="navigate-to-node" data-node-id="${escapeHtml(node.mapping_id)}" style="cursor:pointer; text-decoration:underline; color:var(--pg-edge-mapping);">${escapeHtml(mappingName)}</a>
+          <span style="color: var(--pg-text-faint); font-size: 0.85rem;">${node.mapping_path || ''}${mappingLineInfo}</span></li>
         </ul>
       </div>`;
   }
@@ -2720,13 +2735,13 @@ function updateNodeInfo(): void {
       const specNode = state.fullGraph!.nodes.find(n => n.id === specId);
       const specName = specNode?.display_name || specId;
       const vs = specNode?.verification_status;
-      const vsBadge = vs === 'verified' ? '<span style="color:#4ade80; margin-left:4px;">&#10003;</span>'
-        : vs === 'transitively-verified' ? '<span style="color:#15803d; margin-left:4px;">&#10003;</span>'
-        : vs === 'trusted' ? '<span style="color:#a855f7; margin-left:4px;">&#9670;</span>'
-        : vs === 'failed' ? '<span style="color:#ef4444; margin-left:4px;">&#10007;</span>'
-        : vs === 'unverified' ? '<span style="color:#f59e0b; margin-left:4px;">&#9675;</span>'
+      const vsBadge = vs === 'verified' ? '<span style="color:var(--pg-status-verified); margin-left:4px;">&#10003;</span>'
+        : vs === 'transitively-verified' ? '<span style="color:var(--pg-status-transitively-verified); margin-left:4px;">&#10003;</span>'
+        : vs === 'trusted' ? '<span style="color:var(--pg-status-trusted); margin-left:4px;">&#9670;</span>'
+        : vs === 'failed' ? '<span style="color:var(--pg-status-failed); margin-left:4px;">&#10007;</span>'
+        : vs === 'unverified' ? '<span style="color:var(--pg-status-unverified); margin-left:4px;">&#9675;</span>'
         : '';
-      return `<li><a href="#" class="navigate-to-node" data-node-id="${escapeHtml(specId)}" style="cursor:pointer; text-decoration:underline; color:#0891b2;">${escapeHtml(specName)}</a>${vsBadge}</li>`;
+      return `<li><a href="#" class="navigate-to-node" data-node-id="${escapeHtml(specId)}" style="cursor:pointer; text-decoration:underline; color:var(--pg-edge-spec);">${escapeHtml(specName)}</a>${vsBadge}</li>`;
     }).join('');
     specsHtml = `
       <div class="node-detail">
@@ -2759,7 +2774,7 @@ function updateNodeInfo(): void {
     </div>
     <div class="node-detail">
       <strong>File:</strong> ${node.file_name}
-      ${lineInfo ? `<span style="color: #888; margin-left: 0.5rem;">(${lineInfo})</span>` : ''}
+      ${lineInfo ? `<span style="color: var(--pg-text-faint); margin-left: 0.5rem;">(${lineInfo})</span>` : ''}
     </div>
     <div class="node-detail">
       <strong>Path:</strong>
@@ -2767,7 +2782,7 @@ function updateNodeInfo(): void {
     </div>
     <div class="node-detail">
       <button id="navigate-to-source-btn" class="github-link" style="background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; color: inherit;">
-        ${isVSCodeEnvironment() ? '📂 Open in Editor' : (githubLink ? '📂 View on GitHub' : '')}
+        ${isVSCodeEnvironment() ? 'Open in Editor' : (githubLink ? 'View on GitHub' : '')}
       </button>
     </div>
     ${mappingHtml}
@@ -3170,7 +3185,7 @@ function showDisambiguationDropdown(pattern: string, matches: AmbiguousFileMatch
         <input type="checkbox" class="checkbox" />
         <span class="file-name">${escapeHtml(match.fileName)}</span>
         <span class="file-path" title="${escapeHtml(match.relativePath)}">${escapeHtml(match.disambiguatedPath.replace('/' + match.fileName, ''))}</span>
-        <span class="file-count" style="background: #f0f0f0; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; color: #666;">${match.count}</span>
+        <span class="file-count" style="background: var(--pg-border-soft); padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; color: var(--pg-text-muted);">${match.count}</span>
       </div>
     `).join('')}
     <div class="dropdown-actions">
@@ -3510,19 +3525,19 @@ function updateFocusIndicator(): void {
   
   container.style.display = 'block';
   container.innerHTML = `
-    <div style="background: #e3f2fd; padding: 10px; border-radius: 6px; border-left: 4px solid #1976d2;">
+    <div style="background: var(--pg-accent-soft); padding: 10px; border-radius: 6px; border-left: 4px solid var(--pg-accent);">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <strong style="color: #1565c0;">Focus Set Active</strong>
-          <div style="font-size: 0.85rem; color: #555; margin-top: 2px;">
+          <strong style="color: var(--pg-accent);">Focus Set Active</strong>
+          <div style="font-size: 0.85rem; color: var(--pg-text-muted); margin-top: 2px;">
             Showing <strong>${focusCount}</strong> entry-point functions
           </div>
         </div>
-        <button id="clear-focus-btn" style="background: #1976d2; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+        <button id="clear-focus-btn" style="background: var(--pg-accent); color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
           Clear
         </button>
       </div>
-      <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">
+      <div style="font-size: 0.75rem; color: var(--pg-text-faint); margin-top: 4px;">
         Use Source/Sink to expand beyond the focus set
       </div>
     </div>
@@ -3719,7 +3734,7 @@ function setupVSCodeIntegration(): void {
   // Update title
   const header = document.querySelector('.header h1');
   if (header) {
-    header.textContent = '📊 Call Graph Explorer';
+    header.textContent = 'Call Graph Explorer';
   }
   
   // Notify extension that we're ready

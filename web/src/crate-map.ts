@@ -2,41 +2,13 @@ import * as d3 from 'd3';
 import dagreModule from '@dagrejs/dagre';
 const dagre = dagreModule as any;
 import { D3Graph, D3Node, GraphState, CrateNode, CrateEdge, CrateGraph } from './types';
+import { edgeTypeColor, groupColors, ACCENT } from './theme';
 
 // --- Color palette for crate boxes ---
 
-const CRATE_FILL_COLORS = [
-  'rgba(66,133,244,0.12)',
-  'rgba(234,67,53,0.12)',
-  'rgba(52,168,83,0.12)',
-  'rgba(251,188,4,0.12)',
-  'rgba(171,71,188,0.12)',
-  'rgba(0,172,193,0.12)',
-  'rgba(255,112,67,0.12)',
-  'rgba(124,179,66,0.12)',
-];
-
-const CRATE_STROKE_COLORS = [
-  'rgba(66,133,244,0.50)',
-  'rgba(234,67,53,0.50)',
-  'rgba(52,168,83,0.50)',
-  'rgba(251,188,4,0.50)',
-  'rgba(171,71,188,0.50)',
-  'rgba(0,172,193,0.50)',
-  'rgba(255,112,67,0.50)',
-  'rgba(124,179,66,0.50)',
-];
-
-const CRATE_STROKE_SELECTED = [
-  'rgba(66,133,244,0.85)',
-  'rgba(234,67,53,0.85)',
-  'rgba(52,168,83,0.85)',
-  'rgba(251,188,4,0.85)',
-  'rgba(171,71,188,0.85)',
-  'rgba(0,172,193,0.85)',
-  'rgba(255,112,67,0.85)',
-  'rgba(124,179,66,0.85)',
-];
+const CRATE_FILL_COLORS = groupColors(0.12);
+const CRATE_STROKE_COLORS = groupColors(0.50);
+const CRATE_STROKE_SELECTED = groupColors(0.85);
 
 const NODE_H = 28;
 const CHAR_WIDTH = 6.5;
@@ -571,11 +543,7 @@ export class CrateMapVisualization {
       const tw = (fnWidths.get(call.targetId) || 100) / 2;
       const dx = tp.x - sp.x;
 
-      const edgeColor = call.type === 'precondition' ? '#e65100'
-        : call.type === 'postcondition' ? '#c2185b'
-        : call.type === 'mapping' ? '#7c3aed'
-        : call.type === 'spec' ? '#0891b2'
-        : '#666';
+      const edgeColor = edgeTypeColor(call.type, '#666');
       const dashArray = (call.type === 'precondition' || call.type === 'postcondition') ? '6,3'
         : (call.type === 'mapping') ? '2,4'
         : (call.type === 'spec') ? '3,3'
@@ -740,8 +708,8 @@ export class CrateMapVisualization {
         .attr('width', info.width)
         .attr('height', info.height)
         .attr('rx', 10)
-        .attr('fill', isSource ? 'rgba(21,101,192,0.06)' : 'rgba(230,81,0,0.06)')
-        .attr('stroke', isSource ? '#1565c0' : '#e65100')
+        .attr('fill', isSource ? 'rgba(30,115,218,0.06)' : 'rgba(230,81,0,0.06)')
+        .attr('stroke', isSource ? ACCENT : edgeTypeColor('precondition'))
         .attr('stroke-width', 2);
 
       this.g.append('text')
@@ -750,7 +718,7 @@ export class CrateMapVisualization {
         .attr('font-size', '11px')
         .attr('font-weight', '600')
         .attr('font-family', 'system-ui, sans-serif')
-        .attr('fill', isSource ? '#1565c0' : '#e65100')
+        .attr('fill', isSource ? ACCENT : edgeTypeColor('precondition'))
         .attr('pointer-events', 'none')
         .text(`${crateName} ${isSource ? '(source — called)' : '(target — caller)'}`);
     }
@@ -771,11 +739,7 @@ export class CrateMapVisualization {
       const tw = (fnWidths.get(call.targetId) || 100) / 2;
       const dx = tp.x - sp.x;
 
-      const edgeColor = call.type === 'precondition' ? '#e65100'
-        : call.type === 'postcondition' ? '#c2185b'
-        : call.type === 'mapping' ? '#7c3aed'
-        : call.type === 'spec' ? '#0891b2'
-        : '#666';
+      const edgeColor = edgeTypeColor(call.type, '#666');
       const dashArray = (call.type === 'precondition' || call.type === 'postcondition') ? '6,3'
         : (call.type === 'mapping') ? '2,4'
         : (call.type === 'spec') ? '3,3'
@@ -853,7 +817,7 @@ export class CrateMapVisualization {
       .attr('width', btnW)
       .attr('height', 24)
       .attr('rx', 4)
-      .attr('fill', '#1565c0')
+      .attr('fill', ACCENT)
       .attr('opacity', 0.85);
     btnGroup.append('text')
       .attr('x', btnW / 2)
@@ -1034,8 +998,8 @@ export class CrateMapVisualization {
       const isRole = isSource || isTarget;
 
       group.select('.cm-crate-box')
-        .attr('stroke', isSource ? '#1565c0'
-          : isTarget ? '#e65100'
+        .attr('stroke', isSource ? ACCENT
+          : isTarget ? edgeTypeColor('precondition')
           : isRole ? CRATE_STROKE_SELECTED[ci % CRATE_STROKE_SELECTED.length]
           : CRATE_STROKE_COLORS[ci % CRATE_STROKE_COLORS.length])
         .attr('stroke-width', isRole ? 3.5 : 2);
@@ -1052,7 +1016,7 @@ export class CrateMapVisualization {
           .attr('font-size', '9px')
           .attr('font-weight', '700')
           .attr('font-family', 'system-ui, sans-serif')
-          .attr('fill', isSource ? '#1565c0' : '#e65100')
+          .attr('fill', isSource ? ACCENT : edgeTypeColor('precondition'))
           .attr('pointer-events', 'none')
           .text(isSource ? 'SOURCE' : 'TARGET');
       }
@@ -1171,12 +1135,12 @@ export class CrateMapVisualization {
           <span>Cross-${noun} calls</span>
         </div>
         <div class="cm-legend-item">
-          <span style="font-size:0.75rem; color:#666;">Line width = call count</span>
+          <span style="font-size:0.75rem; color:var(--pg-text-muted);">Line width = call count</span>
         </div>
         <div class="cm-legend-section"><strong>Interactions</strong></div>
-        <div class="cm-legend-item"><span style="font-size:0.75rem; color:#666;">Click edge: expand functions</span></div>
-        <div class="cm-legend-item"><span style="font-size:0.75rem; color:#666;">Click ${noun}: show info</span></div>
-        <div class="cm-legend-item"><span style="font-size:0.75rem; color:#666;">Dbl-click ${noun}: open in Call Graph</span></div>
+        <div class="cm-legend-item"><span style="font-size:0.75rem; color:var(--pg-text-muted);">Click edge: expand functions</span></div>
+        <div class="cm-legend-item"><span style="font-size:0.75rem; color:var(--pg-text-muted);">Click ${noun}: show info</span></div>
+        <div class="cm-legend-item"><span style="font-size:0.75rem; color:var(--pg-text-muted);">Dbl-click ${noun}: open in Call Graph</span></div>
       </div>
     `;
     this.container.appendChild(legend);
