@@ -166,7 +166,7 @@ function showLargeGraphPrompt(fileSize: number): void {
     const sizeMB = (fileSize / (1024 * 1024)).toFixed(1);
     statsDiv.innerHTML = `
       <div style="background: #fff3e0; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
-        <div style="color: #e65100; font-weight: bold; margin-bottom: 8px;">📊 Large Graph Detected (${sizeMB} MB)</div>
+        <div style="color: #e65100; font-weight: bold; margin-bottom: 8px;">Large Graph Detected (${sizeMB} MB)</div>
         <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: var(--pg-text);">
           Enter a <strong>Source</strong>, <strong>Sink</strong>, or <strong>Include Files</strong> filter, then press <strong>Enter</strong> or click <strong>Load & Search</strong>.
         </p>
@@ -668,7 +668,7 @@ function updateLanguageLabels(lang: ProjectLanguage): void {
   if (crateMapBtn) crateMapBtn.textContent = mapLabel;
 
   const title = document.getElementById('crate-boundary-title');
-  if (title) title.textContent = `🔗 ${Noun} Boundary`;
+  if (title) title.textContent = `${Noun} Boundary`;
 
   const srcLabel = document.getElementById('source-crate-label');
   if (srcLabel) srcLabel.textContent = `Source ${Noun} (called):`;
@@ -679,8 +679,8 @@ function updateLanguageLabels(lang: ProjectLanguage): void {
   const hint = document.getElementById('crate-boundary-hint');
   if (hint) {
     hint.innerHTML =
-      `💡 Select two ${noun}s to see the <strong>boundary</strong>: functions in the source ${noun} called by the target ${noun}.<br>` +
-      `💡 In ${mapLabel}: click a ${noun} to set source, click another to set target.`;
+      `Select two ${noun}s to see the <strong>boundary</strong>: functions in the source ${noun} called by the target ${noun}.<br>` +
+      `In ${mapLabel}: click a ${noun} to set source, click another to set target.`;
   }
 }
 
@@ -1428,7 +1428,7 @@ async function loadDeferredGraphWithDisambiguation(): Promise<void> {
       if (statsDiv) {
         statsDiv.innerHTML = `
           <div style="padding: 1rem; text-align: center;">
-            <div style="margin-bottom: 0.5rem;">📊 Graph loaded (${graph.nodes.length.toLocaleString()} nodes)</div>
+            <div style="margin-bottom: 0.5rem;">Graph loaded (${graph.nodes.length.toLocaleString()} nodes)</div>
             <div style="font-size: 0.8rem; color: var(--pg-text-muted);">Select files from the dropdown above...</div>
           </div>
         `;
@@ -1873,6 +1873,20 @@ function resumeDeferredEntrypoints(): void {
 }
 
 /**
+ * Show the Source Type (Libsignal / External) filter only when the graph
+ * actually mixes both kinds; for any non-Signal project every node has
+ * is_libsignal=false and the filter is meaningless.
+ */
+function updateSourceTypeFilterVisibility(): void {
+  const container = document.getElementById('source-type-container');
+  if (!container) return;
+  const nodes = state.fullGraph?.nodes ?? [];
+  const hasLibsignal = nodes.some(n => n.is_libsignal);
+  const hasExternal = nodes.some(n => !n.is_libsignal);
+  container.style.display = hasLibsignal && hasExternal ? '' : 'none';
+}
+
+/**
  * Render Language filter checkboxes when the graph contains multiple languages.
  * Only shown when both Rust and Lean nodes are present.
  */
@@ -2176,6 +2190,7 @@ function loadGraph(graph: D3Graph, message: string): void {
   
   // Detect project language and update UI accordingly
   state.projectLanguage = detectProjectLanguage(state.fullGraph);
+  updateSourceTypeFilterVisibility();
   renderLanguageFilters();
   renderKindFilters(state.projectLanguage);
   renderCallTypeFilters(state.projectLanguage);
@@ -2315,7 +2330,7 @@ function showError(message: string, dedupeKey?: string): void {
     const errorMsg = document.createElement('div');
     if (dedupeKey) errorMsg.setAttribute('data-error-key', dedupeKey);
     errorMsg.style.cssText = 'background: var(--pg-status-failed); color: white; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;';
-    errorMsg.textContent = `❌ ${message}`;
+    errorMsg.textContent = message;
     statsDiv.insertBefore(errorMsg, statsDiv.firstChild);
 
     // Remove message after 8 seconds
@@ -2542,7 +2557,7 @@ function updateStats(truncatedTo?: number): void {
 
   const seededBanner = seededViewInfo ? `
     <div class="stat-item" style="background: #ecfae8; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-      <span style="color: var(--pg-status-transitively-verified); font-weight: bold;">📍 Showing ${seededViewInfo.shownNodes.toLocaleString()} of ${state.fullGraph.nodes.length.toLocaleString()} nodes (entry points, depth ${seededViewInfo.depth})</span>
+      <span style="color: var(--pg-status-transitively-verified); font-weight: bold;">Showing ${seededViewInfo.shownNodes.toLocaleString()} of ${state.fullGraph.nodes.length.toLocaleString()} nodes (entry points, depth ${seededViewInfo.depth})</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--pg-text-muted);">
         Seeded from ${describeSeedTier(seededViewInfo)}.
         ${describeEntrypointsFallback()}${seededViewInfo.depth < seededViewInfo.requestedDepth ? `Depth limited to ${seededViewInfo.depth}: depth ${seededViewInfo.requestedDepth} would exceed the render budget. ` : ''}
@@ -2563,7 +2578,7 @@ function updateStats(truncatedTo?: number): void {
     ${seededBanner}
     ${needsFilter ? `
     <div class="stat-item" style="background: #fff3e0; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-      <span style="color: #e65100; font-weight: bold;">📊 Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>
+      <span style="color: #e65100; font-weight: bold;">Large Graph (${state.fullGraph.nodes.length.toLocaleString()} nodes, ${state.fullGraph.links.length.toLocaleString()} edges)</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--pg-text-muted);">
         ${describeEntrypointsFallback()}Too large to render all at once. Use the <strong>${crateMapLabel(state.projectLanguage)}</strong> for an overview, or enter a <strong>Source</strong>/<strong>Sink</strong> filter to explore specific call paths.
       </p>
@@ -2571,7 +2586,7 @@ function updateStats(truncatedTo?: number): void {
     ` : ''}
     ${wasTruncated ? `
     <div class="stat-item" style="background: var(--pg-accent-soft); padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-      <span style="color: var(--pg-accent); font-weight: bold;">✂️ Results Limited</span>
+      <span style="color: var(--pg-accent); font-weight: bold;">Results Limited</span>
       <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--pg-text-muted);">
         Showing top ${truncatedTo} nodes by connectivity. Use a more specific query or reduce <strong>Depth</strong> to narrow results.
       </p>
@@ -2767,7 +2782,7 @@ function updateNodeInfo(): void {
     </div>
     <div class="node-detail">
       <button id="navigate-to-source-btn" class="github-link" style="background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; color: inherit;">
-        ${isVSCodeEnvironment() ? '📂 Open in Editor' : (githubLink ? '📂 View on GitHub' : '')}
+        ${isVSCodeEnvironment() ? 'Open in Editor' : (githubLink ? 'View on GitHub' : '')}
       </button>
     </div>
     ${mappingHtml}
@@ -3719,7 +3734,7 @@ function setupVSCodeIntegration(): void {
   // Update title
   const header = document.querySelector('.header h1');
   if (header) {
-    header.textContent = '📊 Call Graph Explorer';
+    header.textContent = 'Call Graph Explorer';
   }
   
   // Notify extension that we're ready

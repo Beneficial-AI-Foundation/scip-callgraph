@@ -91,9 +91,16 @@ body {
 }
 
 .header h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--pg-brand-strong);
+}
+
+.header .logo {
+  flex-shrink: 0;
 }
 
 /* View Switcher */
@@ -202,6 +209,7 @@ body {
   align-items: center;
   margin-bottom: 0.5rem;
   cursor: pointer;
+  font-size: 0.9rem;
 }
 
 .checkbox-label input {

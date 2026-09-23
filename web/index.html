@@ -13,7 +13,15 @@
   <div class="app-container">
     <!-- Header -->
     <header class="header">
-      <h1>📊 probegraph</h1>
+      <h1>
+        <svg class="logo" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 19 L12 5 M12 5 L19 14 M6 19 L19 14" stroke="var(--pg-border)" stroke-width="1.5" fill="none"/>
+          <circle cx="6" cy="19" r="3" fill="var(--pg-status-unknown)"/>
+          <circle cx="12" cy="5" r="3" fill="var(--pg-brand)"/>
+          <circle cx="19" cy="14" r="3" fill="var(--pg-brand-strong)"/>
+        </svg>
+        probegraph
+      </h1>
       <div class="view-switcher">
         <button id="view-callgraph" class="view-btn active">Call Graph</button>
         <button id="view-blueprint" class="view-btn">File Map</button>
@@ -22,7 +30,7 @@
       </div>
       <div class="file-input-container">
         <label for="file-input" class="file-input-label">
-          📁 Load Graph JSON
+          Load Graph JSON
         </label>
         <input type="file" id="file-input" accept=".json" />
       </div>
@@ -33,13 +41,13 @@
       <!-- Left Sidebar - Controls -->
       <aside class="sidebar sidebar-left">
         <section class="panel">
-          <h2>🎛️ Filters</h2>
+          <h2>Filters</h2>
           
           <div id="focus-indicator" class="filter-group" style="display: none;">
             <!-- Populated dynamically when a focus set is active -->
           </div>
 
-          <div class="filter-group">
+          <div class="filter-group" id="source-type-container" style="display:none">
             <h3>Source Type</h3>
             <label class="checkbox-label">
               <input type="checkbox" id="show-libsignal" checked />
@@ -94,7 +102,7 @@
           </div>
 
           <div class="filter-group">
-            <h3>🚫 Exclude by Name</h3>
+            <h3>Exclude by Name</h3>
             <label class="input-label">
               <input 
                 type="text" 
@@ -104,12 +112,12 @@
               />
             </label>
             <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-              💡 Matches function names. <code>*_comm*</code> excludes <code>lemma_commutativity</code>
+              Matches function names. <code>*_comm*</code> excludes <code>lemma_commutativity</code>
             </small>
           </div>
 
           <div class="filter-group">
-            <h3>📂 Exclude by Path</h3>
+            <h3>Exclude by Path</h3>
             <div class="preset-row">
               <select id="exclude-path-presets" class="preset-select">
                 <option value="">+ Add preset...</option>
@@ -127,12 +135,12 @@
               />
             </label>
             <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-              💡 Matches node paths. <code>*/specs/*</code> excludes all spec functions
+              Matches node paths. <code>*/specs/*</code> excludes all spec functions
             </small>
           </div>
 
           <div class="filter-group">
-            <h3>📁 Include Files</h3>
+            <h3>Include Files</h3>
             <div class="input-with-dropdown">
               <label class="input-label">
                 <input 
@@ -147,10 +155,10 @@
               </div>
             </div>
             <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-              💡 Empty = all files. Use path like <code>ifma/edwards.rs</code> to disambiguate
+              Empty = all files. Use path like <code>ifma/edwards.rs</code> to disambiguate
             </small>
             <details class="file-list-details">
-              <summary>📋 Available files (<span id="file-count">0</span>)</summary>
+              <summary>Available files (<span id="file-count">0</span>)</summary>
               <div id="file-list" class="file-list">
                 <!-- Populated dynamically -->
               </div>
@@ -158,7 +166,7 @@
           </div>
 
           <div class="filter-group">
-            <h3>🔍 Source → Sink</h3>
+            <h3>Source → Sink</h3>
             <label class="input-label">
               <span>Source (shows callees):</span>
               <input 
@@ -178,16 +186,16 @@
               />
             </label>
             <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.5rem;">
-              💡 <strong>Source only:</strong> what it calls<br>
-              💡 <strong>Sink only:</strong> who calls it<br>
-              💡 <strong>Both:</strong> paths between them<br>
-              💡 <code>decompress</code> = substring match, <code>p_*</code> = anchored glob<br>
-              💡 Rust-style: <code>edwards::decompress</code> (file::func)
+              <strong>Source only:</strong> what it calls<br>
+              <strong>Sink only:</strong> who calls it<br>
+              <strong>Both:</strong> paths between them<br>
+              <code>decompress</code> = substring match, <code>p_*</code> = anchored glob<br>
+              Rust-style: <code>edwards::decompress</code> (file::func)
             </small>
           </div>
 
           <div class="filter-group" id="crate-boundary-group">
-            <h3 id="crate-boundary-title">🔗 Crate Boundary</h3>
+            <h3 id="crate-boundary-title">Crate Boundary</h3>
             <label class="input-label">
               <span id="source-crate-label">Source Crate (called):</span>
               <select id="source-crate-select" class="search-input">
@@ -201,8 +209,8 @@
               </select>
             </label>
             <small id="crate-boundary-hint" style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.5rem;">
-              💡 Select two crates to see the <strong>boundary</strong>: functions in the source crate called by the target crate.<br>
-              💡 In Crate Map: click a crate to set source, click another to set target.
+              Select two crates to see the <strong>boundary</strong>: functions in the source crate called by the target crate.<br>
+              In Crate Map: click a crate to set source, click another to set target.
             </small>
           </div>
 
@@ -224,44 +232,44 @@
 
           <div class="button-group">
             <button id="reset-filters" class="btn btn-secondary">
-              🔄 Reset Filters
+              Reset Filters
             </button>
             <button id="clear-selection" class="btn btn-secondary">
-              ❌ Clear Selection
+              Clear Selection
             </button>
             <button id="reset-view" class="btn btn-secondary">
-              🎯 Reset View
+              Reset View
             </button>
             <button id="copy-link" class="btn btn-primary">
-              🔗 Copy Link
+              Copy Link
             </button>
           </div>
 
           <div id="hidden-nodes-container" class="filter-group" style="display: none;">
-            <h3>👁️ Hidden Nodes (<span id="hidden-count">0</span>)</h3>
+            <h3>Hidden Nodes (<span id="hidden-count">0</span>)</h3>
             <ul id="hidden-nodes-list" class="hidden-nodes-list"></ul>
             <button id="show-all-hidden" class="btn btn-secondary" style="margin-top: 0.5rem;">
-              👁️ Show All
+              Show All
             </button>
             <small style="color: var(--pg-text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-              💡 Shift+click to hide nodes
+              Shift+click to hide nodes
             </small>
           </div>
         </section>
 
         <section class="panel">
-          <h2>📈 Statistics</h2>
+          <h2>Statistics</h2>
           <div id="stats" class="stats-container">
             <p>No graph loaded.</p>
             <p style="font-size: 0.85rem; color: var(--pg-text-muted); margin-top: 0.5rem;">
-              💡 You can also load via URL:<br>
+              You can also load via URL:<br>
               <code style="font-size: 0.75rem;">?json=https://url-to-graph.json</code>
             </p>
           </div>
         </section>
 
         <section class="panel">
-          <h2>🎨 Verification Legend</h2>
+          <h2>Verification Legend</h2>
           <div class="legend-container">
             <div class="legend-item">
               <span class="legend-dot status-verified"></span>
@@ -298,7 +306,7 @@
           <!-- D3 visualization will be rendered here -->
         </div>
         <div class="graph-instructions">
-          <p><strong>💡 Instructions:</strong></p>
+          <p><strong>Instructions:</strong></p>
           <ul>
             <li><strong>Zoom:</strong> Scroll or pinch</li>
             <li><strong>Pan:</strong> Click and drag background</li>
