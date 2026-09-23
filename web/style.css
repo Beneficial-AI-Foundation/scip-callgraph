@@ -17,6 +17,13 @@
   --pg-text-muted: #6b7280;
   --pg-text-faint: #9ca3af;
 
+  /* Brand accent (verilib green): identity moments only — wordmark, active
+     view, active tab, links. Actions and filter chips stay blue so green
+     keeps its "verified" meaning in the graph. */
+  --pg-brand: #3fbb14;
+  --pg-brand-strong: #2f9410;
+  --pg-brand-soft: #ecfae8;
+
   /* Primary accent */
   --pg-accent: #1e73da;
   --pg-accent-hover: #185fb5;
@@ -86,6 +93,7 @@ body {
 .header h1 {
   font-size: 1.25rem;
   font-weight: 600;
+  color: var(--pg-brand-strong);
 }
 
 /* View Switcher */
@@ -110,12 +118,12 @@ body {
 }
 
 .view-btn.active {
-  background: var(--pg-accent);
+  background: var(--pg-brand);
   color: #fff;
 }
 
 .view-btn:hover:not(.active) {
-  background: var(--pg-accent-soft);
+  background: var(--pg-brand-soft);
   color: var(--pg-text);
 }
 
@@ -963,7 +971,7 @@ select.search-input {
 }
 
 .footer a {
-  color: var(--pg-accent);
+  color: var(--pg-brand-strong);
   text-decoration: none;
 }
 
@@ -1251,8 +1259,8 @@ select.search-input {
 }
 
 .sidebar-tab.active {
-  color: var(--pg-accent);
-  border-bottom-color: var(--pg-accent);
+  color: var(--pg-brand-strong);
+  border-bottom-color: var(--pg-brand);
 }
 
 /* ============================================================================
