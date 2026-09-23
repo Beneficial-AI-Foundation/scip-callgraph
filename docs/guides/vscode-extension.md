@@ -59,7 +59,9 @@ panel.webview.postMessage({
     source: 'my_function',
     sink: '',
     depth: 3
-  }
+  },
+  selectedNodeId: 'scip:...' // Optional: full node ID for exact-match
+                             // selection instead of display-name matching
 });
 ```
 
@@ -258,7 +260,7 @@ When running in VS Code webview:
 |---------|----------|--------------|
 | File loading | File picker dialog | Graph sent via message |
 | Source navigation | Opens GitHub in new tab | Opens file in editor |
-| Header title | "Call Graph Viewer" | "📊 Call Graph Explorer" |
+| Header title | "📊 SCIP Call Graph Viewer" | "📊 Call Graph Explorer" |
 | File input | Visible | Hidden |
 
 ## Environment Detection
@@ -296,6 +298,6 @@ function isVSCodeEnvironment(): boolean {
 
 ## Related Documentation
 
-- [INTERACTIVE_VIEWER.md](./INTERACTIVE_VIEWER.md) - Web viewer features and usage
+- [viewer.md](./viewer.md) - Web viewer features and usage
 - [Web README](../../web/README.md) - Development setup for the web viewer
 

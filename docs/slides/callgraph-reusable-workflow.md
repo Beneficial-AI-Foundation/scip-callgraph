@@ -63,6 +63,7 @@ That's it. GitHub URL is auto-detected. Deploys to GitHub Pages automatically.
 **An interactive, searchable call graph viewer at `https://YOUR_ORG.github.io/YOUR_REPO/`**
 
 - **Force-directed graph visualization** (D3.js) — zoom, pan, drag
+- **Three views** — Call Graph, File Map (layered by file), Crate Map (crate-level dependencies)
 - **Search** by function name, symbol path, or file name
 - **Depth-based exploration** — click a node, set max depth, see its neighborhood
 - **Clickable source links** — jump directly to the function on GitHub
@@ -82,7 +83,7 @@ The pipeline doesn't just extract calls. It enriches the graph with:
 | **Similar lemmas detection** | Finds structurally similar lemmas (potential deduplication targets) |
 | **Unused specs detection** | Identifies spec/proof functions with no callers |
 | **Complexity metrics** | Cyclomatic, cognitive, Halstead difficulty/effort/length |
-| **Source code embedding** | Function bodies included for in-viewer reading |
+| **Cross-language mapping edges** | Rust ↔ Lean links in merged multi-probe graphs |
 | **GitHub deep links** | Every node links to its exact file and line range |
 
 ---
@@ -133,7 +134,7 @@ This turns the call graph from a tool for understanding *implementation* into a 
 - What functions call `my_function`?
 - What is the call chain between function A and function B?
 - What is the neighborhood within N steps of a function?
-- Which functions are entry points (many callers, few callees)?
+- Which functions are entry points (public API, few or no internal callers)?
 - Which functions are hubs (many callees)?
 
 ---
@@ -147,7 +148,7 @@ This turns the call graph from a tool for understanding *implementation* into a 
 - Are the functions I depend on verified?
 - Which unverified functions are on the critical path?
 
-Nodes are color-coded: **green** = verified, **red** = failed, **gray** = unverified.
+Nodes are color-coded across six states: **green** = verified, **dark green** = transitively verified, **purple** = trusted, **red** = failed, **gray** = unverified, **blue** = unknown.
 
 ---
 
@@ -180,7 +181,7 @@ Nodes are color-coded: **green** = verified, **red** = failed, **gray** = unveri
 
 - What are the main entry points?
 - How are modules organized and connected?
-- What does function X do? (read its body, callers, and callees in the viewer)
+- What does function X do? (jump to its source on GitHub, see its callers and callees)
 - Which functions are central to the architecture? (high connectivity)
 - What patterns exist in the proof structure? (similar lemmas)
 
@@ -225,6 +226,25 @@ jobs:
 ```
 
 Same interactive viewer. Same GitHub Pages deployment. Same zero-setup experience.
+
+---
+
+## Lean 4 Projects Too
+
+A sibling reusable workflow does the same for Lean:
+
+```yaml
+jobs:
+  callgraph:
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-lean-callgraph.yml@main
+```
+
+- **probe-lean pipeline** extracts declarations, dependencies, and specs
+- **Mathlib cache** support (`use_mathlib_cache`, on by default) keeps CI fast
+- **`sorry` detection** — incomplete proofs surface as verification status
+- **Pre-built atoms** (`pre_built_atoms`) let you skip the build entirely
+- Same viewer, same Pages deployment — and merged Rust + Lean graphs get
+  cross-language mapping edges
 
 ---
 
@@ -273,8 +293,7 @@ with:
     - Run Verus verification (optional)
     - Detect similar lemmas (optional)
     - Compute complexity metrics
-    - Embed function source code
-    - Generate GitHub deep links
+    - Record line ranges for GitHub deep links
 5. Build the web viewer (Vite + TypeScript + D3.js)
 6. Deploy to GitHub Pages
 ```
@@ -288,7 +307,7 @@ All cached where possible. Runs on `ubuntu-latest`.
 | Who | What they get |
 |---|---|
 | **Verification engineers** | Verification status at a glance, unused specs, similar lemmas to reuse, proof complexity metrics |
-| **New contributors** | Visual codebase map, click-to-explore call chains, function bodies in the viewer |
+| **New contributors** | Visual codebase map, click-to-explore call chains, one-click jump to source |
 | **Code reviewers** | Impact analysis — callers, callees, spec dependencies of any changed function |
 | **Project leads** | Verification coverage dashboard, dead code detection, codebase health over time |
 | **Security auditors** | Data flow tracing, critical path identification, dependency analysis |
@@ -302,25 +321,7 @@ All cached where possible. Runs on `ubuntu-latest`.
 
 1. **Enable GitHub Pages** in your repo settings (Settings → Pages → Source: GitHub Actions)
 
-2. **Add the workflow file:**
-
-```yaml
-# .github/workflows/deploy-callgraph.yml
-name: Deploy Call Graph
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-jobs:
-  callgraph:
-    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
-```
+2. **Add the workflow file** — the one-file YAML from the "How Simple Is It?" slide.
 
 3. **Push to `main`.** Done.
 
@@ -398,9 +399,9 @@ Same enrichments. Same search. Same visualization. Different delivery.
 
 - **Any Verus project** can get an interactive call graph by adding a single workflow file
 - **Zero local setup** — everything runs in GitHub Actions
-- **Rich enrichments** — verification status, similar lemmas, source code
+- **Rich enrichments** — verification status, similar lemmas, complexity metrics
 - **Two deployment modes** — standalone or alongside existing sites
-- **Works for plain Rust too** — just flip `use_rust_analyzer: true`
+- **Works for plain Rust and Lean 4 too** — `use_rust_analyzer: true`, or the Lean workflow
 - **Meet engineers where they are** — on GitHub via Pages, in the editor via VS Code extension
 - **One codebase, two surfaces** — same viewer, same data, delivered to both
 

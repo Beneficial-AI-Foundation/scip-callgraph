@@ -1,16 +1,25 @@
-# Call Graph CI Integration Guide
+# CI Integration Guide
 
-This guide explains how to integrate automatic call graph generation into your Rust or Verus project using GitHub Actions.
+How to generate and deploy an interactive call graph for your Rust, Verus, or
+Lean 4 project using the reusable GitHub Actions workflows in this repo.
 
-## Quick Start
+## One-time setup: enable GitHub Pages
 
-### Option 1: Standalone Deployment (No Existing GitHub Pages)
+In your repository: **Settings → Pages → Build and deployment → Source:
+GitHub Actions**. That is all; the workflows below handle the rest. The
+workflow needs `pages: write` and `id-token: write` permissions, which the
+examples include.
 
-If your project doesn't have an existing GitHub Pages site, use this simple workflow:
+## Rust / Verus projects
+
+### Minimal setup
+
+`github_url` is auto-detected from the calling repository, so the minimal
+workflow needs no inputs:
 
 ```yaml
-# .github/workflows/deploy-callgraph.yml
-name: Deploy Call Graph
+# .github/workflows/callgraph.yml
+name: Call Graph
 
 on:
   push:
@@ -29,121 +38,54 @@ concurrency:
 jobs:
   callgraph:
     uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
-    with:
-      github_url: https://github.com/YOUR_ORG/YOUR_REPO
-      deploy_mode: standalone
 ```
 
-Your call graph will be available at `https://YOUR_ORG.github.io/YOUR_REPO/`.
+Your call graph deploys to `https://YOUR_ORG.github.io/YOUR_REPO/`.
 
-### Non-Verus Rust Projects
+For reproducible runs, pin the Verus release:
 
-For regular Rust projects (not using Verus), use `use_rust_analyzer: true`:
+```yaml
+    with:
+      verus_version: '0.2025.11.23.41c5885'
+```
+
+### Non-Verus Rust projects
+
+Use rust-analyzer instead of verus-analyzer and skip the Verus-specific steps:
 
 ```yaml
 jobs:
   callgraph:
     uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
     with:
-      github_url: https://github.com/YOUR_ORG/YOUR_REPO
       use_rust_analyzer: true
       skip_verification: true
       skip_similar_lemmas: true
 ```
 
-This uses rust-analyzer instead of verus-analyzer for SCIP generation, and skips Verus-specific features.
+### Rust/Verus workflow inputs
 
-### Option 2: Subpath Deployment (Existing GitHub Pages)
+All inputs are optional.
 
-If your project already has a GitHub Pages site and you want the call graph at a subpath (e.g., `/callgraph`), you'll need to merge the artifacts:
+| Input | Description | Default |
+|-------|-------------|---------|
+| `project_path` | Path to the project relative to repo root | `.` |
+| `github_url` | Repo URL for source links | auto-detected |
+| `github_branch` | Branch for source links | `main` |
+| `github_path_prefix` | Prefix for source file paths (e.g. `curve25519-dalek` when the crate lives in a subdirectory) | `''` |
+| `package` | Cargo package name, for workspaces | `''` |
+| `use_rust_analyzer` | Use rust-analyzer instead of verus-analyzer | `false` |
+| `skip_verification` | Skip the Verus verification step | `false` |
+| `skip_similar_lemmas` | Skip similar-lemma enrichment | `false` |
+| `verus_version` | Verus release to install (e.g. `0.2025.11.23.41c5885`) | latest release |
+| `rust_version` | Rust toolchain (must match the Verus version) | `1.91.0` |
+| `deploy_mode` | `standalone` or `subpath` | `standalone` |
+| `subpath` | URL subpath when `deploy_mode: subpath` | `callgraph` |
 
-```yaml
-# .github/workflows/deploy-with-callgraph.yml
-name: Deploy Site with Call Graph
+## Lean 4 projects
 
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
-jobs:
-  # Generate the call graph
-  callgraph:
-    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
-    with:
-      github_url: https://github.com/YOUR_ORG/YOUR_REPO
-      github_path_prefix: ''  # Set if your source is in a subdirectory
-      deploy_mode: subpath
-      subpath: callgraph
-
-  # Build your existing site
-  build-site:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      # Your existing site build steps here
-      # Example for a static site:
-      - name: Build site
-        run: |
-          # Your build commands
-          mkdir -p _site
-          cp -r docs/* _site/  # Or however you build your site
-      
-      - name: Upload site artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: main-site
-          path: _site
-
-  # Merge and deploy
-  deploy:
-    needs: [callgraph, build-site]
-    runs-on: ubuntu-latest
-    
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
-    steps:
-      - name: Download main site
-        uses: actions/download-artifact@v4
-        with:
-          name: main-site
-          path: site
-      
-      - name: Download callgraph viewer
-        uses: actions/download-artifact@v4
-        with:
-          name: callgraph-viewer
-          path: site/callgraph
-      
-      - name: Upload combined artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-```
-
-Your call graph will be available at `https://YOUR_ORG.github.io/YOUR_REPO/callgraph/`.
-
-## Lean 4 Projects
-
-For Lean 4 projects, use the dedicated Lean workflow powered by [probe-lean](https://github.com/Beneficial-AI-Foundation/probe-lean):
-
-### Standalone Deployment
+Uses [probe-lean](https://github.com/Beneficial-AI-Foundation/probe-lean) to
+extract declarations, dependencies, and verification status (sorry detection):
 
 ```yaml
 # .github/workflows/callgraph.yml
@@ -166,97 +108,173 @@ concurrency:
 jobs:
   callgraph:
     uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-lean-callgraph.yml@main
-    with:
-      project_path: '.'
-      github_url: https://github.com/YOUR_ORG/YOUR_LEAN_REPO
 ```
 
-### Skip Verification
+The workflow runs `probe-lean pipeline`, which builds the project with
+`lake build`, extracts atoms, computes specification status, and maps `sorry`
+warnings to declarations. Each declaration gets a `verification-status`
+(`verified`, `unverified`, or `failed`) rendered with the same color coding as
+Verus projects.
 
-To generate only the call graph structure without sorry detection:
+### Lean workflow inputs
 
-```yaml
-jobs:
-  callgraph:
-    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-lean-callgraph.yml@main
-    with:
-      github_url: https://github.com/YOUR_ORG/YOUR_LEAN_REPO
-      skip_verification: true
-```
-
-### Lean Configuration Options
+All inputs are optional.
 
 | Input | Description | Default |
 |-------|-------------|---------|
-| `project_path` | Path to Lean project relative to repo root | `.` |
-| `github_url` | GitHub repo URL for source code links | (auto-detected) |
+| `project_path` | Path to the Lean project relative to repo root | `.` |
+| `github_url` | Repo URL for source links | auto-detected |
+| `github_branch` | Branch for source links | `main` |
 | `github_path_prefix` | Prefix for source file paths | `''` |
 | `probe_lean_version` | probe-lean git ref (branch, tag, SHA) | `main` |
-| `skip_verification` | Skip sorry detection step | `false` |
+| `use_mathlib_cache` | Run `lake exe cache get` before building. Required for Mathlib-dependent projects | `true` |
+| `skip_verification` | Skip sorry detection | `false` |
+| `pre_built_atoms` | Artifact name with pre-built atoms JSON; skips `lake build` and extraction entirely | `''` |
 | `deploy_mode` | `standalone` or `subpath` | `standalone` |
-| `subpath` | URL subpath (when `deploy_mode: subpath`) | `callgraph` |
+| `subpath` | URL subpath when `deploy_mode: subpath` | `callgraph` |
 
-### How It Works
+The workflow aligns probe-lean's Lean toolchain to your project's
+`lean-toolchain` file. Older Lean versions may need probe-lean source changes.
 
-The workflow runs `probe-lean pipeline` which:
+## Deploying to a subpath of an existing Pages site
 
-1. **Builds** the Lean project with `lake build` (capturing output for sorry detection)
-2. **Atomizes** -- extracts declarations, dependencies, and source locations
-3. **Specifies** -- computes specification status per declaration
-4. **Verifies** -- parses build output for `sorry` warnings and maps them to declarations
+If your repo already publishes a Pages site, generate the graph as an artifact
+and merge it into your site before deploying:
 
-The output is an enriched atom dict where each declaration has a `verification-status` field (`"verified"`, `"unverified"`, or `"failed"`), which the web viewer renders with the same color-coding as Verus projects.
+```yaml
+# .github/workflows/deploy-with-callgraph.yml
+name: Deploy Site with Call Graph
 
-### Lean Toolchain Compatibility
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
-The workflow automatically aligns probe-lean's Lean toolchain to your project's `lean-toolchain` file. Projects using Lean v4.28.x or later are well-supported. Older versions may require probe-lean source changes due to Lean API differences.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
----
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
-## Rust/Verus Configuration Options
+jobs:
+  callgraph:
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
+    with:
+      deploy_mode: subpath
+      subpath: callgraph
 
-| Input | Description | Default |
-|-------|-------------|---------|
-| `project_path` | Path to Rust project relative to repo root | `.` |
-| `github_url` | GitHub repo URL for source code links | **Required** |
-| `github_path_prefix` | Prefix for source file paths (e.g., `curve25519-dalek`) | `''` |
-| `package` | Cargo package name for workspaces | `''` |
-| `use_rust_analyzer` | Use rust-analyzer instead of verus-analyzer | `false` |
-| `skip_verification` | Skip Verus verification step | `false` |
-| `skip_similar_lemmas` | Skip similar lemmas enrichment | `false` |
-| `deploy_mode` | `standalone` or `subpath` | `standalone` |
-| `subpath` | URL subpath (when `deploy_mode: subpath`) | `callgraph` |
+  build-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Your existing site build steps here
+      - name: Build site
+        run: |
+          mkdir -p _site
+          cp -r docs/* _site/
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-site
+          path: _site
 
-## Features Included
+  deploy:
+    needs: [callgraph, build-site]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download main site
+        uses: actions/download-artifact@v4
+        with:
+          name: main-site
+          path: site
+      - name: Download callgraph viewer
+        uses: actions/download-artifact@v4
+        with:
+          name: callgraph-viewer
+          path: site/callgraph
+      - name: Upload combined artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+```
 
-The generated call graph includes:
+The graph appears at `https://YOUR_ORG.github.io/YOUR_REPO/callgraph/`.
 
-- ✅ **Interactive D3.js visualization** with zoom, pan, and filtering
-- ✅ **Verification status** (verified/failed/unverified) for each function
-- ✅ **Similar lemmas** from vstd for each function
-- ✅ **Source code links** to GitHub (click to view source)
-- ✅ **Function details** including caller/callee relationships
-- ✅ **Search and filter** by function name, file, verification status
+## Sharing graphs without a deployment
+
+Any deployed viewer instance can load a graph from a URL with the `?json=`
+parameter, so you can host just the JSON (in a repo, a gist, or any static
+host with CORS) and share a link:
+
+```
+https://YOUR_ORG.github.io/YOUR_REPO/?json=https://raw.githubusercontent.com/you/repo/main/graph.json
+```
+
+## What the deployed viewer includes
+
+- Three views: force-directed Call Graph, File Map, and Crate Map (shown as
+  Namespace Map for Lean graphs)
+- Verification status per node (six states, including transitively verified
+  and trusted), with status filters
+- Spec-clause edge types (body call / precondition / postcondition) and, for
+  merged graphs, cross-language Rust-to-Lean mapping links
+- Per-kind declaration filters (exec/proof/spec for Verus; axioms, types,
+  projections, instances for Lean)
+- Similar-lemma suggestions (Verus), source links to GitHub, search, path
+  queries, and shareable filter URLs
+- A Guide tab with a generated graph overview and suggested queries
+
+See the [viewer guide](viewer.md) for usage, including how source links are
+configured (`?github=` parameter, graph metadata, or `VITE_GITHUB_URL` at
+build time).
+
+## Custom domain
+
+To serve the viewer at, e.g., `callgraph.yourdomain.com`: create
+`web/public/CNAME` containing the domain, add a `CNAME` DNS record pointing to
+`YOUR_USERNAME.github.io`, then set the custom domain under Settings → Pages
+and enable Enforce HTTPS.
+
+## Testing viewer changes locally
+
+Before pushing changes that touch `web/`:
+
+```bash
+cd web
+npm install
+npm run type-check
+npm run test:run   # the deploy workflow runs these tests too
+npm run build
+npm run preview
+```
 
 ## Troubleshooting
 
-### verus-analyzer fails
+**verus-analyzer fails.** Check the project analyzes locally with
+verus-analyzer. If it is not a Verus project, set `use_rust_analyzer: true`.
 
-Make sure your project has a valid `Cargo.toml` and can be analyzed by verus-analyzer locally. If your project is not a Verus project, use `use_rust_analyzer: true` instead.
+**rust-analyzer fails.** Make sure the project compiles with `cargo check`.
+Verus-specific syntax needs verus-analyzer (the default).
 
-### rust-analyzer fails
+**Verification times out.** Set `skip_verification: true` to generate the
+graph structure without verification.
 
-Ensure your project compiles with `cargo check`. If you're using Verus-specific syntax, you need verus-analyzer (the default).
+**Similar lemmas missing.** Set `skip_similar_lemmas: true` if the Python
+setup fails.
 
-### Verification times out
+**Lean build fails on a Mathlib project.** Leave `use_mathlib_cache` at its
+default (`true`); building Mathlib from source usually exceeds runner limits.
 
-Use `skip_verification: true` to skip the verification step and just generate the call graph structure.
-
-### Similar lemmas missing
-
-Use `skip_similar_lemmas: true` if the Python setup fails, or ensure your project is compatible with the verus_lemma_finder.
-
-### CORS errors loading graph
-
-If deploying to a custom domain, ensure the `github_url` matches your actual repository URL.
-
+**Pages deploy fails or 404s.** Check the Actions log for the failed job.
+Confirm Pages source is set to "GitHub Actions". First deployments can take
+5-10 minutes; later ones are faster. TypeScript or build errors reproduce
+locally with `npm run type-check` / `npm run build` in `web/`.
