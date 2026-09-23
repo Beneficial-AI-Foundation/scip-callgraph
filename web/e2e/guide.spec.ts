@@ -9,8 +9,11 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
-const APP_PATH = '/probegraph/';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
+// Pinned to a tracked multi-crate fixture so the Crate boundary / map chips
+// exist and chip labels (derived from the graph's most connected node etc.)
+// don't depend on whatever public/graph.json currently is.
+const APP_PATH = '/probegraph/?json=./graph_backup_dalek.json';
 
 test.describe('Guide Chip Actions', () => {
   test('verify chip actions: Explore double, Crate boundary, Namespace map', async ({
@@ -36,7 +39,7 @@ test.describe('Guide Chip Actions', () => {
     await page.waitForTimeout(500);
 
     // Step 3: Click "Explore double (most connected)" chip
-    const exploreChip = page.locator('.guide-chip').filter({ hasText: 'Explore double' });
+    const exploreChip = page.locator('.guide-chip').filter({ hasText: /^Explore / }).first();
     await exploreChip.click();
     await page.waitForTimeout(2000);
 

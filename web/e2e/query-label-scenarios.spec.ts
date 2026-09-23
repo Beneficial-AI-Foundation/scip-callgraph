@@ -1,11 +1,13 @@
 /**
  * Query label bar scenarios - verifies the query label above the graph
- * Run: BASE_URL=http://localhost:3000 npx playwright test e2e/query-label-scenarios.spec.ts --config=playwright.manual.config.ts
+ * Run: npx playwright test e2e/query-label-scenarios.spec.ts
  */
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
-const APP_URL = `${BASE_URL}/probegraph/`;
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
+// Pinned to a tracked fixture (1,333 nodes, contains "decompress" and "mul")
+// so the assertions don't depend on whatever public/graph.json currently is.
+const APP_URL = `${BASE_URL}/probegraph/?json=./curve_from_rust_atomizer.json`;
 
 async function getQueryLabelText(page: any): Promise<string> {
   const el = page.locator('#query-label');

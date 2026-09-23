@@ -3,7 +3,9 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ATOMS_PATH = path.resolve(__dirname, '../../atoms.json');
+// Tracked fixture: the repo-root atoms.json this test used to upload is not
+// checked in, so a clean checkout could never run it.
+const ATOMS_PATH = path.resolve(__dirname, '../public/curve_from_rust_atomizer.json');
 
 test.describe('probegraph viewer', () => {
   test('load atoms.json, verify Declaration Kind filter and node detail panel', async ({

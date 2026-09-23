@@ -1,14 +1,9 @@
 /**
  * E2E test for the entry-point-seeded initial view on a large graph.
  *
- * Uses the sm-import-test merged fixture (1,547 nodes / 22,479 links through
- * the loader, 6 MB file): it trips the link threshold, so without seeding the
- * page rendered nothing. Skipped when the fixture repo is not checked out
- * alongside this one.
- *
- * Known budget behavior of this graph (133 in-degree-0 seeds):
- * depth 1 = 648 nodes / 4,514 links, depth 2 = 877 / 7,010,
- * depth 3 = 1,043 / 9,607, depth 4 = 13,688 links -> refused (limit 10,000).
+ * All fixtures are deterministic and generated in beforeAll (CI-safe, no
+ * sibling checkout needed), so every expected count below is derived from the
+ * generator parameters rather than from external data that can drift.
  */
 
 import { test, expect } from '@playwright/test';
@@ -17,78 +12,89 @@ import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE_SRC = path.resolve(
-  __dirname,
-  '../../../sm-import-test/.verilib/probes/merged_smimporttest_securemessaging.json',
-);
-const FIXTURE_PUBLIC = path.resolve(__dirname, '../public/seeded-view-e2e-fixture.json');
 
-test.describe('Seeded initial view (large graph)', () => {
-  test.skip(!fs.existsSync(FIXTURE_SRC), 'sm-import-test fixture not checked out');
+// ============================================================================
+// Depth-budget fixture: 100 roots -> 5 children each -> 2 grandchildren each
+// -> 12 leaves each. Depth 1 = 600 nodes / 500 links, depth 2 = 1,600 / 1,500,
+// depth 3 = 13,600 nodes -> refused (node limit 2,000).
+// ============================================================================
 
+const BUDGET_PUBLIC = path.resolve(__dirname, '../public/seeded-view-budget-fixture.json');
+
+function makeBudgetGraph() {
+  const node = (id: string) => ({
+    id, display_name: id, symbol: id,
+    full_path: `/synthetic/${id}.rs`, relative_path: `src/${id}.rs`,
+    file_name: `${id}.rs`, parent_folder: 'src', crate_name: 'synthetic',
+    is_libsignal: false, dependencies: [], dependents: [], kind: 'def',
+  });
+  const nodes = [];
+  const links = [];
+  for (let i = 0; i < 100; i++) {
+    nodes.push(node(`r${i}`));
+    for (let j = 0; j < 5; j++) {
+      const child = `c${i * 5 + j}`;
+      nodes.push(node(child));
+      links.push({ source: `r${i}`, target: child, type: 'inner' });
+      for (let k = 0; k < 2; k++) {
+        const grand = `g${(i * 5 + j) * 2 + k}`;
+        nodes.push(node(grand));
+        links.push({ source: child, target: grand, type: 'inner' });
+        for (let l = 0; l < 12; l++) {
+          const leaf = `x${((i * 5 + j) * 2 + k) * 12 + l}`;
+          nodes.push(node(leaf));
+          links.push({ source: grand, target: leaf, type: 'inner' });
+        }
+      }
+    }
+  }
+  return {
+    nodes, links,
+    metadata: { total_nodes: nodes.length, total_edges: links.length, project_root: '/synthetic', generated_at: '2026-01-01' },
+  };
+}
+
+test.describe('Seeded initial view (depth budget)', () => {
   test.beforeAll(() => {
-    fs.copyFileSync(FIXTURE_SRC, FIXTURE_PUBLIC);
+    fs.writeFileSync(BUDGET_PUBLIC, JSON.stringify(makeBudgetGraph()));
   });
 
   test.afterAll(() => {
-    fs.rmSync(FIXTURE_PUBLIC, { force: true });
+    fs.rmSync(BUDGET_PUBLIC, { force: true });
   });
 
   test('renders a bounded seeded view instead of a blank page', async ({ page }) => {
     const start = Date.now();
-    await page.goto('/probegraph/?json=./seeded-view-e2e-fixture.json');
+    await page.goto('/probegraph/?json=./seeded-view-budget-fixture.json');
 
-    // The 6 MB file is under the 10 MiB auto-load cap, so it loads without
-    // the "Load & Search" prompt, and the seeded banner appears.
     const stats = page.locator('#stats');
     await expect(stats).toContainText('entry points, depth 1', { timeout: 30000 });
-    await expect(stats).toContainText('Showing 648 of 1,547 nodes');
+    await expect(stats).toContainText('Showing 600 of 13,600 nodes');
     console.log(`seeded view banner visible after ${Date.now() - start} ms`);
 
     // The graph actually rendered: one circle per node in the seeded view
-    await expect(page.locator('#graph-container svg circle')).toHaveCount(648, { timeout: 30000 });
+    await expect(page.locator('#graph-container svg circle')).toHaveCount(600, { timeout: 30000 });
   });
 
   test('depth slider commits admissible depths and refuses over-budget ones', async ({ page }) => {
-    await page.goto('/probegraph/?json=./seeded-view-e2e-fixture.json');
+    await page.goto('/probegraph/?json=./seeded-view-budget-fixture.json');
     const stats = page.locator('#stats');
     await expect(stats).toContainText('entry points, depth 1', { timeout: 30000 });
 
     const slider = page.locator('#depth-limit');
 
     // Depth 2 fits the budget: transactional commit updates banner and label.
-    // The expansion has 877 nodes; the default display filters (spec/axiom
-    // kinds hidden) drop 2 of them on top of the seeded view.
     await slider.fill('2');
     await expect(stats).toContainText('entry points, depth 2', { timeout: 30000 });
-    await expect(stats).toContainText('Showing 875 of 1,547 nodes');
+    await expect(stats).toContainText('Showing 1,600 of 13,600 nodes');
     await expect(page.locator('#depth-value')).toHaveText('2');
 
-    // Depth 4 exceeds the link budget: refused, view and label unchanged
-    await slider.fill('4');
-    await expect(stats).toContainText('would need 13,688 links (limit 10,000)', { timeout: 30000 });
+    // Depth 3 exceeds the node budget: refused, view and label unchanged
+    await slider.fill('3');
+    await expect(stats).toContainText('would need 13,600 nodes (limit 2,000)', { timeout: 30000 });
     await expect(stats).toContainText('entry points, depth 2');
     await expect(page.locator('#depth-value')).toHaveText('2');
     await expect(slider).toHaveValue('2');
-  });
-
-  test('node selection exits seeded mode without blanking; reset returns to it', async ({ page }) => {
-    await page.goto('/probegraph/?json=./seeded-view-e2e-fixture.json');
-    const stats = page.locator('#stats');
-    await expect(stats).toContainText('entry points, depth 1', { timeout: 30000 });
-
-    // Click a rendered node (programmatically: the force layout can place it
-    // outside the viewport): selection counts as a filter, so the view
-    // becomes the selected node's depth-limited neighborhood, not empty.
-    await page.locator('#graph-container svg circle').first().dispatchEvent('click');
-    await expect(page.locator('#query-label')).toContainText('selected', { timeout: 30000 });
-    await expect(page.locator('#graph-container svg circle').first()).toBeVisible();
-
-    // Clearing the selection returns to the seeded view, and the query label
-    // names the seeded view rather than showing the stale selection query
-    await page.locator('#clear-selection').click();
-    await expect(stats).toContainText('entry points, depth 1', { timeout: 30000 });
-    await expect(page.locator('#query-label')).toContainText('entry points');
   });
 });
 
@@ -176,6 +182,25 @@ test.describe('Seeded initial view (synthetic large graph)', () => {
 
     await page.locator('#graph-container svg circle').first().dispatchEvent('click', { shiftKey: true });
     await expect(stats).toContainText('Showing 599 of 2,100 nodes (entry points, depth 1)', { timeout: 30000 });
+  });
+
+  test('node selection exits seeded mode without blanking; reset returns to it', async ({ page }) => {
+    await page.goto('/probegraph/?json=./seeded-view-synthetic-fixture.json');
+    const stats = page.locator('#stats');
+    await expect(stats).toContainText('entry points, depth 1', { timeout: 30000 });
+
+    // Click a rendered node (programmatically: the force layout can place it
+    // outside the viewport): selection counts as a filter, so the view
+    // becomes the selected node's depth-limited neighborhood, not empty.
+    await page.locator('#graph-container svg circle').first().dispatchEvent('click');
+    await expect(page.locator('#query-label')).toContainText('selected', { timeout: 30000 });
+    await expect(page.locator('#graph-container svg circle').first()).toBeVisible();
+
+    // Clearing the selection returns to the seeded view, and the query label
+    // names the seeded view rather than showing the stale selection query
+    await page.locator('#clear-selection').click();
+    await expect(stats).toContainText('entry points, depth 1', { timeout: 30000 });
+    await expect(page.locator('#query-label')).toContainText('entry points');
   });
 });
 
