@@ -129,13 +129,14 @@ checksum = "9555578bc9e57714c812a1f84e4fc5b4d21fcb063490c624de019f7464c91268"
 
 [[package]]
 name = "chrono"
-version = "0.4.42"
+version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "145052bdd345b87320e369255277e3fb5152762ad123a901ef5c262dd38fe8d2"
+checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -296,7 +297,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -761,14 +762,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "probe-verus"
-version = "2.0.0"
-source = "git+https://github.com/Beneficial-AI-Foundation/probe-verus#5eedebc760659974290dc95a42560a88305024e3"
+name = "probe"
+version = "0.4.0"
+source = "git+https://github.com/Beneficial-AI-Foundation/probe?tag=v0.4.0#15c45c0bfa129616cc77946bc97b48c4fc3eda95"
 dependencies = [
+ "chrono",
+ "clap",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "probe-verus"
+version = "8.0.1"
+source = "git+https://github.com/Beneficial-AI-Foundation/probe-verus#5f196a9bcb2f7ca166e69e2baf4a200fe0d8cf6f"
+dependencies = [
+ "chrono",
  "clap",
  "csv",
  "dirs",
  "flate2",
+ "probe",
  "proc-macro2",
  "quote",
  "regex",
@@ -956,7 +970,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.11.0",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1186,7 +1200,7 @@ dependencies = [
  "getrandom 0.3.4",
  "once_cell",
  "rustix 1.1.2",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1460,7 +1474,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

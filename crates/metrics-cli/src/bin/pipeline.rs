@@ -190,12 +190,20 @@ fn export_call_graph(
 
     info!("Converting to atoms with unique scip_names and accurate line spans...");
     info!("  Parsing source files with verus_syn for accurate function body spans...");
-    // Pass with_locations=true to get call location tracking (precondition/postcondition/inner)
+    // Pass with_locations=true to get call location tracking (precondition/postcondition/inner).
+    // The module-visibility map, is_library, code-path prefix, and package name
+    // drive probe-verus 8.x's public-API marking and path prefixing; the
+    // neutral values reproduce the behavior of the previously pinned 2.0.0.
+    let empty_module_map = HashMap::new();
     let atoms = convert_to_atoms_with_parsed_spans(
         &call_graph,
         &symbol_to_display_name,
         project_root,
         true, // with_locations - enables requires/ensures tracking
+        &empty_module_map,
+        false,
+        "",
+        "",
     );
 
     // Convert to BTreeMap keyed by code_name for the D3 converter
@@ -958,6 +966,52 @@ mod tests {
             assert!(first_node["id"].is_string());
             assert!(first_node["display_name"].is_string());
         }
+    }
+
+    /// Regression test for the downstream generate-callgraph failure
+    /// (probegraph#36): scip CLI >= v0.9 omits proto3 default fields from
+    /// `scip print --json`, so a document without `position_encoding` (and
+    /// occurrences without `symbol_roles: 0`) must still parse. The old
+    /// pinned probe-verus 2.0.0 required those fields.
+    #[test]
+    fn test_export_call_graph_with_omitted_proto3_defaults() {
+        let temp_dir = TempDir::new().unwrap();
+        let scip_json_path = temp_dir.path().join("index.scip.json");
+        let output_path = temp_dir.path().join("graph.json");
+
+        let mut mock_scip = create_mock_scip_json();
+        let doc = &mut mock_scip["documents"][0];
+        doc.as_object_mut().unwrap().remove("position_encoding");
+        for occ in doc["occurrences"].as_array_mut().unwrap() {
+            let obj = occ.as_object_mut().unwrap();
+            if obj["symbol_roles"] == 0 {
+                obj.remove("symbol_roles");
+            }
+        }
+        for sym in doc["symbols"].as_array_mut().unwrap() {
+            sym["signature_documentation"]
+                .as_object_mut()
+                .unwrap()
+                .remove("position_encoding");
+        }
+
+        fs::write(
+            &scip_json_path,
+            serde_json::to_string_pretty(&mock_scip).unwrap(),
+        )
+        .unwrap();
+
+        let result = export_call_graph(
+            &scip_json_path,
+            &output_path,
+            Path::new("/mock/project"),
+            None,
+        );
+        assert!(
+            result.is_ok(),
+            "export_call_graph must tolerate omitted proto3 defaults: {:?}",
+            result
+        );
     }
 
     #[test]
