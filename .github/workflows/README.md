@@ -63,13 +63,6 @@ builds the viewer with `VITE_GRAPH_JSON_URL` / `VITE_GITHUB_URL` /
 `VITE_GITHUB_PATH_PREFIX` (dispatch inputs override the defaults), and deploys
 to this repo's GitHub Pages.
 
-### `test-callgraph-local.yml` / `test-deploy-callgraph.yml`
-
-Test harnesses for the reusable callgraph workflow. `test-deploy-callgraph.yml`
-calls `generate-callgraph.yml` on `examples/quicksort` whenever the workflow or
-`crates/`/`web/` change; `test-callgraph-local.yml` is a manual-dispatch
-variant runnable locally with `act`.
-
 ## Making a release
 
 ```bash

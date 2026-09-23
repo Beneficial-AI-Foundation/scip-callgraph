@@ -1,0 +1,60 @@
+name: Detect Unused Specs (Using Release Binary)
+
+on:
+  workflow_call:
+    inputs:
+      project_path:
+        description: 'Path to the project to analyze'
+        required: false
+        default: '.'
+        type: string
+      scip_callgraph_version:
+        description: 'probegraph release to use (e.g., v5.0.0 or latest). Input name kept for backward compatibility.'
+        required: false
+        default: 'latest'
+        type: string
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download probegraph release
+        run: |
+          if [ "${{ inputs.scip_callgraph_version }}" = "latest" ]; then
+            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/Beneficial-AI-Foundation/probegraph/releases/latest | jq -r '.assets[] | select(.name | contains("linux")) | .browser_download_url')
+          else
+            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/Beneficial-AI-Foundation/probegraph/releases/tags/${{ inputs.scip_callgraph_version }} | jq -r '.assets[] | select(.name | contains("linux")) | .browser_download_url')
+          fi
+
+          wget "$DOWNLOAD_URL" -O probegraph.tar.gz
+          tar -xzf probegraph.tar.gz
+          # Release archives extract into a probegraph-<version>-<target>/ directory
+          BIN=$(find . -name detect_unused_specs -type f | head -1)
+          chmod +x "$BIN"
+          sudo mv "$BIN" /usr/local/bin/
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+
+          # Install SCIP (no scip-cli crate exists; use the release binary)
+          wget https://github.com/sourcegraph/scip/releases/download/v0.3.3/scip-linux.tar.gz
+          tar -xzf scip-linux.tar.gz
+          sudo mv scip /usr/local/bin/
+
+      - name: Run analysis
+        run: |
+          cd ${{ inputs.project_path }}
+          detect_unused_specs .
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: unused-specs-report
+          path: |
+            **/*_unused_specs_proofs.json
+            **/*_atoms.json

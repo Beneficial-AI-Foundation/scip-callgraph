@@ -260,7 +260,7 @@ When running in VS Code webview:
 |---------|----------|--------------|
 | File loading | File picker dialog | Graph sent via message |
 | Source navigation | Opens GitHub in new tab | Opens file in editor |
-| Header title | "📊 SCIP Call Graph Viewer" | "📊 Call Graph Explorer" |
+| Header title | "📊 probegraph" | "📊 Call Graph Explorer" |
 | File input | Visible | Hidden |
 
 ## Environment Detection
