@@ -70,6 +70,8 @@ body {
   background: var(--pg-bg);
   color: var(--pg-text);
   overflow: hidden;
+  /* Native checkboxes/radios follow the theme instead of the OS accent */
+  accent-color: var(--pg-accent);
 }
 
 /* App Container */
