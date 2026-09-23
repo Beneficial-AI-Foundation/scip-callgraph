@@ -70,8 +70,9 @@ body {
   background: var(--pg-bg);
   color: var(--pg-text);
   overflow: hidden;
-  /* Native checkboxes/radios follow the theme instead of the OS accent */
-  accent-color: var(--pg-accent);
+  /* Native checkboxes/radios follow the theme instead of the OS accent;
+     green to match verilib, which sets its accent-color to green too */
+  accent-color: var(--pg-brand-strong);
 }
 
 /* App Container */
