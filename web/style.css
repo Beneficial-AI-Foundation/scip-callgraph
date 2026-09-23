@@ -1035,7 +1035,8 @@ select.search-input {
    Crate Map View
    ================================================================ */
 
-.cm-legend {
+.cm-legend,
+.hm-legend {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -1049,7 +1050,8 @@ select.search-input {
   user-select: none;
 }
 
-.cm-legend-header {
+.cm-legend-header,
+.hm-legend-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1060,15 +1062,18 @@ select.search-input {
   background: #fafafa;
 }
 
-.cm-legend-header:hover {
+.cm-legend-header:hover,
+.hm-legend-header:hover {
   background: #f0f0f0;
 }
 
-.cm-legend-body {
+.cm-legend-body,
+.hm-legend-body {
   padding: 6px 10px 8px;
 }
 
-.cm-legend-section {
+.cm-legend-section,
+.hm-legend-section {
   margin-top: 6px;
   margin-bottom: 2px;
   color: #555;
@@ -1077,7 +1082,8 @@ select.search-input {
   letter-spacing: 0.03em;
 }
 
-.cm-legend-item {
+.cm-legend-item,
+.hm-legend-item {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1085,11 +1091,13 @@ select.search-input {
   color: #444;
 }
 
-.cm-legend-item svg {
+.cm-legend-item svg,
+.hm-legend-item svg {
   flex-shrink: 0;
 }
 
-.cm-legend-arrow {
+.cm-legend-arrow,
+.hm-legend-arrow {
   font-size: 0.65rem;
   color: #888;
 }
