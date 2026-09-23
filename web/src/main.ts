@@ -1913,11 +1913,11 @@ function renderLanguageFilters(): void {
     <h3>Language</h3>
     <label class="checkbox-label">
       <input type="checkbox" id="show-rust-nodes" checked />
-      <span class="exec-badge">${rustLabel}</span>
+      <span>${rustLabel}</span>
     </label>
     <label class="checkbox-label">
       <input type="checkbox" id="show-lean-nodes" checked />
-      <span class="proof-badge">Lean</span>
+      <span>Lean</span>
     </label>`;
 
   document.getElementById('show-rust-nodes')?.addEventListener('change', (e) => {
@@ -1957,47 +1957,47 @@ function renderKindFilters(lang: ProjectLanguage): void {
     html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-exec-functions" checked />
-        <span class="exec-badge">Exec</span>
+        <span>Exec</span>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="show-proof-functions" checked />
-        <span class="proof-badge">Proof</span>
+        <span>Proof</span>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="show-spec-functions" />
-        <span class="spec-badge">Spec</span>
+        <span>Spec</span>
       </label>`;
   } else {
     html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-exec-functions" checked />
-        <span class="exec-badge">Definitions</span>
+        <span>Definitions</span>
         <small style="color:var(--pg-text-faint);margin-left:4px">def, abbrev, ...</small>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="show-proof-functions" checked />
-        <span class="proof-badge">Theorems</span>
+        <span>Theorems</span>
       </label>`;
     // Only render checkboxes for kinds the graph actually contains.
     if (hasKind(axiomKinds)) {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-axioms" checked />
-        <span class="spec-badge">Axioms</span>
+        <span>Axioms</span>
       </label>`;
     }
     if (lang === 'mixed' && kindsPresent.has('spec')) {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-spec-functions" />
-        <span class="spec-badge">Spec</span>
+        <span>Spec</span>
       </label>`;
     }
     if (hasKind(typeKinds)) {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-types" />
-        <span class="exec-badge">Types</span>
+        <span>Types</span>
         <small style="color:var(--pg-text-faint);margin-left:4px">structure, inductive, class</small>
       </label>`;
     }
@@ -2005,14 +2005,14 @@ function renderKindFilters(lang: ProjectLanguage): void {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-projections" />
-        <span class="exec-badge">Projections</span>
+        <span>Projections</span>
       </label>`;
     }
     if (hasKind(instanceKinds)) {
       html += `
       <label class="checkbox-label">
         <input type="checkbox" id="show-instances" />
-        <span class="exec-badge">Instances</span>
+        <span>Instances</span>
       </label>`;
     }
   }
