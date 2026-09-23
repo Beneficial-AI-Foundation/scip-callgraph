@@ -6,11 +6,11 @@ A directed graph $G = (V, E)$ where:
 
 - $V$ is a set of function nodes, each with attributes:
   - $\text{name}(v) \in \Sigma^*$ — display name
-  - $\text{status}(v) \in \{\text{verified}, \text{failed}, \text{unverified}, \text{unknown}\}$ — verification status
+  - $\text{status}(v) \in \{\text{verified}, \text{transitively-verified}, \text{trusted}, \text{failed}, \text{unverified}, \text{unknown}\}$ — verification status
   - $\text{deps}(v) \subseteq V$ — functions this node calls (outgoing)
   - $\text{dependents}(v) \subseteq V$ — functions that call this node (incoming)
 
-- $E \subseteq V \times V \times T$ where $T = \{\text{inner}, \text{pre}, \text{post}\}$ — typed directed edges
+- $E \subseteq V \times V \times T$ where $T = \{\text{inner}, \text{pre}, \text{post}, \text{mapping}, \text{spec}\}$ — typed directed edges (mapping = cross-language Rust↔Lean edge, spec = Lean spec-theorem → definition edge)
 
 - Optionally, precomputed depth assignments $d_0: V \to \mathbb{N}$ from source/sink filtering.
 
@@ -230,10 +230,12 @@ $$
 
 $$
 \kappa(s) = \begin{cases}
-\text{green} & \text{if } s = \text{verified} \\
-\text{red} & \text{if } s = \text{failed} \\
-\text{gray} & \text{if } s = \text{unverified} \\
-\text{blue} & \text{if } s = \text{unknown}
+\text{light green (\#4ade80)} & \text{if } s = \text{verified} \\
+\text{dark green (\#15803d)} & \text{if } s = \text{transitively-verified} \\
+\text{purple (\#a855f7)} & \text{if } s = \text{trusted} \\
+\text{red (\#ef4444)} & \text{if } s = \text{failed} \\
+\text{gray (\#9ca3af)} & \text{if } s = \text{unverified} \\
+\text{blue (\#3b82f6)} & \text{if } s = \text{unknown}
 \end{cases}
 $$
 
@@ -264,8 +266,10 @@ Edge style by type:
 $$
 \text{style}(t) = \begin{cases}
 \text{solid gray} & \text{if } t = \text{inner} \\
-\text{dashed orange} & \text{if } t = \text{pre} \\
-\text{dashed pink} & \text{if } t = \text{post}
+\text{dashed orange, 5-3} & \text{if } t = \text{pre} \\
+\text{dashed pink, 5-3} & \text{if } t = \text{post} \\
+\text{dashed violet (\#7c3aed), 2-4} & \text{if } t = \text{mapping} \\
+\text{dashed teal (\#0891b2), 3-3} & \text{if } t = \text{spec}
 \end{cases}
 $$
 
@@ -325,6 +329,26 @@ $$
 v.fx = \bot, \quad v.fy = \bot, \quad \alpha_{\text{target}} \leftarrow 0
 $$
 
+### Phase 7. Auto-Fit Camera
+
+After layout, the camera fits the node bounding box into the viewport
+(`computeFitTransform` in `graph.ts`). With bounding box $(w_b, h_b)$
+(including a 60px margin) and viewport $(W, H)$:
+
+$$
+k = \text{clamp}\left(\min\left(\frac{W}{w_b}, \frac{H}{h_b}\right), \; k_{\min}, \; k_{\max}\right), \quad k_{\min} = 0.4, \; k_{\max} = 1
+$$
+
+The transform translates the bounding-box center to the viewport center at
+scale $k$. The clamp keeps large graphs readable instead of shrinking them to
+dots; when the true fit scale falls below $k_{\min}$ and a focus node is
+given, the camera centers on the focus node at $k_{\min}$ so the relevant
+node is in view even though the whole graph is not.
+
+The fit runs only when the **set of rendered node IDs changes** (new query
+result) and on viewport resize — hover and selection re-renders never move
+the user's view.
+
 ## Summary: Pipeline Composition
 
 $$
@@ -353,7 +377,7 @@ $$
 | **Grouping** | None | By file | By crate |
 | **Edge treatment** | Individual, dynamic position | Individual, static position | Aggregated with weights |
 | **Draggable** | Yes (force simulation re-equilibrates) | No | No |
-| **Color encodes** | Verification status (1 channel) | Border = readiness, fill = depth (2 channels) | Palette by crate identity |
+| **Color encodes** | Verification status (1 channel) | Border = readiness, fill = subtree completeness (2 channels) | Palette by crate identity |
 
 The key architectural difference: the Call Graph uses a **hybrid layout** — Sugiyama-style layer assignment and crossing minimization for initialization, followed by force-directed simulation for refinement. This gives it the layered structure of a DAG drawing but with the dynamic, interactive feel of a force layout (nodes can be dragged, the graph "breathes" as it stabilizes). File Map and Crate Map use purely static dagre layouts.
 

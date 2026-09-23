@@ -6,11 +6,23 @@ A directed graph $G = (V, E)$ where:
 
 - $V$ is a set of function nodes, each with attributes:
   - $\text{name}(v) \in \Sigma^*$ — display name
-  - $\text{crate}(v) \in \Sigma^*$ — crate or namespace name
+  - $\text{crate}(v) \in \Sigma^*$ — crate or namespace name (see below)
   - $\text{file}(v) \in \Sigma^*$ — file path
-  - $\text{isExternal}(v) \in \{\text{true}, \text{false}\}$
 
-- $E \subseteq V \times V \times T$ where $T = \{\text{inner}, \text{pre}, \text{post}\}$ — typed directed edges
+- $E \subseteq V \times V \times T$ where $T = \{\text{inner}, \text{pre}, \text{post}, \text{mapping}, \text{spec}\}$ — typed directed edges
+
+The crate attribute is backfilled at load time by `extractCrateName()`
+(`types.ts`) and is **language-dependent**: for Rust/SCIP nodes it is the
+crate segment of the node ID (`scip:crate_name/...` or `probe:crate_name/...`);
+for Lean nodes it is the first **two** path segments of `relative_path`
+(e.g. `ArkLib/Data`), giving a more granular namespace hierarchy — hence the
+view's Lean label, "Namespace Map". In mixed-language graphs the choice is
+made per node from the node's own `language`. This choice determines the
+partition $\mathcal{C}$ everything below is built on.
+
+Externality is not a node attribute: `buildCrateGraph` derives a per-crate
+$\text{isExternal}$ flag from whether the member node IDs contain the
+`external:` marker.
 
 ## Output
 
@@ -277,7 +289,7 @@ $$
 | **Edge granularity** | One curve per function-to-function edge | One weighted curve per crate-to-crate edge |
 | **Aggregation** | None | Edge count aggregation: $\|E\| \to \|E_\mathcal{C}\|$ |
 | **Drill-down** | None (single-level) | 3 modes: collapsed, expanded edge, boundary |
-| **Visual encoding** | Shape = kind, border = status, fill = depth | Uniform boxes with summary stats |
+| **Visual encoding** | Shape = kind, border = status, fill = subtree completeness | Uniform boxes with summary stats |
 | **Layout input** | $\|V\|$ nodes | $\|\mathcal{C}\|$ nodes (typically $\ll \|V\|$) |
 | **Cross-view navigation** | None | Double-click → Call Graph; boundary → Call Graph |
 
